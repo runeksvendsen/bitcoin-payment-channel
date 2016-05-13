@@ -15,41 +15,42 @@ In order to set up a payment channel between a sender and a receiver, the two pa
     (3) channel expiration date
 
  These parameters
- are contained in 'Data.Bitcoin.PaymentChannel.Types.ChannelParameters', from which a channel funding
+ are contained in 'ChannelParameters', from which a channel funding
  address can be derived using
- 'Internal.Script.getP2SHFundingAddress'.
+ 'getFundingAddress'.
 
-The funding transaction will contain an output which pays to the address derived by
- 'Internal.Script.getP2SHFundingAddress', and once this transaction is created and in
- the blockchain, a 'Data.Bitcoin.PaymentChannel.Types.SenderPaymentChannel' and
- 'ReceiverPaymentChannel' instance can be created, after first creating a 'FundingTxInfo'
- instance. 'FundingTxInfo' contains three pieces of information about
- the funding transaction:
+The funding transaction will contain an output which pays to the address returned by
+ 'getFundingAddress', and once this transaction is created and in
+ the blockchain, a 'SenderPaymentChannel' and
+ 'ReceiverPaymentChannel' instance can be created, after first creating a 'FundingTxInfo'.
+ 'FundingTxInfo' contains three pieces of information about the funding transaction:
 
     (1) hash/transaction ID
-    (2) index/vout of the funding output (paying to 'Internal.Script.getP2SHFundingAddress' address),
+    (2) index/vout of the funding output (paying to 'getFundingAddress' address),
     (3) value of the funding output
 
-With 'Internal.Types.ChannelParameters' and 'Internal.Types.FundingTxInfo',
- the sender can create a new 'Data.Bitcoin.PaymentChannel.Types.SenderPaymentChannel', plus
- the first channel payment, using 'channelWithInitialPaymentOf'. 'channelWithInitialPaymentOf' takes two
- additional arguments:
+With 'ChannelParameters' and 'FundingTxInfo',
+ the sender can create a new 'SenderPaymentChannel', plus
+ the first channel payment, using 'channelWithInitialPaymentOf'. 'channelWithInitialPaymentOf'
+ takes two additional arguments:
 
     (1) a signing function which, given a hash, produces a signature that verifies against
         'cpSenderPubKey' in 'ChannelParameters'
     (2) the value of the first channel payment
 
- The sender will want to use @flip 'Network.Haskoin.Crypto.signMsg' senderPrivKey@ as the signing function,
- where @senderPrivKey@ is the private key from which 'cpSenderPubKey' is derived.
+ The sender will want to use @flip 'Network.Haskoin.Crypto.signMsg' senderPrivKey@ as the signing
+ function, where @senderPrivKey@ is the private key from which 'cpSenderPubKey' is derived.
  'channelWithInitialPaymentOf' will return the first channel 'Payment' as well as
- the new 'Data.Bitcoin.PaymentChannel.Types.SenderPaymentChannel' state. The new state is stored, and the 'Internal.Types.Payment'
+ the new 'SenderPaymentChannel' state. The new state is stored, and the 'Payment'
  transferred to the receiver.
 
-The receiver will now create its own channel state object, 'ReceiverPaymentChannel', using 'channelFromInitialPayment'.
-'channelFromInitialPayment' takes the same 'ChannelParameters' and 'FundingTxInfo'
-as was provided by the sender, and also the receiver signing function (used to produce the settlement transaction
-that closes the payment channel), and the first channel 'Payment', received from the sender.
-The receiver will want to use @flip 'Network.Haskoin.Crypto.signMsg' receiverPrivKey@ as the signing function,
+The receiver will now create its own channel state object, 'ReceiverPaymentChannel', using
+ 'channelFromInitialPayment'.
+ 'channelFromInitialPayment' takes the same 'ChannelParameters' and 'FundingTxInfo'
+ as was provided by the sender, and, in addition, the receiver signing function
+ (used to produce the settlement transaction
+ that closes the payment channel), and the first channel 'Payment', received from the sender.
+ The receiver will want to use @flip 'Network.Haskoin.Crypto.signMsg' receiverPrivKey@ as the signing function,
  where @<receiverPrivKey>@ is the private key from which 'cpReceiverPubKey' is derived.
 
 Now the payment channel is open and ready for transmitting value. A new 'Payment' is created by
@@ -88,11 +89,27 @@ module Data.Bitcoin.PaymentChannel
     getSettlementBitcoinTx,
     getRefundBitcoinTx,
 
-    module Data.Bitcoin.PaymentChannel.Internal
+    getFundingAddress
 )
 where
 
-import Data.Bitcoin.PaymentChannel.Internal
+import Data.Bitcoin.PaymentChannel.Internal.Error
+    (PayChanError(..))
+import Data.Bitcoin.PaymentChannel.Internal.Types
+    (PaymentTxConfig(..), pcsValueLeft, cpChannelValueLeft)
+import Data.Bitcoin.PaymentChannel.Internal.State
+    (newPaymentChannelState, updatePaymentChannelState)
+import Data.Bitcoin.PaymentChannel.Internal.Payment
+    (createPayment, verifyPayment)
+import Data.Bitcoin.PaymentChannel.Internal.Settlement
+    (getSignedSettlementTx, getSettlementTxHashForSigning)
+import Data.Bitcoin.PaymentChannel.Internal.Refund
+    (refundTxAddSignature, getRefundTxHashForSigning)
+import Data.Bitcoin.PaymentChannel.Internal.Util
+    (bitcoinPayPKBS, mapRight)
+
+
+import Data.Bitcoin.PaymentChannel.Util (getFundingAddress)
 import Data.Bitcoin.PaymentChannel.Types
 
 import qualified  Network.Haskoin.Crypto as HC

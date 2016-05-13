@@ -27,7 +27,9 @@ source-repository head
 
 library
   exposed-modules:      Data.Bitcoin.PaymentChannel,
-                        Data.Bitcoin.PaymentChannel.Types,
+                        Data.Bitcoin.PaymentChannel.Types
+
+  other-modules:
                         Data.Bitcoin.PaymentChannel.Internal.Error
                         Data.Bitcoin.PaymentChannel.Internal.Payment,
                         Data.Bitcoin.PaymentChannel.Internal.Refund,

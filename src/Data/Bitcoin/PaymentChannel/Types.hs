@@ -15,7 +15,7 @@ ReceiverPaymentChannel(..),
 Payment,
 FundingTxInfo(..),
 ChannelParameters(..),
-BitcoinAmount(..),
+BitcoinAmount,
 PaymentChannel(..)
 )
 where
@@ -51,7 +51,6 @@ data ReceiverPaymentChannel = CReceiverPaymentChannel {
     --  @flip Network.Haskoin.Crypto.signMsg receiverPrivKey@ can be used here.
     rpcSignFunc     ::  HC.Hash256 -> HC.Signature
 }
-
 
 -- |Get various information about an open payment channel.
 class PaymentChannel a where
