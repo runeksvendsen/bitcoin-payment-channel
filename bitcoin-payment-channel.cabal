@@ -12,21 +12,20 @@ description:
     is safe from transaction ID malleability, and value transfer is uni-directional (one party
     sends and the other party receives).
 
-license:             PublicDomain
-license-file:        UNLICENSE
-author:              Rune K. Svendsen <runesvend@gmail.com>
-maintainer:          Rune K. Svendsen <runesvend@gmail.com>
-copyright:           (c) 2016 Rune K. Svendsen
-homepage:            -- TODO
-bug-reports:         -- TODO  http://github.com/issues
-category:             Data
-build-type:           Simple
-cabal-version:        >=1.10
+author:         Rune K. Svendsen <runesvend@gmail.com>
+maintainer:     Rune K. Svendsen <runesvend@gmail.com>
+license:        PublicDomain
+license-file:   UNLICENSE
+copyright:      Rune K. Svendsen, 2016
+homepage:       https://github.com/runeksvendsen/bitcoin-payment-channel
+bug-reports:    https://github.com/runeksvendsen/bitcoin-payment-channel/issues
+category:       Data
+build-type:     Simple
+cabal-version:  >=1.10
 
---TODO
 source-repository head
     type:     git
-    location: git://github.com/haskoin/haskoin.git
+    location: git://github.com/runeksvendsen/bitcoin-payment-channel.git
 
 library
   exposed-modules:      Data.Bitcoin.PaymentChannel,
@@ -40,8 +39,6 @@ library
                         Data.Bitcoin.PaymentChannel.Internal.Types,
                         Data.Bitcoin.PaymentChannel.Internal.Util,
                         Data.Bitcoin.PaymentChannel.Internal.Version
-
---  other-modules:
 
   ghc-options:          -O2 -fwarn-incomplete-patterns
 
