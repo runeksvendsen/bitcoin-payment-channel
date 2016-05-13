@@ -15,7 +15,6 @@ description:
 author:         Rune K. Svendsen <runesvend@gmail.com>
 maintainer:     Rune K. Svendsen <runesvend@gmail.com>
 license:        PublicDomain
-license-file:   UNLICENSE
 homepage:       https://github.com/runeksvendsen/bitcoin-payment-channel
 bug-reports:    https://github.com/runeksvendsen/bitcoin-payment-channel/issues
 category:       Data
