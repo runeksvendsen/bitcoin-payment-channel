@@ -1,12 +1,10 @@
 # Bitcoin payment channel library
 
-A Bitcoin payment channel allows two parties two send value to each other very rapidly. The speed of the value transfer is limited primarily by network latency, and payments cannot be double spent, as the receiver of funds is defined during channel setup. The channel setup procedure is trustless, in that the funding party is able to retrieve the funds, after a chosen expiration date, in case the receiving party goes missing.
-
-This library implements a type of payment channel (CHECKLOCKTIMEVERIFY-style) where channel setup is safe from transaction ID malleability, and value transfer is uni-directional (one party sends and the other party receives).
+See [Hackage page](https://hackage.haskell.org/package/bitcoin-payment-channel)
 
 ## Documentation/usage
 
-Please see the soon-to-be [Hackage documentation](https://hackage.haskell.org/package/bitcoin-payment-channel/docs/Data-Bitcoin-PaymentChannel.html).
+See the soon-to-be [Hackage documentation](https://hackage.haskell.org/package/bitcoin-payment-channel/docs/Data-Bitcoin-PaymentChannel.html).
 
 ## Contact/questions/bugs
 

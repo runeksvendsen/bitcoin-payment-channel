@@ -42,9 +42,9 @@ data ChannelParameters = CChannelParameters {
 -- |Holds information about the Bitcoin transaction used to fund
 -- the channel
 data FundingTxInfo = CFundingTxInfo {
-    ftiHash         ::  HT.TxHash, -- ^ Hash of funding transaction.
-    ftiOutIndex     ::  Word32, -- ^ Index/"vout" of funding TxOut
-    ftiOutValue     ::  BitcoinAmount -- ^ Value of funding TxOut (channel max value)
+    ftiHash         ::  HT.TxHash,      -- ^ Hash of funding transaction.
+    ftiOutIndex     ::  Word32,         -- ^ Index/"vout" of funding output
+    ftiOutValue     ::  BitcoinAmount   -- ^ Value of funding output (channel max value)
 } deriving (Eq, Show)
 
 -- |Holds information about how to construct the payment transaction

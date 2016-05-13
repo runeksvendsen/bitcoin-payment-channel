@@ -17,17 +17,17 @@ In order to set up a payment channel between a sender and a receiver, the two pa
  These parameters
  are contained in 'ChannelParameters', from which a channel funding
  address can be derived using
- 'getFundingAddress'.
-
-The funding transaction will contain an output which pays to the address returned by
+ 'getFundingAddress'. The transaction which pays to this address is the channel funding
+ transaction, and information about it is contained in a 'FundingTxInfo'.
+ So, the channel funding transaction will contain an output which pays to the address returned by
  'getFundingAddress', and once this transaction is created and in
  the blockchain, a 'SenderPaymentChannel' and
- 'ReceiverPaymentChannel' instance can be created, after first creating a 'FundingTxInfo'.
+ 'ReceiverPaymentChannel' instance can be created, after first creating the 'FundingTxInfo' instance.
  'FundingTxInfo' contains three pieces of information about the funding transaction:
 
     (1) hash/transaction ID
     (2) index/vout of the funding output (paying to 'getFundingAddress' address),
-    (3) value of the funding output
+    (3) value of the funding output (paying to 'getFundingAddress' address)
 
 With 'ChannelParameters' and 'FundingTxInfo',
  the sender can create a new 'SenderPaymentChannel', plus
@@ -107,7 +107,6 @@ import Data.Bitcoin.PaymentChannel.Internal.Refund
     (refundTxAddSignature, getRefundTxHashForSigning)
 import Data.Bitcoin.PaymentChannel.Internal.Util
     (bitcoinPayPKBS, mapRight)
-
 
 import Data.Bitcoin.PaymentChannel.Util (getFundingAddress)
 import Data.Bitcoin.PaymentChannel.Types

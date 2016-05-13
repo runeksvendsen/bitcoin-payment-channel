@@ -15,9 +15,10 @@ description:
 author:         Rune K. Svendsen <runesvend@gmail.com>
 maintainer:     Rune K. Svendsen <runesvend@gmail.com>
 license:        PublicDomain
+stability:      experimental
 homepage:       https://github.com/runeksvendsen/bitcoin-payment-channel
 bug-reports:    https://github.com/runeksvendsen/bitcoin-payment-channel/issues
-category:       Data
+category:       Bitcoin, Finance, Network
 build-type:     Simple
 cabal-version:  >=1.10
 
@@ -27,7 +28,8 @@ source-repository head
 
 library
   exposed-modules:      Data.Bitcoin.PaymentChannel,
-                        Data.Bitcoin.PaymentChannel.Types
+                        Data.Bitcoin.PaymentChannel.Types,
+                        Data.Bitcoin.PaymentChannel.Util
 
   other-modules:
                         Data.Bitcoin.PaymentChannel.Internal.Error
@@ -42,7 +44,7 @@ library
 
   ghc-options:          -fwarn-incomplete-patterns
 
-  build-depends:        base >= 4.7 && < 5,
+  build-depends:        base,
                         bytestring, text, base16-bytestring, base58string, hexstring,
                         time,
                         cereal, binary,

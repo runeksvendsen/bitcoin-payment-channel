@@ -15,16 +15,22 @@ ReceiverPaymentChannel(..),
 Payment,
 FundingTxInfo(..),
 ChannelParameters(..),
-BitcoinAmount,
-PaymentChannel(..)
+PayChanError,
+
+BitcoinAmount, toWord64,
+PaymentChannel(..),
+BitcoinLockTime, fromDate
 )
 where
 
 import Data.Bitcoin.PaymentChannel.Internal.Types
     (PaymentChannelState(..), Payment
     ,FundingTxInfo(..), ChannelParameters(..))
-import Data.Bitcoin.PaymentChannel.Internal.Util (BitcoinAmount)
+import Data.Bitcoin.PaymentChannel.Internal.Util
+    (BitcoinAmount, toWord64,
+    BitcoinLockTime, fromDate)
 import Data.Bitcoin.PaymentChannel.Internal.State (pcsChannelID, pcsChannelTotalValue)
+import Data.Bitcoin.PaymentChannel.Internal.Error (PayChanError(..))
 
 import qualified  Network.Haskoin.Crypto as HC
 import qualified  Network.Haskoin.Transaction as HT
@@ -35,8 +41,8 @@ data SenderPaymentChannel = CSenderPaymentChannel {
     -- |Internal state object
     spcState     ::  PaymentChannelState,
     -- |Used to sign payments from sender.
-    --  Function which produces a signature that verifies against 'Internal.Types.cpSenderPubKey'.
-    --  @flip Network.Haskoin.Crypto.signMsg senderPrivKey@ can be used here.
+    --  This function, when given a 'HC.Hash256', produces a signature that
+    --  verifies against 'cpSenderPubKey'.
     spcSignFunc  ::  HC.Hash256 -> HC.Signature
 }
 
@@ -46,9 +52,8 @@ data ReceiverPaymentChannel = CReceiverPaymentChannel {
     rpcState        ::  PaymentChannelState,
     -- |Used to verify signatures from value sender.
     rpcVerifyFunc   ::  HC.Hash256 -> HC.PubKey -> HC.Signature -> Bool,
-    -- |Function which produces a signature that verifies against 'Internal.Types.cpReceiverPubKey'.
+    -- |Function which produces a signature that verifies against 'cpReceiverPubKey'.
     --  Used to produce the Bitcoin transaction that closes the channel.
-    --  @flip Network.Haskoin.Crypto.signMsg receiverPrivKey@ can be used here.
     rpcSignFunc     ::  HC.Hash256 -> HC.Signature
 }
 

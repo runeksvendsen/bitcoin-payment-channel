@@ -112,17 +112,20 @@ data BitcoinLockTime =
     LockTimeBlockHeight Word32 |
     LockTimeDate UTCTime deriving (Eq, Show)
 
+-- | Convert from Bitcoin format ('Word32')
 parseBitcoinLocktime :: Word32 -> BitcoinLockTime
 parseBitcoinLocktime i
     | i <   500000000 = LockTimeBlockHeight i
     | i >=  500000000 = LockTimeDate $ posixSecondsToUTCTime (fromIntegral i)
     | otherwise       = error "BUG"
 
+-- | Convert to Bitcoin format ('Word32')
 toWord32 :: BitcoinLockTime -> Word32
 toWord32 (LockTimeBlockHeight i) = i
 toWord32 (LockTimeDate date) =
     fromIntegral . round . utcTimeToPOSIXSeconds $ date
 
+-- | Convert a 'Data.Time.Clock.UTCTime' to a 'BitcoinLockTime'
 fromDate :: UTCTime -> BitcoinLockTime
 fromDate = LockTimeDate
 
