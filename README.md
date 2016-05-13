@@ -1,5 +1,7 @@
 # Bitcoin payment channel library
 
+## Description
+
 See [Hackage page](https://hackage.haskell.org/package/bitcoin-payment-channel)
 
 ## Documentation/usage
