@@ -39,7 +39,7 @@ library
                         Data.Bitcoin.PaymentChannel.Internal.Util,
                         Data.Bitcoin.PaymentChannel.Internal.Version
 
-  ghc-options:          -O2 -fwarn-incomplete-patterns
+  ghc-options:          -fwarn-incomplete-patterns
 
   build-depends:        base >= 4.7 && < 5,
                         bytestring, text, base16-bytestring, base58string, hexstring,
