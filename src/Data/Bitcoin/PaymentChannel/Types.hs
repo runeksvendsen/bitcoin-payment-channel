@@ -24,8 +24,10 @@ BitcoinLockTime, fromDate
 where
 
 import Data.Bitcoin.PaymentChannel.Internal.Types
-    (PaymentChannelState(..), Payment
+    (PaymentChannelState(..), Payment(..)
     ,FundingTxInfo(..), ChannelParameters(..))
+import Data.Bitcoin.PaymentChannel.Internal.Serialization
+--     ()
 import Data.Bitcoin.PaymentChannel.Internal.Util
     (BitcoinAmount, toWord64,
     BitcoinLockTime, fromDate)

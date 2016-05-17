@@ -110,7 +110,11 @@ appendOutput tx@HT.Tx{ HT.txOut = oldOuts } txOut =
 --  Derive a 'BitcoinLockTime' from a 'Data.Time.Clock.UTCTime' using 'fromDate'.
 data BitcoinLockTime =
     LockTimeBlockHeight Word32 |
-    LockTimeDate UTCTime deriving (Eq, Show)
+    LockTimeDate UTCTime deriving (Eq)
+
+instance Show BitcoinLockTime where
+    show (LockTimeBlockHeight blockNum) = "block number " ++ show blockNum
+    show (LockTimeDate date) = show date
 
 -- | Convert from Bitcoin format ('Word32')
 parseBitcoinLocktime :: Word32 -> BitcoinLockTime

@@ -39,6 +39,7 @@ library
                         Data.Bitcoin.PaymentChannel.Internal.Settlement,
                         Data.Bitcoin.PaymentChannel.Internal.State,
                         Data.Bitcoin.PaymentChannel.Internal.Types,
+                        Data.Bitcoin.PaymentChannel.Internal.Serialization,
                         Data.Bitcoin.PaymentChannel.Internal.Util,
                         Data.Bitcoin.PaymentChannel.Internal.Version
 
@@ -46,8 +47,9 @@ library
 
   build-depends:        base,
                         bytestring, text, base16-bytestring, base58string, hexstring,
+                        base64-bytestring,
                         time,
-                        cereal, binary,
+                        cereal, binary, aeson,
                         haskoin-core
 
   hs-source-dirs:       src

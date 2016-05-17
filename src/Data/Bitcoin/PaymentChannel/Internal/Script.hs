@@ -3,12 +3,14 @@
 module Data.Bitcoin.PaymentChannel.Internal.Script where
 
 import Data.Bitcoin.PaymentChannel.Internal.Types
+import Data.Bitcoin.PaymentChannel.Internal.Serialization
 import Data.Bitcoin.PaymentChannel.Internal.Util
 
 import qualified  Network.Haskoin.Internals as HI
 import qualified  Network.Haskoin.Util as HU
 import qualified  Network.Haskoin.Crypto as HC
 import Network.Haskoin.Script
+    (Script(..), SigHash(..), ScriptOp(..), opPushData)
 
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Char8 as C
