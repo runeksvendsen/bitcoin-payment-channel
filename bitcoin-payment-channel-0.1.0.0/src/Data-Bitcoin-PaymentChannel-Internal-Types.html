@@ -40,7 +40,7 @@
 <a name="line-31"></a>    <span class='hs-varid'>pcsPaymentSignature</span>     <span class='hs-keyglyph'>::</span>  <span class='hs-conid'>Maybe</span> <span class='hs-conid'>PaymentSignature</span>
 <a name="line-32"></a><span class='hs-layout'>}</span> <span class='hs-keyword'>deriving</span> <span class='hs-layout'>(</span><span class='hs-conid'>Eq</span><span class='hs-layout'>,</span> <span class='hs-conid'>Show</span><span class='hs-layout'>)</span>
 <a name="line-33"></a>
-<a name="line-34"></a><a name="ChannelParameters"></a><span class='hs-comment'>-- |Holds information about the channel</span>
+<a name="line-34"></a><a name="ChannelParameters"></a><span class='hs-comment'>-- |Defines the sender, receiver, and expiration date for the channel</span>
 <a name="line-35"></a><a name="ChannelParameters"></a><span class='hs-keyword'>data</span> <span class='hs-conid'>ChannelParameters</span> <span class='hs-keyglyph'>=</span> <span class='hs-conid'>CChannelParameters</span> <span class='hs-layout'>{</span>
 <a name="line-36"></a>    <span class='hs-varid'>cpSenderPubKey</span>      <span class='hs-keyglyph'>::</span>  <span class='hs-conid'>HC</span><span class='hs-varop'>.</span><span class='hs-conid'>PubKey</span><span class='hs-layout'>,</span>
 <a name="line-37"></a>    <span class='hs-varid'>cpReceiverPubKey</span>    <span class='hs-keyglyph'>::</span>  <span class='hs-conid'>HC</span><span class='hs-varop'>.</span><span class='hs-conid'>PubKey</span><span class='hs-layout'>,</span>
