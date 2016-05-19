@@ -43,7 +43,7 @@ library
                         Data.Bitcoin.PaymentChannel.Internal.Util,
                         Data.Bitcoin.PaymentChannel.Internal.Version
 
-  ghc-options:          -fwarn-incomplete-patterns
+--  ghc-options:          -Wall
 
   build-depends:        base,
                         bytestring, text, base16-bytestring, base58string, hexstring,
@@ -53,5 +53,27 @@ library
                         haskoin-core
 
   hs-source-dirs:       src
+
+  default-language:     Haskell2010
+
+executable Test
+  main-is:              Main.hs
+
+--  default-extensions:   FlexibleContexts
+
+--  other-modules:
+
+--  ghc-options:          -Wall
+
+  build-depends:        base >= 4.7 && < 5,
+                        bytestring, text, base16-bytestring, base58string, hexstring,
+                        base64-bytestring,
+                        time,
+                        cereal, binary, aeson,
+                        haskoin-core,
+                        QuickCheck,
+                        bitcoin-payment-channel
+
+  hs-source-dirs:       test
 
   default-language:     Haskell2010

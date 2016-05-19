@@ -29,7 +29,7 @@ buildEmptyPaymentTx (CFundingTxInfo hash idx _) =
 
 paymentTxAddOutput :: HT.TxOut -> HT.Tx -> (HT.Tx, HS.SigHash)
 paymentTxAddOutput addOut tx@(HT.Tx _ _ outs _)
-    | HT.outValue addOut >= dUST_LIMIT =
+    | HT.outValue addOut >= fromIntegral dUST_LIMIT =
         (tx { HT.txOut = outs ++ [addOut] }, HS.SigSingle True)
     | otherwise =
         (tx, HS.SigNone True)

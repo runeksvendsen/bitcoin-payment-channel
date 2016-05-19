@@ -20,13 +20,18 @@ PaymentChannelState,
 
 BitcoinAmount, toWord64,
 PaymentChannel(..),
-BitcoinLockTime, fromDate
+BitcoinLockTime, fromDate,
+
+-- Constants
+dUST_LIMIT,
+mIN_CHANNEL_SIZE
 )
 where
 
 import Data.Bitcoin.PaymentChannel.Internal.Types
     (PaymentChannelState(..), Payment(..)
-    ,FundingTxInfo(..), ChannelParameters(..))
+    ,FundingTxInfo(..), ChannelParameters(..),
+    dUST_LIMIT, mIN_CHANNEL_SIZE)
 import Data.Bitcoin.PaymentChannel.Internal.Serialization
 --     ()
 import Data.Bitcoin.PaymentChannel.Internal.Util

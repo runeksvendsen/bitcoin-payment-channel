@@ -51,7 +51,7 @@ The receiver will now create its own channel state object, 'ReceiverPaymentChann
  (used to produce the settlement transaction
  that closes the payment channel), and the first channel 'Payment', received from the sender.
  The receiver will want to use @flip 'Network.Haskoin.Crypto.signMsg' receiverPrivKey@ as the signing function,
- where @<receiverPrivKey>@ is the private key from which 'cpReceiverPubKey' is derived.
+ where @receiverPrivKey@ is the private key from which 'cpReceiverPubKey' is derived.
 
 Now the payment channel is open and ready for transmitting value. A new 'Payment' is created by
  the sender with 'sendPayment', which yields a new payment, that increases the total value transmitted

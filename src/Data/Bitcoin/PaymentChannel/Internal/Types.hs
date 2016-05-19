@@ -12,7 +12,7 @@ import qualified  Data.Binary as Bin
 import qualified  Data.Binary.Put as BinPut
 import qualified  Data.Binary.Get as BinGet
 
-dUST_LIMIT = 700 :: Word64
+dUST_LIMIT = 700 :: BitcoinAmount
 mIN_CHANNEL_SIZE = dUST_LIMIT * 2
 pROTOCOL_VERSION = CVersion 2 0
 
