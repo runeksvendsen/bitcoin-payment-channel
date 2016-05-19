@@ -12,14 +12,14 @@ module Data.Bitcoin.PaymentChannel.Util
 (
 getFundingAddress,
 
-BitcoinLockTime, parseBitcoinLocktime, toWord32, fromDate
+BitcoinLockTime, parseBitcoinLocktime, toWord32, fromDate, deserEither
 )
 where
 
 import Data.Bitcoin.PaymentChannel.Internal.Script
     (getP2SHFundingAddress)
 import Data.Bitcoin.PaymentChannel.Internal.Util
-    (BitcoinLockTime, parseBitcoinLocktime, toWord32, fromDate)
+    (BitcoinLockTime, parseBitcoinLocktime, toWord32, fromDate, deserEither)
 
 -- Only used to make Haddock display the right link
 import Data.Bitcoin.PaymentChannel.Types

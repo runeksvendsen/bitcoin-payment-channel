@@ -69,7 +69,7 @@ Payments can flow from the sender to receiver until either the channel is exhaus
 __/IMPORTANT:/__ /Channel setup is risk free because the sender can derive a refund Bitcoin transaction/
  /using 'getRefundBitcoinTx', which returns the bitcoins used to fund the channel back to the sender./
  /This refund transaction, however, is not valid until the expiration date specified in 'ChannelParameters',/
- /but it is paramount that the value receiver gets a settlement transaction included in a block/
+ /but it is paramount that the value receiver get a settlement transaction included in a block/
  /before the refund transaction becomes valid. Due to the fact that Bitcoin network time is allowed/
  /to drift up to two hours from actual time, and the fact that finding new Bitcoin blocks does not occur/
  /according to any schedule, it would be wise for the receiver to publish a settlement transaction at least/

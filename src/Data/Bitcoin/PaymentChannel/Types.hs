@@ -16,6 +16,7 @@ Payment,
 FundingTxInfo(..),
 ChannelParameters(..),
 PayChanError,
+PaymentChannelState,
 
 BitcoinAmount, toWord64,
 PaymentChannel(..),
@@ -63,7 +64,7 @@ data ReceiverPaymentChannel = CReceiverPaymentChannel {
 class PaymentChannel a where
     -- |Get value sent to receiver/left for sender
     valueToMe           :: a -> BitcoinAmount
-    -- |Retrieve internal channel state
+    -- |Retrieve internal state object
     getChannelState     :: a -> PaymentChannelState
     -- |Get channel ID
     getChannelID        :: a -> HT.TxHash

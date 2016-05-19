@@ -31,7 +31,7 @@ data PaymentChannelState = CPaymentChannelState {
     pcsPaymentSignature     ::  Maybe PaymentSignature
 } deriving (Eq, Show)
 
--- |Holds information about the channel
+-- |Defines sender, receiver, and expiration date of the channel
 data ChannelParameters = CChannelParameters {
     cpSenderPubKey      ::  HC.PubKey,
     cpReceiverPubKey    ::  HC.PubKey,
