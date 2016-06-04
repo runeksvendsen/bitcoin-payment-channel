@@ -21,10 +21,13 @@ type FinalTx = HT.Tx
 
 -- |Shared state object used by both value sender and value receiver.
 data PaymentChannelState = CPaymentChannelState {
+    -- |Defined by the sender and receiver
     pcsParameters           ::  ChannelParameters,
+    -- |Retrieved by looking at the in-blockchain funding transaction
     pcsFundingTxInfo        ::  FundingTxInfo,
+
     pcsPaymentConfig        ::  PaymentTxConfig,
-    -- |Value left to send
+    -- |Value left to send (starts at @ftiOutValue . pcsFundingTxInfo@)
     pcsValueLeft            ::  BitcoinAmount,
     -- |Signature over payment transaction of value 'pcsValueLeft'
     --  unless no payment has been made yet
@@ -50,9 +53,9 @@ data FundingTxInfo = CFundingTxInfo {
 -- |Holds information about how to construct the payment transaction
 data PaymentTxConfig = CPaymentTxConfig {
     -- |Value sender change scriptPubKey in Bitcoin payment transaction
-    ptcSenderChangeScript   ::  B.ByteString,
+    ptcSenderChangeAddress  ::  HC.Address
     -- |Value receiver destination scriptPubKey in Bitcoin payment transaction
-    ptcReceiverChangeScript ::  B.ByteString
+--     ptcReceiverChangeScript ::  B.ByteString
 } deriving (Eq, Show)
 
 -- |Used to transfer value from sender to receiver.
@@ -61,11 +64,16 @@ data Payment = CPayment {
     cpChannelValueLeft ::  BitcoinAmount,
     -- |Payment signature
     cpSignature        ::  PaymentSignature
-}
+} deriving (Eq)
 
 -- |Contains payment signature plus sig hash flag byte
 data PaymentSignature = CPaymentSignature {
     psSig       ::  HC.Signature
+    -- |SigHash flag. Denotes whether the sender still wants its change output
+    --  included in the settling transaction. In case of (SigNone True), the
+    --  value sender has given up the rest of the channel value, leaving
+    --  everything to the receiver. This is necessary so that no settling
+    --  transaction containing an output below the "dust limit" is produced.
     ,psSigHash  ::  HS.SigHash
 } deriving (Eq, Show)
 
@@ -85,6 +93,3 @@ data PaymentSignature = CPaymentSignature {
 --     cpInfo          ::  Maybe BS.ByteString
 -- }
 
-instance Show Payment where
-    show (CPayment val sig) =
-        "<Payment: valLeft=" ++ show val ++ ">"

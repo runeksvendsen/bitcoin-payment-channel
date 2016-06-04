@@ -11,19 +11,27 @@ Utility functions for "Data.Bitcoin.PaymentChannel".
 module Data.Bitcoin.PaymentChannel.Util
 (
 getFundingAddress,
+setSenderChangeAddress,
 
 BitcoinLockTime, parseBitcoinLocktime, toWord32, fromDate, deserEither
 )
 where
 
+import Data.Bitcoin.PaymentChannel.Internal.Types
+    (PaymentChannelState(..), PaymentTxConfig(..))
+-- import Data.Bitcoin.PaymentChannel.Internal.State
+--     (ptcSenderChangeAddress)
 import Data.Bitcoin.PaymentChannel.Internal.Script
     (getP2SHFundingAddress)
 import Data.Bitcoin.PaymentChannel.Internal.Util
     (BitcoinLockTime, parseBitcoinLocktime, toWord32, fromDate, deserEither)
+import Data.Bitcoin.PaymentChannel.Internal.State
+    (setClientChangeAddress)
 
--- Only used to make Haddock display the right link
 import Data.Bitcoin.PaymentChannel.Types
-    (ChannelParameters, FundingTxInfo)
+--     (ChannelParameters, FundingTxInfo)
+
+import qualified Network.Haskoin.Crypto as HC
 
 -- | Derive a Bitcoin address, for funding a payment channel, from
 --  'ChannelParameters'.
@@ -31,3 +39,12 @@ import Data.Bitcoin.PaymentChannel.Types
 --  and information about this transaction is contained in
 --  'FundingTxInfo'.
 getFundingAddress = getP2SHFundingAddress
+
+-- |Set new value sender change address
+setSenderChangeAddress :: PaymentChannel a => a -> HC.Address -> a
+setSenderChangeAddress pch addr =
+    _setChannelState pch (setClientChangeAddress (getChannelState pch) addr)
+
+
+
+

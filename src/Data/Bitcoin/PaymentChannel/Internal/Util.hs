@@ -7,6 +7,8 @@ import qualified Data.Serialize as Ser (Serialize, encode, get, put)
 import qualified Data.Serialize.Put as SerPut (putWord64be)
 import qualified Data.Serialize.Get as SerGet (getWord64be)
 import qualified Data.Binary as Bin
+import qualified Data.Binary.Put as BinPut
+import qualified Data.Binary.Get as BinGet
 import Data.Binary.Put (putWord32le)
 import Data.Binary.Get (getWord32le, runGetOrFail)
 import Data.Word
@@ -45,7 +47,7 @@ fromHexString hexStr =
 --  Integer operations will never over- or underflow with this type.
 --  Convert to a Word64 using 'toWord64', which caps the final amount.
 newtype BitcoinAmount = CMoneyAmount Integer
-    deriving (Eq, Ord, Num, Enum, Real, Integral, Bin.Binary)
+    deriving (Eq, Ord, Num, Enum, Real, Integral)
 instance Show BitcoinAmount where
     show ma = show (fromIntegral $ toWord64 ma) ++ " satoshis"
 
@@ -55,6 +57,10 @@ toWord64 (CMoneyAmount i) = fromIntegral $
     max 0 cappedValue
         where
             cappedValue = min i $ fromIntegral (maxBound :: Word64)
+
+instance Bin.Binary BitcoinAmount where
+    put = BinPut.putWord64le . toWord64
+    get = CMoneyAmount . fromIntegral <$> BinGet.getWord64le
 
 instance Ser.Serialize BitcoinAmount where
     put = SerPut.putWord64be . toWord64
@@ -74,6 +80,15 @@ p2PKAddressToScript addrStr =
 p2SHAddressToScript :: String -> Maybe HS.Script
 p2SHAddressToScript addrStr =
     HS.encodeOutput . HS.PayScriptHash <$> HC.base58ToAddr (C.pack addrStr)
+
+addressToScript :: HC.Address -> HS.ScriptOutput
+addressToScript addr =
+    case addr of
+        a@(HC.PubKeyAddress _) -> HS.PayPKHash a
+        a@(HC.ScriptAddress _) -> HS.PayScriptHash a
+
+addressToScriptPubKeyBS :: HC.Address -> B.ByteString
+addressToScriptPubKeyBS = HS.encodeOutputBS . addressToScript
 
 serialize' :: Ser.Serialize a => a -> B.ByteString
 serialize' = Ser.encode

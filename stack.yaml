@@ -1,10 +1,20 @@
 resolver: lts-5.2
 
+#GHCJS
+# compiler: ghcjs-0.2.0.20160414_ghc-7.10.3
+# compiler-check: match-exact
+# setup-info:
+#  ghcjs:
+#    source:
+#      ghcjs-0.2.0.20160414_ghc-7.10.3:
+#        url: https://s3.amazonaws.com/ghcjs/ghcjs-0.2.0.20160414_ghc-7.10.3.tar.gz
+#        sha1: 6d6f307503be9e94e0c96ef1308c7cf224d06be3
+
 packages:
 - '.'
 - location:
     git: https://github.com/haskoin/haskoin.git
-    commit: 7ccccb0a35ad959e4fcef91748c9d3653e39cb2e # lts-5.2
+    commit: 3929cc64ff2ae2c1714720b00d7205b6451708c6 # lts-5.2
   extra-dep: true
   subdirs:
     - haskoin-core

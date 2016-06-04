@@ -15,7 +15,7 @@ import Data.Word (Word32, Word64, Word8)
 import Data.Maybe (fromJust, isJust)
 import qualified Data.ByteString as B
 
-
+---Payment Tx builer---
 buildEmptyPaymentTx :: FundingTxInfo -> HT.Tx
 buildEmptyPaymentTx (CFundingTxInfo hash idx _) =
     HT.Tx 1 --version 1
@@ -24,8 +24,8 @@ buildEmptyPaymentTx (CFundingTxInfo hash idx _) =
         (HT.OutPoint hash idx)
         B.empty
         maxBound]
-    []
-    0
+    [] --no outputs
+    0 --lockTime 0
 
 paymentTxAddOutput :: HT.TxOut -> HT.Tx -> (HT.Tx, HS.SigHash)
 paymentTxAddOutput addOut tx@(HT.Tx _ _ outs _)
@@ -33,15 +33,18 @@ paymentTxAddOutput addOut tx@(HT.Tx _ _ outs _)
         (tx { HT.txOut = outs ++ [addOut] }, HS.SigSingle True)
     | otherwise =
         (tx, HS.SigNone True)
+---Payment Tx builer---
+
+
 
 getPaymentTxForSigning ::
     PaymentChannelState
     -> BitcoinAmount      -- ^New sender value (newValueLeft)
     -> (HT.Tx, HS.SigHash)
 getPaymentTxForSigning st@(CPaymentChannelState _ fti
-    (CPaymentTxConfig sendChg _) chanValLeft _) newValueLeft =
+    (CPaymentTxConfig sendAddr) chanValLeft _) newValueLeft =
         paymentTxAddOutput senderOut $ buildEmptyPaymentTx fti
-            where senderOut = HT.TxOut (toWord64 newValueLeft) sendChg
+            where senderOut = HT.TxOut (toWord64 newValueLeft) (addressToScriptPubKeyBS sendAddr)
 
 getPaymentTxHashForSigning ::
     PaymentChannelState
@@ -52,6 +55,7 @@ getPaymentTxHashForSigning st@(CPaymentChannelState
         (HS.txSigHash tx (getRedeemScript cp) 0 sigHash, sigHash)
             where (tx,sigHash) = getPaymentTxForSigning st newValueLeft
 
+---Payment build/verify---
 verifyPayment ::
     PaymentChannelState
     -> Payment
@@ -84,9 +88,9 @@ createPayment pcs@(CPaymentChannelState _ _ _ currSenderVal _)
             --sender has reliquished the remaining channel value,
             -- due to it being below the "dust" limit.
             HS.SigNone      _ -> CPayment 0 pSig
-            HS.SigAll       _ -> error "BUG: unsupported SigHash"
-            HS.SigUnknown _ _ -> error "BUG: unsupported SigHash"
-
+            _                 -> error
+                "BUG: unsupported SigHash created by 'getPaymentTxHashForSigning'"
+---Payment build/verify---
 
 
 

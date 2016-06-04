@@ -8,18 +8,20 @@ Types used with the interface provided by "Data.Bitcoin.PaymentChannel".
 
 -}
 
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+
 module Data.Bitcoin.PaymentChannel.Types
 (
+PaymentChannel(..),
 SenderPaymentChannel(..),
 ReceiverPaymentChannel(..),
 Payment,
 FundingTxInfo(..),
 ChannelParameters(..),
-PayChanError,
+PayChanError(..),
 PaymentChannelState,
 
 BitcoinAmount, toWord64,
-PaymentChannel(..),
 BitcoinLockTime, fromDate,
 
 -- Constants
@@ -35,13 +37,35 @@ import Data.Bitcoin.PaymentChannel.Internal.Types
 import Data.Bitcoin.PaymentChannel.Internal.Serialization
 --     ()
 import Data.Bitcoin.PaymentChannel.Internal.Util
-    (BitcoinAmount, toWord64,
+    (BitcoinAmount(..), toWord64,
     BitcoinLockTime, fromDate)
-import Data.Bitcoin.PaymentChannel.Internal.State (pcsChannelID, pcsChannelTotalValue)
+import Data.Bitcoin.PaymentChannel.Internal.State (pcsChannelID, pcsChannelTotalValue,
+                                                   setClientChangeAddress)
 import Data.Bitcoin.PaymentChannel.Internal.Error (PayChanError(..))
 
+import qualified  Data.Binary as Bin
 import qualified  Network.Haskoin.Crypto as HC
 import qualified  Network.Haskoin.Transaction as HT
+
+-- |Get various information about an open payment channel.
+class PaymentChannel a where
+    -- |Get value sent to receiver/left for sender
+    valueToMe           :: a -> BitcoinAmount
+    channelValueLeft    :: a -> BitcoinAmount
+    -- |Retrieve internal state object
+    getChannelState     :: a -> PaymentChannelState
+    -- |Get channel ID
+    getChannelID        :: a -> HT.TxHash
+    -- |Returns 'True' if all available channel value has been transferred, 'False' otherwise
+    channelIsExhausted  :: a -> Bool
+    -- |For internal use
+    _setChannelState    :: a -> PaymentChannelState -> a
+
+    channelValueLeft       = pcsValueLeft . getChannelState
+    getChannelID           = pcsChannelID . getChannelState
+    channelIsExhausted pch = pcsValueLeft (getChannelState pch) == 0 --TODO: payment sigHash == SigSingle
+
+
 
 
 -- |State object for the value sender
@@ -55,45 +79,32 @@ data SenderPaymentChannel = CSenderPaymentChannel {
 }
 
 -- |State object for the value receiver
-data ReceiverPaymentChannel = CReceiverPaymentChannel {
+newtype ReceiverPaymentChannel = CReceiverPaymentChannel {
     -- |Internal state object
-    rpcState        ::  PaymentChannelState,
+    rpcState        ::  PaymentChannelState
     -- |Used to verify signatures from value sender.
-    rpcVerifyFunc   ::  HC.Hash256 -> HC.PubKey -> HC.Signature -> Bool,
+--     rpcVerifyFunc   ::  HC.Hash256 -> HC.PubKey -> HC.Signature -> Bool
     -- |Function which produces a signature that verifies against 'cpReceiverPubKey'.
     --  Used to produce the Bitcoin transaction that closes the channel.
-    rpcSignFunc     ::  HC.Hash256 -> HC.Signature
-}
-
--- |Get various information about an open payment channel.
-class PaymentChannel a where
-    -- |Get value sent to receiver/left for sender
-    valueToMe           :: a -> BitcoinAmount
-    -- |Retrieve internal state object
-    getChannelState     :: a -> PaymentChannelState
-    -- |Get channel ID
-    getChannelID        :: a -> HT.TxHash
-    -- |Returns 'True' if all available channel value has been transferred, 'False' otherwise
-    channelIsExhausted  :: a -> Bool
-
-    getChannelID           = pcsChannelID . getChannelState
-    channelIsExhausted pch = pcsValueLeft (getChannelState pch) == 0 --TODO: payment sigHash == SigSingle
+--     rpcSignFunc     ::  HC.Hash256 -> HC.Signature
+} deriving (Eq, Bin.Binary)
 
 instance PaymentChannel SenderPaymentChannel where
     valueToMe (CSenderPaymentChannel s _) =
         pcsValueLeft s
     getChannelState = spcState
+    _setChannelState spc s = spc { spcState = s }
 
 instance PaymentChannel ReceiverPaymentChannel where
-    valueToMe (CReceiverPaymentChannel s _ _) =
+    valueToMe (CReceiverPaymentChannel s) =
         pcsChannelTotalValue s - pcsValueLeft s
     getChannelState = rpcState
-
+    _setChannelState rpc s = rpc { rpcState = s }
 
 instance Show SenderPaymentChannel where
     show (CSenderPaymentChannel s _) =
         "<SenderPaymentChannel:\n\t" ++ show s ++ ">"
 
 instance Show ReceiverPaymentChannel where
-    show (CReceiverPaymentChannel s _ _) =
+    show (CReceiverPaymentChannel s) =
         "<ReceiverPaymentChannel:\n\t" ++ show s ++ ">"

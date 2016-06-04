@@ -47,11 +47,7 @@ With 'ChannelParameters' and 'FundingTxInfo',
 The receiver will now create its own channel state object, 'ReceiverPaymentChannel', using
  'channelFromInitialPayment'.
  'channelFromInitialPayment' takes the same 'ChannelParameters' and 'FundingTxInfo'
- as was provided by the sender, and, in addition, the receiver signing function
- (used to produce the settlement transaction
- that closes the payment channel), and the first channel 'Payment', received from the sender.
- The receiver will want to use @flip 'Network.Haskoin.Crypto.signMsg' receiverPrivKey@ as the signing function,
- where @receiverPrivKey@ is the private key from which 'cpReceiverPubKey' is derived.
+ as was provided by the sender, and, in addition, the first channel 'Payment', received from the sender.
 
 Now the payment channel is open and ready for transmitting value. A new 'Payment' is created by
  the sender with 'sendPayment', which yields a new payment, that increases the total value transmitted
@@ -65,6 +61,12 @@ Payments can flow from the sender to receiver until either the channel is exhaus
  Bitcoin transaction, and publish this transaction to the Bitcoin network. The settlement Bitcoin
  transaction pays the total value transmitted over the channel to the receiver and the rest back
  to the sender.
+
+A settlement transaction can be produced by the value receiver using 'getSettlementBitcoinTx'.
+ The receiver will want to use @flip 'Network.Haskoin.Crypto.signMsg' receiverPrivKey@ as the
+ signing function passed to 'getSettlementBitcoinTx',
+where @receiverPrivKey@ is the private key from which 'cpReceiverPubKey' is derived.
+
 
 __/IMPORTANT:/__ /Channel setup is risk free because the sender can derive a refund Bitcoin transaction/
  /using 'getRefundBitcoinTx', which returns the bitcoins used to fund the channel back to the sender./
@@ -113,6 +115,7 @@ import Data.Bitcoin.PaymentChannel.Types
 
 import qualified  Network.Haskoin.Crypto as HC
 import qualified  Network.Haskoin.Transaction as HT
+import qualified  Network.Haskoin.Script as HS
 
 
 -- |Create a new 'SenderPaymentChannel'.
@@ -123,12 +126,13 @@ channelWithInitialPaymentOf ::
     ChannelParameters -- ^ Specifies channel sender and receiver, plus channel expiration date
     -> FundingTxInfo -- ^ Holds information about the transaction used to fund the channel
     -> (HC.Hash256 -> HC.Signature) -- ^ See 'spcSignFunc'
+    -> HC.Address   -- ^ Value sender/client change address
     -> BitcoinAmount -- ^ Value of initial payment. Must be greater than or equal to 'minimumInitialPayment'
     -> (Payment, SenderPaymentChannel) -- ^Initial payment and new sender state object
 channelWithInitialPaymentOf
     cp@(CChannelParameters sendPK recvPK _)
-    fundInf@(CFundingTxInfo hash idx chanVal) signFunc amount =
-        let pConf = CPaymentTxConfig (bitcoinPayPKBS sendPK) (bitcoinPayPKBS recvPK) in
+    fundInf@(CFundingTxInfo hash idx chanVal) signFunc sendAddr amount =
+        let pConf = CPaymentTxConfig sendAddr in
         sendPayment
             (CSenderPaymentChannel (newPaymentChannelState cp fundInf pConf) signFunc)
             amount
@@ -169,16 +173,15 @@ getRefundBitcoinTx (CSenderPaymentChannel cs signFunc) txFee =
 channelFromInitialPayment ::
     ChannelParameters -- ^ Specifies channel sender and receiver, plus channel expiration date
     -> FundingTxInfo -- ^ Holds information about the transaction used to fund the channel
-    -> (HC.Hash256 -> HC.Signature) -- ^ Function which produces a signature, over a hash, which verifies against 'cpReceiverPubKey'
+    -> HC.Address   -- ^ Value sender/client change address
     -> Payment -- ^Initial channel payment
     -> Either PayChanError ReceiverPaymentChannel -- ^Receiver state object
 channelFromInitialPayment cp@(CChannelParameters sendPK recvPK _)
-    fundInf signFunc paymnt =
+    fundInf sendAddr paymnt =
         let
-            verifyFunc hash pk sig = HC.verifySig hash sig pk
-            pConf = CPaymentTxConfig (bitcoinPayPKBS sendPK) (bitcoinPayPKBS recvPK)
+            pConf = CPaymentTxConfig sendAddr
             eitherNewState = flip recvPayment paymnt $ CReceiverPaymentChannel
-                (newPaymentChannelState cp fundInf pConf) verifyFunc signFunc
+                (newPaymentChannelState cp fundInf pConf)
         in
             mapRight snd eitherNewState
 
@@ -189,7 +192,8 @@ recvPayment ::
     ReceiverPaymentChannel -- ^Receiver state object
     -> Payment -- ^Payment to verify and register
     -> Either PayChanError (BitcoinAmount, ReceiverPaymentChannel) -- ^Value received plus new receiver state object
-recvPayment rpc@(CReceiverPaymentChannel cs verifyFunc _) paymnt =
+recvPayment rpc@(CReceiverPaymentChannel cs) paymnt =
+    let verifyFunc hash pk sig = HC.verifySig hash sig pk in
     if verifyPayment cs paymnt verifyFunc then
         updatePaymentChannelState cs paymnt >>=
         (\newState -> Right (pcsValueLeft cs - cpChannelValueLeft paymnt, rpc { rpcState = newState }))
@@ -205,10 +209,12 @@ recvPayment rpc@(CReceiverPaymentChannel cs verifyFunc _) paymnt =
 -- Returns NoValueTransferred if no payment has been received yet.
 getSettlementBitcoinTx ::
     ReceiverPaymentChannel -- ^Receiver state object
+    -> (HC.Hash256 -> HC.Signature) -- ^ Function which produces a signature, over a hash, which verifies against 'cpReceiverPubKey'
+    -> HC.Address
     -> BitcoinAmount -- ^Bitcoin transaction fee
     -> Either PayChanError HT.Tx -- ^Settling Bitcoin transaction
-getSettlementBitcoinTx (CReceiverPaymentChannel cs verifyFunc signFunc) txFee =
-    getSignedSettlementTx cs txFee serverSig
-        where serverSig = signFunc (getSettlementTxHashForSigning cs txFee)
+getSettlementBitcoinTx (CReceiverPaymentChannel cs) signFunc recvAddr txFee =
+    getSignedSettlementTx cs recvAddr txFee serverSig
+        where serverSig = signFunc (getSettlementTxHashForSigning cs recvAddr txFee)
 
 

@@ -1,8 +1,13 @@
 module Data.Bitcoin.PaymentChannel.Internal.Serialization where
 
 import Data.Bitcoin.PaymentChannel.Internal.Types
+import Data.Bitcoin.PaymentChannel.Internal.Util
+    (BitcoinAmount(..), toWord64, deserEither, toHexString)
 
-import            Data.Aeson (FromJSON(..), ToJSON(..), withText) -- , parseJSON, toJSON)
+import            Data.Aeson (Value(Number), FromJSON(..), ToJSON(..),
+                              withText, withScientific)
+import            Data.Aeson.Types (Parser)
+import            Data.Scientific (Scientific, scientific, toBoundedInteger)
 import            Data.Text.Encoding       (decodeLatin1, encodeUtf8)
 import            Data.ByteString.Lazy (toStrict, fromStrict)
 import qualified  Data.Binary as Bin
@@ -10,14 +15,48 @@ import qualified  Data.Binary.Put as BinPut
 import qualified  Data.Binary.Get as BinGet
 import qualified  Data.ByteString.Base64 as B64
 
+import Debug.Trace
 
--------JSON---------
+
+
+instance Show Payment where
+    show (CPayment val sig) =
+        "<Payment: valLeft=" ++ show val ++
+        ", sig=" ++ toHexString (toStrict $ Bin.encode sig) ++ ">"
+
+-------JSON--------
 instance ToJSON Payment where
     toJSON = toJSON . decodeLatin1 . B64.encode . toStrict . Bin.encode
 
 instance FromJSON Payment where
     parseJSON = withText "Payment" $
-        pure . Bin.decode . fromStrict . B64.decodeLenient . encodeUtf8
+        \b64 ->
+            failOnLeftWith "failed to deserialize binary data: " =<<
+            (\h -> show (toHexString h) `trace` binaryDeser h) =<<
+            failOnLeftWith "failed to parse base64 data: " =<< b64Decode b64
+        where
+            b64Decode = return . B64.decode . encodeUtf8
+            binaryDeser = return . deserEither
+            failOnLeftWith e = either (fail . (e ++)) return
+
+instance ToJSON BitcoinAmount where
+    toJSON amt = Number $ scientific
+        (fromIntegral $ toWord64 amt) 0
+
+instance FromJSON BitcoinAmount where
+    parseJSON = withScientific "BitcoinAmount" $
+        fmap fromIntegral . parseJSONInt
+
+-- Needed to convert from Scientific
+instance Bounded BitcoinAmount where
+    minBound = CMoneyAmount 0
+    maxBound = CMoneyAmount $ round $ 21e6 * 1e8
+
+parseJSONInt :: Scientific -> Parser Integer
+parseJSONInt s =
+    case toBoundedInteger s of
+        Just (CMoneyAmount i) -> return i
+        Nothing -> fail $ "failed to decode JSON number to integer. data: " ++ show s
 
 
 ------BINARY--------
@@ -45,9 +84,9 @@ instance Bin.Binary FundingTxInfo where
     get = CFundingTxInfo <$> Bin.get <*> BinGet.getWord32be <*> Bin.get
 
 instance Bin.Binary PaymentTxConfig where
-    put (CPaymentTxConfig sendScript recvScript) =
-        Bin.put sendScript >> Bin.put recvScript
-    get = CPaymentTxConfig <$> Bin.get <*> Bin.get
+    put (CPaymentTxConfig sendAddr) =
+        Bin.put sendAddr
+    get = CPaymentTxConfig <$> Bin.get
 
 instance Bin.Binary Payment where
     put (CPayment val sig) = Bin.put val >> Bin.put sig

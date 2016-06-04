@@ -3,6 +3,7 @@ module Main where
 import Data.Bitcoin.PaymentChannel
 import Data.Bitcoin.PaymentChannel.Types
 import Data.Bitcoin.PaymentChannel.Util
+-- import Data.Bitcoin.PaymentChannel.Internal.Util
 
 import qualified  Network.Haskoin.Transaction as HT
 import qualified  Network.Haskoin.Crypto as HC
@@ -51,9 +52,9 @@ mkChanPair = do
         initPayAmount <- arbitrary -- fromIntegral <$> choose (0, chanAmount)
 
         let (paymnt,sendChan) = channelWithInitialPaymentOf
-                cp fti (flip HC.signMsg sendPriv) initPayAmount
+                cp fti (flip HC.signMsg sendPriv) (HC.pubKeyAddr sendPK) initPayAmount
         let eitherRecvChan = channelFromInitialPayment
-                cp fti (flip HC.signMsg recvPriv) paymnt
+                cp fti (HC.pubKeyAddr sendPK) paymnt
 
         case eitherRecvChan of
             Left e -> error (show e) --return $ Left (show e)
