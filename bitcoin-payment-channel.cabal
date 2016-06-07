@@ -1,5 +1,5 @@
 name:                 bitcoin-payment-channel
-version:              0.1.1.0
+version:              0.1.1.1
 synopsis:             Library for working with Bitcoin payment channels
 description:
     A Bitcoin payment channel allows two parties two send value to each other very rapidly.
@@ -45,12 +45,12 @@ library
 
 --  ghc-options:          -Wall
 
-  build-depends:        base,
+  build-depends:        base >= 4.7 && < 5,
+                        haskoin-core >= 0.3.0 && < 1.0.0,
                         bytestring, text, base16-bytestring, base58string, hexstring,
                         base64-bytestring,
                         time,
-                        cereal, binary, aeson, scientific,
-                        haskoin-core
+                        cereal, binary, aeson, scientific
   hs-source-dirs:       src
 
   default-language:     Haskell2010
@@ -65,11 +65,12 @@ executable Test
 --  ghc-options:          -Wall
 
   build-depends:        base >= 4.7 && < 5,
-                        bytestring, text, base16-bytestring, base58string, hexstring,
-                        base64-bytestring,
+                        haskoin-core >= 0.3.0 && < 1.0.0,
+                        bytestring, base16-bytestring, base64-bytestring,
+                        base58string, hexstring, text,
                         time,
                         cereal, binary, aeson,
-                        haskoin-core,
+
                         QuickCheck,
                         bitcoin-payment-channel
 

@@ -152,7 +152,7 @@ sendPayment (CSenderPaymentChannel cs signFunc) amountToSend =
             Right newCS ->
                 (payment
                 ,CSenderPaymentChannel newCS signFunc)
-            Left _ -> error "BUG #3: sendPayment should not be able to rewind payments"
+            Left _ -> error "BUG: 'createPayment' created value-backtracking tx"
 
 -- |Produces a Bitcoin transaction which sends all channel funds back to the sender.
 -- Will not be accepted by the Bitcoin network until the expiration time specified in
