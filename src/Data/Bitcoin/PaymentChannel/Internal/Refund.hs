@@ -16,7 +16,12 @@ getUnsignedRefundTx st txFee = -- @CPaymentChannelState =
         (baseTx,_) = getPaymentTxForSigning st 0 --create empty payment tx, which redeems funding tx
         refundOut = HT.TxOut (toWord64 $ pcsChannelTotalValue st - txFee) (pcsClientChange st)
     in
-        baseTx { HT.txOut = [refundOut] }
+        baseTx {
+            HT.txOut = [refundOut],
+            -- |lockTime of refund tx must be equal to or greater than lockTime
+            -- in channel redeemScript
+            HT.txLockTime = toWord32 (pcsLockTime st)
+        }
 
 getRefundTxHashForSigning ::
     PaymentChannelState
