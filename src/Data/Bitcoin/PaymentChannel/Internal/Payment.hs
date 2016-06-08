@@ -36,7 +36,6 @@ paymentTxAddOutput addOut tx@(HT.Tx _ _ outs _)
 ---Payment Tx builer---
 
 
-
 getPaymentTxForSigning ::
     PaymentChannelState
     -> BitcoinAmount      -- ^New sender value (newValueLeft)
