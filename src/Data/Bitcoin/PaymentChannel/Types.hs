@@ -42,10 +42,11 @@ import Data.Bitcoin.PaymentChannel.Internal.Util
 import Data.Bitcoin.PaymentChannel.Internal.State (pcsChannelID, pcsChannelTotalValue,
                                                    setClientChangeAddress)
 import Data.Bitcoin.PaymentChannel.Internal.Error (PayChanError(..))
-
+import Data.Bitcoin.PaymentChannel.Internal.Types (PaymentSignature(..))
 import qualified  Data.Binary as Bin
 import qualified  Network.Haskoin.Crypto as HC
 import qualified  Network.Haskoin.Transaction as HT
+import qualified  Network.Haskoin.Script as HS
 
 -- |Get various information about an open payment channel.
 class PaymentChannel a where
@@ -63,9 +64,12 @@ class PaymentChannel a where
 
     channelValueLeft       = pcsValueLeft . getChannelState
     getChannelID           = pcsChannelID . getChannelState
-    channelIsExhausted pch = pcsValueLeft (getChannelState pch) == 0 --TODO: payment sigHash == SigSingle
-
-
+    channelIsExhausted pch =
+        case pcsPaymentSignature (getChannelState pch) of
+            Nothing -> False
+            -- |Channel can be auto-closed when sender has given up all value
+            -- which requires a SigNone signature
+            Just paySig -> psSigHash paySig == HS.SigNone True
 
 
 -- |State object for the value sender
