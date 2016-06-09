@@ -175,15 +175,14 @@ channelFromInitialPayment ::
     -> FundingTxInfo -- ^ Holds information about the transaction used to fund the channel
     -> HC.Address   -- ^ Value sender/client change address
     -> Payment -- ^Initial channel payment
-    -> Either PayChanError ReceiverPaymentChannel -- ^Receiver state object
+    -> Either PayChanError (BitcoinAmount, ReceiverPaymentChannel) -- ^Error or: value_received plus state object
 channelFromInitialPayment cp@(CChannelParameters sendPK recvPK _)
     fundInf sendAddr paymnt =
         let
             pConf = CPaymentTxConfig sendAddr
-            eitherNewState = flip recvPayment paymnt $ CReceiverPaymentChannel
-                (newPaymentChannelState cp fundInf pConf)
         in
-            mapRight snd eitherNewState
+            flip recvPayment paymnt $ CReceiverPaymentChannel
+                (newPaymentChannelState cp fundInf pConf)
 
 -- |Register, on the receiving side, a payment made by 'sendPayment' on the sending side.
 -- Returns error if either the signature or payment amount is invalid, and otherwise
