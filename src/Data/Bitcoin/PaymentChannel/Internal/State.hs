@@ -8,6 +8,7 @@ import Data.Bitcoin.PaymentChannel.Internal.Util  (addressToScriptPubKeyBS)
 
 import qualified Network.Haskoin.Transaction as HT
 import qualified Network.Haskoin.Crypto as HC
+import qualified Network.Haskoin.Script as HS
 
 pcsChannelTotalValue = ftiOutValue . pcsFundingTxInfo
 pcsValueTransferred cs = pcsChannelTotalValue cs - pcsValueLeft cs
@@ -46,7 +47,14 @@ updatePaymentChannelState  ::
     -> Payment
     -> Either PayChanError PaymentChannelState
 updatePaymentChannelState pcs@(CPaymentChannelState par fun pconf oldSenderVal oldSig)
-    (CPayment newSenderVal newSig)
+    payment@(CPayment newSenderVal newSig)
         | newSenderVal <= oldSenderVal =
-            Right $ CPaymentChannelState par fun pconf newSenderVal (Just newSig)
-        | otherwise = Left BadPayment
+            fmap (Just . cpSignature) (checkDustLimit payment) >>=
+                return . (CPaymentChannelState par fun pconf newSenderVal) -- (Just newSig)
+        | otherwise = Left BadPaymentValue
+
+checkDustLimit :: Payment -> Either PayChanError Payment
+checkDustLimit payment@(CPayment senderChangeVal sig)
+    | senderChangeVal < dUST_LIMIT =
+        if psSigHash sig /= HS.SigNone True then Left DustOutput else Right payment
+    | otherwise = Right payment
