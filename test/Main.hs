@@ -58,7 +58,7 @@ mkChanPair = do
 
         case eitherRecvChan of
             Left e -> error (show e) --return $ Left (show e)
-            Right recvChan -> return $ ArbChannelPair sendChan recvChan
+            Right (val,recvChan) -> return $ ArbChannelPair sendChan recvChan
 
 instance Arbitrary BitcoinLockTime where
     arbitrary = fmap parseBitcoinLocktime arbitrary
