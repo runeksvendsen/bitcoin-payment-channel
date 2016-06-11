@@ -13,7 +13,8 @@ import            Data.ByteString.Lazy (toStrict, fromStrict)
 import qualified  Data.Binary as Bin
 import qualified  Data.Binary.Put as BinPut
 import qualified  Data.Binary.Get as BinGet
-import qualified  Data.ByteString.Base64 as B64
+import qualified  Data.ByteString.Base64.URL as B64
+import qualified Data.ByteString as B
 
 import Debug.Trace
 
@@ -25,14 +26,18 @@ instance Show Payment where
         ", sig=" ++ toHexString (toStrict $ Bin.encode sig) ++ ">"
 
 -------JSON--------
+b64Encode :: Bin.Binary a => a -> B.ByteString
+b64Encode = B64.encode . toStrict . Bin.encode
+
 instance ToJSON Payment where
-    toJSON = toJSON . decodeLatin1 . B64.encode . toStrict . Bin.encode
+    toJSON = toJSON . decodeLatin1 . b64Encode
 
 instance FromJSON Payment where
     parseJSON = withText "Payment" $
         \b64 ->
             failOnLeftWith "failed to deserialize binary data: " =<<
-            (\h -> show (toHexString h) `trace` binaryDeser h) =<<
+            binaryDeser =<<
+--             (\h -> show (toHexString h) `trace` binaryDeser h) =<<
             failOnLeftWith "failed to parse base64 data: " =<< b64Decode b64
         where
             b64Decode = return . B64.decode . encodeUtf8

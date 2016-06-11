@@ -4,7 +4,7 @@ module Data.Bitcoin.PaymentChannel.Internal.State where
 
 import Data.Bitcoin.PaymentChannel.Internal.Types
 import Data.Bitcoin.PaymentChannel.Internal.Error
-import Data.Bitcoin.PaymentChannel.Internal.Util  (addressToScriptPubKeyBS)
+import Data.Bitcoin.PaymentChannel.Internal.Util  (addressToScriptPubKeyBS, BitcoinAmount)
 
 import qualified Network.Haskoin.Transaction as HT
 import qualified Network.Haskoin.Crypto as HC
@@ -29,8 +29,19 @@ setClientChangeAddress pcs@(CPaymentChannelState _ _ pConf _ _) addr =
     pcs { pcsPaymentConfig = newPayConf }
         where newPayConf = pConf { ptcSenderChangeAddress = addr }
 
+-- |
+channelValueLeft :: PaymentChannelState -> BitcoinAmount
+channelValueLeft pcs   =
+    if channelIsExhausted pcs then 0 else pcsValueLeft pcs
 
--- pcsChannelIsExhausted cs = maybe False (\pSig -> psSigHash pSig == ) (pcsPaymentSignature cs)
+-- |Returns 'True' if all available channel value has been transferred, 'False' otherwise
+channelIsExhausted  :: PaymentChannelState -> Bool
+channelIsExhausted pcs =
+    case pcsPaymentSignature pcs of
+        Nothing -> False
+        -- |Channel can be auto-closed when sender has given up all value
+        -- which requires a SigNone signature
+        Just paySig -> psSigHash paySig == HS.SigNone True
 
 newPaymentChannelState channelParameters fundingTxInfo paymentConfig =
     CPaymentChannelState {

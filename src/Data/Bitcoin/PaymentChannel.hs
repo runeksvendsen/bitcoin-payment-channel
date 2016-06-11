@@ -101,6 +101,8 @@ import Data.Bitcoin.PaymentChannel.Internal.Types
     (PaymentTxConfig(..), pcsValueLeft, cpChannelValueLeft)
 import Data.Bitcoin.PaymentChannel.Internal.State
     (newPaymentChannelState, updatePaymentChannelState)
+import qualified Data.Bitcoin.PaymentChannel.Internal.State as S
+    (channelValueLeft)
 import Data.Bitcoin.PaymentChannel.Internal.Payment
     (createPayment, verifyPayment)
 import Data.Bitcoin.PaymentChannel.Internal.Settlement
@@ -191,11 +193,14 @@ recvPayment ::
     ReceiverPaymentChannel -- ^Receiver state object
     -> Payment -- ^Payment to verify and register
     -> Either PayChanError (BitcoinAmount, ReceiverPaymentChannel) -- ^Value received plus new receiver state object
-recvPayment rpc@(CReceiverPaymentChannel cs) paymnt =
+recvPayment rpc@(CReceiverPaymentChannel oldState) paymnt =
     let verifyFunc hash pk sig = HC.verifySig hash sig pk in
-    if verifyPayment cs paymnt verifyFunc then
-        updatePaymentChannelState cs paymnt >>=
-        (\newState -> Right (pcsValueLeft cs - cpChannelValueLeft paymnt, rpc { rpcState = newState }))
+    if verifyPayment oldState paymnt verifyFunc then
+        updatePaymentChannelState oldState paymnt >>=
+        (\newState -> Right (
+            S.channelValueLeft oldState - S.channelValueLeft newState
+            , rpc { rpcState = newState })
+        )
     else
         Left BadSignature
 

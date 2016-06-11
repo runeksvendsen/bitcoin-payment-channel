@@ -24,6 +24,8 @@ PaymentChannelState,
 BitcoinAmount, toWord64,
 BitcoinLockTime, fromDate,
 
+-- Util
+b64Encode,
 -- Constants
 dUST_LIMIT,
 mIN_CHANNEL_SIZE
@@ -33,16 +35,18 @@ where
 import Data.Bitcoin.PaymentChannel.Internal.Types
     (PaymentChannelState(..), Payment(..)
     ,FundingTxInfo(..), ChannelParameters(..),
+    PaymentSignature(..),
     dUST_LIMIT, mIN_CHANNEL_SIZE)
 import Data.Bitcoin.PaymentChannel.Internal.Serialization
 --     ()
 import Data.Bitcoin.PaymentChannel.Internal.Util
     (BitcoinAmount(..), toWord64,
     BitcoinLockTime, fromDate)
-import Data.Bitcoin.PaymentChannel.Internal.State (pcsChannelID, pcsChannelTotalValue,
-                                                   setClientChangeAddress)
+import qualified Data.Bitcoin.PaymentChannel.Internal.State as S (pcsChannelID, pcsChannelTotalValue,
+                                                   setClientChangeAddress,
+                                                   channelValueLeft, channelIsExhausted)
 import Data.Bitcoin.PaymentChannel.Internal.Error (PayChanError(..))
-import Data.Bitcoin.PaymentChannel.Internal.Types (PaymentSignature(..))
+-- import Data.Bitcoin.PaymentChannel.Internal.Types ()
 import qualified  Data.Binary as Bin
 import qualified  Network.Haskoin.Crypto as HC
 import qualified  Network.Haskoin.Transaction as HT
@@ -52,25 +56,21 @@ import qualified  Network.Haskoin.Script as HS
 class PaymentChannel a where
     -- |Get value sent to receiver/left for sender
     valueToMe           :: a -> BitcoinAmount
-    channelValueLeft    :: a -> BitcoinAmount
     -- |Retrieve internal state object
     getChannelState     :: a -> PaymentChannelState
     -- |Get channel ID
     getChannelID        :: a -> HT.TxHash
-    -- |Returns 'True' if all available channel value has been transferred, 'False' otherwise
-    channelIsExhausted  :: a -> Bool
     -- |For internal use
     _setChannelState    :: a -> PaymentChannelState -> a
 
-    channelValueLeft       = pcsValueLeft . getChannelState
-    getChannelID           = pcsChannelID . getChannelState
-    channelIsExhausted pch =
-        case pcsPaymentSignature (getChannelState pch) of
-            Nothing -> False
-            -- |Channel can be auto-closed when sender has given up all value
-            -- which requires a SigNone signature
-            Just paySig -> psSigHash paySig == HS.SigNone True
+    channelValueLeft    :: a -> BitcoinAmount
+    -- |Returns 'True' if all available channel value has been transferred, 'False' otherwise
+    channelIsExhausted  :: a -> Bool
 
+    getChannelID       = S.pcsChannelID . getChannelState
+
+    channelValueLeft   = S.channelValueLeft . getChannelState
+    channelIsExhausted = S.channelIsExhausted . getChannelState
 
 -- |State object for the value sender
 data SenderPaymentChannel = CSenderPaymentChannel {
@@ -94,14 +94,13 @@ newtype ReceiverPaymentChannel = CReceiverPaymentChannel {
 } deriving (Eq, Bin.Binary)
 
 instance PaymentChannel SenderPaymentChannel where
-    valueToMe (CSenderPaymentChannel s _) =
-        pcsValueLeft s
+    valueToMe = channelValueLeft
     getChannelState = spcState
     _setChannelState spc s = spc { spcState = s }
 
 instance PaymentChannel ReceiverPaymentChannel where
-    valueToMe (CReceiverPaymentChannel s) =
-        pcsChannelTotalValue s - pcsValueLeft s
+    valueToMe rpc@(CReceiverPaymentChannel s) =
+        S.pcsChannelTotalValue s - channelValueLeft rpc
     getChannelState = rpcState
     _setChannelState rpc s = rpc { rpcState = s }
 
