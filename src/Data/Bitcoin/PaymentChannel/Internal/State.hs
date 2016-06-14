@@ -62,7 +62,7 @@ updatePaymentChannelState pcs@(CPaymentChannelState par fun pconf oldSenderVal o
         | newSenderVal <= oldSenderVal =
             fmap (Just . cpSignature) (checkDustLimit payment) >>=
                 return . (CPaymentChannelState par fun pconf newSenderVal) -- (Just newSig)
-        | otherwise = Left BadPaymentValue
+        | otherwise = Left $ BadPaymentValue (newSenderVal - oldSenderVal)
 
 checkDustLimit :: Payment -> Either PayChanError Payment
 checkDustLimit payment@(CPayment senderChangeVal sig)

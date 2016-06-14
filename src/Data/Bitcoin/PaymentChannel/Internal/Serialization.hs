@@ -1,3 +1,5 @@
+{-# LANGUAGE  OverloadedStrings #-}
+
 module Data.Bitcoin.PaymentChannel.Internal.Serialization where
 
 import Data.Bitcoin.PaymentChannel.Internal.Types
@@ -26,6 +28,15 @@ instance Show Payment where
         ", sig=" ++ toHexString (toStrict $ Bin.encode sig) ++ ">"
 
 -------JSON--------
+
+padToMod4 :: B.ByteString -> B.ByteString
+padToMod4 bs =
+    let
+        lastGroupSize = B.length bs `mod` 4
+        numPadChars = if lastGroupSize > 0 then 4 - lastGroupSize else 0
+    in
+        B.concat [bs, B.replicate numPadChars 61] -- 61: '=' ASCII
+
 b64Encode :: Bin.Binary a => a -> B.ByteString
 b64Encode = B64.encode . toStrict . Bin.encode
 
@@ -35,13 +46,10 @@ instance ToJSON Payment where
 instance FromJSON Payment where
     parseJSON = withText "Payment" $
         \b64 ->
-            failOnLeftWith "failed to deserialize binary data: " =<<
-            binaryDeser =<<
---             (\h -> show (toHexString h) `trace` binaryDeser h) =<<
-            failOnLeftWith "failed to parse base64 data: " =<< b64Decode b64
+            failOnLeftWith "failed to deserialize binary data: " . deserEither =<<
+            (failOnLeftWith "failed to parse base64 data: " . b64Decode) b64
         where
-            b64Decode = return . B64.decode . encodeUtf8
-            binaryDeser = return . deserEither
+            b64Decode = B64.decode . padToMod4 . encodeUtf8
             failOnLeftWith e = either (fail . (e ++)) return
 
 instance ToJSON BitcoinAmount where
