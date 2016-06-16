@@ -49,7 +49,7 @@ fromHexString hexStr =
 newtype BitcoinAmount = CMoneyAmount Integer
     deriving (Eq, Ord, Num, Enum, Real, Integral)
 instance Show BitcoinAmount where
-    show ma = show (fromIntegral $ toWord64 ma) ++ " satoshis"
+    show ma = show (fromIntegral $ toWord64 ma) ++ " satoshi"
 
 -- | Convert to 'Word64', with zero as floor, UINT64_MAX as ceiling
 toWord64 :: BitcoinAmount -> Word64
