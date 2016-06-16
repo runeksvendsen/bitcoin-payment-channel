@@ -86,11 +86,6 @@ data SenderPaymentChannel = CSenderPaymentChannel {
 newtype ReceiverPaymentChannel = CReceiverPaymentChannel {
     -- |Internal state object
     rpcState        ::  PaymentChannelState
-    -- |Used to verify signatures from value sender.
---     rpcVerifyFunc   ::  HC.Hash256 -> HC.PubKey -> HC.Signature -> Bool
-    -- |Function which produces a signature that verifies against 'cpReceiverPubKey'.
-    --  Used to produce the Bitcoin transaction that closes the channel.
---     rpcSignFunc     ::  HC.Hash256 -> HC.Signature
 } deriving (Eq, Bin.Binary)
 
 instance PaymentChannel SenderPaymentChannel where

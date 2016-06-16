@@ -39,7 +39,7 @@ channelIsExhausted  :: PaymentChannelState -> Bool
 channelIsExhausted pcs =
     case pcsPaymentSignature pcs of
         Nothing -> False
-        -- |Channel can be auto-closed when sender has given up all value
+        -- Channel can be auto-closed when sender has given up all value
         -- which requires a SigNone signature
         Just paySig -> psSigHash paySig == HS.SigNone True
 
