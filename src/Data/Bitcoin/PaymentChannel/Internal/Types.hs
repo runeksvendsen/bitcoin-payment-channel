@@ -52,10 +52,8 @@ data FundingTxInfo = CFundingTxInfo {
 
 -- |Holds information about how to construct the payment transaction
 data PaymentTxConfig = CPaymentTxConfig {
-    -- |Value sender change scriptPubKey in Bitcoin payment transaction
+    -- |Value sender change address
     ptcSenderChangeAddress  ::  HC.Address
-    -- |Value receiver destination scriptPubKey in Bitcoin payment transaction
---     ptcReceiverChangeScript ::  B.ByteString
 } deriving (Eq, Show)
 
 -- |Used to transfer value from sender to receiver.
@@ -77,19 +75,4 @@ data PaymentSignature = CPaymentSignature {
     ,psSigHash  ::  HS.SigHash
 } deriving (Eq, Show)
 
-
-
--- Universally unique payment.
--- Contains the necessary information to identify the channel
--- over which the payment was sent, the signature (including SigHash flag)
--- and amount (for verification), as well as the protocol version.
--- data ChannelPayment = CChannelPayment {
---     -- |Payment protocol version (currently 2.x)
---     cpVersion       ::  Version,
---     -- |Channel ID is the regular Bitcoin double-SHA256 hash of the funding transaction
---     cpChannelID     ::  HT.TxHash,
---     cpPayment       ::  Payment,
---     -- |Optional info field
---     cpInfo          ::  Maybe BS.ByteString
--- }
 
