@@ -22,7 +22,7 @@ PayChanError(..),
 PaymentChannelState,
 
 BitcoinAmount, toWord64,
-BitcoinLockTime, fromDate,
+BitcoinLockTime(..), fromDate,
 
 -- Util
 b64Encode,
