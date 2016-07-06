@@ -54,6 +54,7 @@ library
                         bytestring, text, base16-bytestring, base58string, hexstring,
                         base64-bytestring,
                         time,
+                        errors,
                         cereal, binary, aeson, scientific
   hs-source-dirs:       src
 

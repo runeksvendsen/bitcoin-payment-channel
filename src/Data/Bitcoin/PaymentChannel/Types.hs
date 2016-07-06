@@ -48,6 +48,7 @@ import qualified Data.Bitcoin.PaymentChannel.Internal.State as S (pcsChannelID, 
 import Data.Bitcoin.PaymentChannel.Internal.Error (PayChanError(..))
 -- import Data.Bitcoin.PaymentChannel.Internal.Types ()
 import qualified  Data.Binary as Bin
+import            Data.Aeson as JSON -- (FromJSON, ToJSON)
 import qualified  Network.Haskoin.Crypto as HC
 import qualified  Network.Haskoin.Transaction as HT
 import qualified  Network.Haskoin.Script as HS
@@ -86,7 +87,7 @@ data SenderPaymentChannel = CSenderPaymentChannel {
 newtype ReceiverPaymentChannel = CReceiverPaymentChannel {
     -- |Internal state object
     rpcState        ::  PaymentChannelState
-} deriving (Eq, Bin.Binary)
+} deriving (Eq, Bin.Binary, FromJSON, ToJSON)
 
 instance PaymentChannel SenderPaymentChannel where
     valueToMe = channelValueLeft

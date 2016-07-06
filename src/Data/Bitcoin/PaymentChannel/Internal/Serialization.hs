@@ -17,9 +17,8 @@ import qualified  Data.Binary.Put as BinPut
 import qualified  Data.Binary.Get as BinGet
 import qualified  Data.ByteString.Base64.URL as B64
 import qualified Data.ByteString as B
-
-import Debug.Trace
-
+import qualified Data.Text as T
+import           Data.EitherR (fmapL)
 
 
 instance Show Payment where
@@ -41,17 +40,25 @@ padToMod4 bs =
 b64Encode :: Bin.Binary a => a -> B.ByteString
 b64Encode = B64.encode . toStrict . Bin.encode
 
+b64Decode :: Bin.Binary a => B.ByteString -> Either String a
+b64Decode b64 =
+    concatErr "failed to deserialize parsed base64 data: " . deserEither =<<
+    (concatErr "failed to parse base64 data: ") (b64Decode b64)
+        where
+            b64Decode = B64.decode . padToMod4
+            concatErr e = fmapL (e ++)
+
+txtB64Encode :: Bin.Binary a => a -> T.Text
+txtB64Encode = decodeLatin1 . b64Encode
+
+txtB64Decode :: Bin.Binary a => T.Text -> Parser a
+txtB64Decode = either fail return . b64Decode . encodeUtf8
+
 instance ToJSON Payment where
-    toJSON = toJSON . decodeLatin1 . b64Encode
+    toJSON = toJSON . txtB64Encode
 
 instance FromJSON Payment where
-    parseJSON = withText "Payment" $
-        \b64 ->
-            failOnLeftWith "failed to deserialize binary data: " . deserEither =<<
-            (failOnLeftWith "failed to parse base64 data: " . b64Decode) b64
-        where
-            b64Decode = B64.decode . padToMod4 . encodeUtf8
-            failOnLeftWith e = either (fail . (e ++)) return
+    parseJSON = withText "Payment" txtB64Decode
 
 instance ToJSON BitcoinAmount where
     toJSON amt = Number $ scientific
@@ -60,6 +67,12 @@ instance ToJSON BitcoinAmount where
 instance FromJSON BitcoinAmount where
     parseJSON = withScientific "BitcoinAmount" $
         fmap fromIntegral . parseJSONInt
+
+instance ToJSON PaymentChannelState where
+    toJSON = toJSON . txtB64Encode
+
+instance FromJSON PaymentChannelState where
+    parseJSON = withText "PaychanState" txtB64Decode
 
 -- Needed to convert from Scientific
 instance Bounded BitcoinAmount where
