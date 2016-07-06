@@ -15,6 +15,7 @@ pcsValueTransferred cs = pcsChannelTotalValue cs - pcsValueLeft cs
 pcsChannelValueLeft = pcsValueLeft
 pcsClientPubKey = cpSenderPubKey . pcsParameters
 pcsServerPubKey = cpReceiverPubKey . pcsParameters
+pcsExpirationDate = cpLockTime . pcsParameters
 pcsClientChangeAddress = ptcSenderChangeAddress . pcsPaymentConfig
 pcsClientChange = addressToScriptPubKeyBS . pcsClientChangeAddress
 pcsLockTime = cpLockTime . pcsParameters

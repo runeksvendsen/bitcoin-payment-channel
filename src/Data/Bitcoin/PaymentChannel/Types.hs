@@ -44,7 +44,7 @@ import Data.Bitcoin.PaymentChannel.Internal.Util
     BitcoinLockTime, fromDate)
 import qualified Data.Bitcoin.PaymentChannel.Internal.State as S (pcsChannelID, pcsChannelTotalValue,
                                                    setClientChangeAddress,
-                                                   channelValueLeft, channelIsExhausted)
+                                                   channelValueLeft, channelIsExhausted, pcsExpirationDate)
 import Data.Bitcoin.PaymentChannel.Internal.Error (PayChanError(..))
 -- import Data.Bitcoin.PaymentChannel.Internal.Types ()
 import qualified  Data.Binary as Bin
@@ -59,8 +59,8 @@ class PaymentChannel a where
     valueToMe           :: a -> BitcoinAmount
     -- |Retrieve internal state object
     getChannelState     :: a -> PaymentChannelState
-    -- |Get channel ID
     getChannelID        :: a -> HT.OutPoint
+    getExpirationDate   :: a -> BitcoinLockTime
     -- |For internal use
     _setChannelState    :: a -> PaymentChannelState -> a
 
@@ -69,9 +69,11 @@ class PaymentChannel a where
     channelIsExhausted  :: a -> Bool
 
     getChannelID       = S.pcsChannelID . getChannelState
+    getExpirationDate  = S.pcsExpirationDate . getChannelState
 
     channelValueLeft   = S.channelValueLeft . getChannelState
     channelIsExhausted = S.channelIsExhausted . getChannelState
+
 
 -- |State object for the value sender
 data SenderPaymentChannel = CSenderPaymentChannel {
