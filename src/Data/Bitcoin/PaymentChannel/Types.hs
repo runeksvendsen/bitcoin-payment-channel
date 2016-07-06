@@ -59,7 +59,7 @@ class PaymentChannel a where
     -- |Retrieve internal state object
     getChannelState     :: a -> PaymentChannelState
     -- |Get channel ID
-    getChannelID        :: a -> HT.TxHash
+    getChannelID        :: a -> HT.OutPoint
     -- |For internal use
     _setChannelState    :: a -> PaymentChannelState -> a
 

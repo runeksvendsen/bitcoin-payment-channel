@@ -29,6 +29,7 @@ instance Show Payment where
 
 -------JSON--------
 
+
 padToMod4 :: B.ByteString -> B.ByteString
 padToMod4 bs =
     let

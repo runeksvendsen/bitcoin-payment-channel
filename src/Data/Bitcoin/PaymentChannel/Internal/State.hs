@@ -18,7 +18,10 @@ pcsServerPubKey = cpReceiverPubKey . pcsParameters
 pcsClientChangeAddress = ptcSenderChangeAddress . pcsPaymentConfig
 pcsClientChange = addressToScriptPubKeyBS . pcsClientChangeAddress
 pcsLockTime = cpLockTime . pcsParameters
-pcsChannelID = ftiHash . pcsFundingTxInfo
+
+pcsChannelID :: PaymentChannelState -> HT.OutPoint
+pcsChannelID pcs = HT.OutPoint (ftiHash fti) (ftiOutIndex fti)
+    where fti = pcsFundingTxInfo pcs
 
 -- |Set new client/sender change address.
 -- Use this function if the client wishes to change its change address.
