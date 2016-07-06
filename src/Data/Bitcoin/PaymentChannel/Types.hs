@@ -41,7 +41,7 @@ import Data.Bitcoin.PaymentChannel.Internal.Serialization
 --     ()
 import Data.Bitcoin.PaymentChannel.Internal.Util
     (BitcoinAmount(..), toWord64,
-    BitcoinLockTime, fromDate)
+    BitcoinLockTime(..), fromDate)
 import qualified Data.Bitcoin.PaymentChannel.Internal.State as S (pcsChannelID, pcsChannelTotalValue,
                                                    setClientChangeAddress,
                                                    channelValueLeft, channelIsExhausted, pcsExpirationDate)
