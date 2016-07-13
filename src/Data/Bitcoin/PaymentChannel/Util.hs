@@ -14,12 +14,15 @@ getFundingAddress,
 setSenderChangeAddress,
 
 serialize, serialize',
-BitcoinLockTime, parseBitcoinLocktime, toWord32, fromDate, deserEither
+BitcoinLockTime, parseBitcoinLocktime, toWord32, fromDate, deserEither,
+
+unsafeUpdateRecvState
 )
 where
 
 import Data.Bitcoin.PaymentChannel.Internal.Types
-    (PaymentChannelState(..), PaymentTxConfig(..))
+    (PaymentChannelState(..), PaymentTxConfig(..),
+    Payment(..))
 -- import Data.Bitcoin.PaymentChannel.Internal.State
 --     (ptcSenderChangeAddress)
 import Data.Bitcoin.PaymentChannel.Internal.Script
@@ -46,6 +49,10 @@ setSenderChangeAddress :: PaymentChannel a => a -> HC.Address -> a
 setSenderChangeAddress pch addr =
     _setChannelState pch (setClientChangeAddress (getChannelState pch) addr)
 
-
-
+-- |Update internal state without signature verification.
+-- Useful for database-type services where a logic layer has already
+--  verified the signature, and it just needs to be stored.
+unsafeUpdateRecvState :: ReceiverPaymentChannel -> Payment -> ReceiverPaymentChannel
+unsafeUpdateRecvState (CReceiverPaymentChannel s) (CPayment val sig) =
+    CReceiverPaymentChannel $ s { pcsValueLeft = val, pcsPaymentSignature = Just sig}
 
