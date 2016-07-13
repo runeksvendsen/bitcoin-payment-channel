@@ -23,6 +23,7 @@ PaymentChannelState,
 
 BitcoinAmount, toWord64,
 BitcoinLockTime(..), fromDate,
+usesBlockHeight,
 
 -- Util
 b64Encode,

@@ -147,6 +147,9 @@ toWord32 (LockTimeDate date) =
 fromDate :: UTCTime -> BitcoinLockTime
 fromDate = LockTimeDate
 
+usesBlockHeight :: BitcoinLockTime -> Bool
+usesBlockHeight (LockTimeBlockHeight _) = True
+usesBlockHeight _ = False
 
 
 instance Bin.Binary BitcoinLockTime where
