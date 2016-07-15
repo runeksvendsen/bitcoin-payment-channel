@@ -62,6 +62,8 @@ class PaymentChannel a where
     getChannelState     :: a -> PaymentChannelState
     getChannelID        :: a -> HT.OutPoint
     getExpirationDate   :: a -> BitcoinLockTime
+    -- |Return True if channel expires earlier than given expiration date
+    expiresBefore       :: a -> BitcoinLockTime -> Bool
     -- |For internal use
     _setChannelState    :: a -> PaymentChannelState -> a
 
@@ -74,6 +76,7 @@ class PaymentChannel a where
 
     channelValueLeft   = S.channelValueLeft . getChannelState
     channelIsExhausted = S.channelIsExhausted . getChannelState
+    expiresBefore chan expDate = getExpirationDate chan < expDate
 
 
 -- |State object for the value sender
