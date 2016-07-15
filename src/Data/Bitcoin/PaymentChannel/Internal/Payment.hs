@@ -55,12 +55,12 @@ getPaymentTxHashForSigning st@(CPaymentChannelState
             where (tx,sigHash) = getPaymentTxForSigning st newValueLeft
 
 ---Payment build/verify---
-verifyPayment ::
+verifyPaymentSig ::
     PaymentChannelState
     -> Payment
     -> (HC.Hash256 -> HC.PubKey -> HC.Signature -> Bool)
     -> Bool
-verifyPayment pcs
+verifyPaymentSig pcs
     (CPayment newSenderVal (CPaymentSignature sig sigHash)) verifyFunc =
         let (hash,_) = case sigHash of --SigHash in signature overrides newSenderVal
                 HS.SigSingle True   -> getPaymentTxHashForSigning pcs newSenderVal

@@ -104,7 +104,7 @@ import Data.Bitcoin.PaymentChannel.Internal.State
 import qualified Data.Bitcoin.PaymentChannel.Internal.State as S
     (channelValueLeft)
 import Data.Bitcoin.PaymentChannel.Internal.Payment
-    (createPayment, verifyPayment)
+    (createPayment, verifyPaymentSig)
 import Data.Bitcoin.PaymentChannel.Internal.Settlement
     (getSignedSettlementTx, getSettlementTxHashForSigning)
 import Data.Bitcoin.PaymentChannel.Internal.Refund
@@ -195,7 +195,7 @@ recvPayment ::
     -> Either PayChanError (BitcoinAmount, ReceiverPaymentChannel) -- ^Value received plus new receiver state object
 recvPayment rpc@(CReceiverPaymentChannel oldState) paymnt =
     let verifyFunc hash pk sig = HC.verifySig hash sig pk in
-    if verifyPayment oldState paymnt verifyFunc then
+    if verifyPaymentSig oldState paymnt verifyFunc then
         updatePaymentChannelState oldState paymnt >>=
         (\newState -> Right (
             S.channelValueLeft oldState - S.channelValueLeft newState
