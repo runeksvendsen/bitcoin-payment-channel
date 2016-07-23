@@ -6,7 +6,8 @@ data PayChanError =
     BadSignature |
     BadPaymentValue BitcoinAmount   |
     NoValueTransferred |
-    DustOutput
+    DustOutput |
+    InternalError String
 
 instance Show PayChanError where
     show BadSignature = "signature verification failed"
@@ -15,4 +16,5 @@ instance Show PayChanError where
     show DustOutput = "dust output in payment transaction"
     show NoValueTransferred = "cannot create payment Bitcoin transaction: no\
     \ value has been transferred yet"
+    show (InternalError e) = "Internal error: " ++ e
 

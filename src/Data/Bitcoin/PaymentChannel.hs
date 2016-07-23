@@ -216,9 +216,13 @@ getSettlementBitcoinTx ::
     -> (HC.Hash256 -> HC.Signature) -- ^ Function which produces a signature, over a hash, which verifies against 'cpReceiverPubKey'
     -> HC.Address
     -> BitcoinAmount -- ^Bitcoin transaction fee
-    -> Either PayChanError HT.Tx -- ^Settling Bitcoin transaction
+    -> HT.Tx -- ^Settling Bitcoin transaction
 getSettlementBitcoinTx (CReceiverPaymentChannel cs) signFunc recvAddr txFee =
-    getSignedSettlementTx cs recvAddr txFee serverSig
+    nothingThrowInternal $ getSignedSettlementTx cs recvAddr txFee serverSig
         where serverSig = signFunc (getSettlementTxHashForSigning cs recvAddr txFee)
+              nothingThrowInternal Nothing =  error $
+                  "tried to produce settlement transaction without any payments in state." ++
+                  " this should not be possible via the library interface."
+              nothingThrowInternal (Just tx) = tx
 
 

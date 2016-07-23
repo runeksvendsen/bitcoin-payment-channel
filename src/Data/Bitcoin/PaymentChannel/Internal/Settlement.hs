@@ -43,7 +43,7 @@ getSignedSettlementTx ::
     -> HC.Address       -- ^Receiver/server change address
     -> BitcoinAmount    -- ^Bitcoin tx fee
     -> HC.Signature     -- ^Signature over 'getSettlementTxHashForSigning' which verifies against serverPubKey
-    -> Either PayChanError FinalTx
+    -> Maybe FinalTx
 getSignedSettlementTx pcs@(CPaymentChannelState
     cp@(CChannelParameters senderPK rcvrPK lt) _ _ _ (Just clientSig)) recvAddr txFee serverRawSig =
         let
@@ -51,7 +51,7 @@ getSignedSettlementTx pcs@(CPaymentChannelState
             serverSig = CPaymentSignature serverRawSig recvSigHash
             inputScript = getInputScript cp $ paymentTxScriptSig clientSig serverSig
         in
-            Right $ replaceScriptInput (serialize inputScript) tx
-getSignedSettlementTx (CPaymentChannelState _ _ _ _ Nothing) _ _ _ = Left NoValueTransferred
+            Just $ replaceScriptInput (serialize inputScript) tx
+getSignedSettlementTx (CPaymentChannelState _ _ _ _ Nothing) _ _ _ = Nothing
 
 
