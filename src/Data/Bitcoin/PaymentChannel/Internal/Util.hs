@@ -124,7 +124,9 @@ appendOutput tx@HT.Tx{ HT.txOut = oldOuts } txOut =
 -- |Data type representing a Bitcoin LockTime, which specifies a point in time.
 --  Derive a 'BitcoinLockTime' from a 'Data.Time.Clock.UTCTime' using 'fromDate'.
 data BitcoinLockTime =
+    -- |A value of "n" represents the point in time at which Bitcoin block number "n" appears
     LockTimeBlockHeight Word32 |
+    -- |Specifies a point in time using a timestamp with 1-second accuraccy
     LockTimeDate UTCTime deriving (Eq, Ord)
 
 instance Show BitcoinLockTime where
