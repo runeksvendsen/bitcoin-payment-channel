@@ -24,6 +24,9 @@ pcsChannelID :: PaymentChannelState -> HT.OutPoint
 pcsChannelID pcs = HT.OutPoint (ftiHash fti) (ftiOutIndex fti)
     where fti = pcsFundingTxInfo pcs
 
+pcsGetPayment :: PaymentChannelState -> Maybe Payment
+pcsGetPayment (CPaymentChannelState _ _ _ val maybeSig) = CPayment val <$> maybeSig
+
 -- |Set new client/sender change address.
 -- Use this function if the client wishes to change its change address.
 -- First set the new change address using this function, then accept the payment which

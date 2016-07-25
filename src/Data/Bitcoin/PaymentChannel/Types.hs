@@ -43,9 +43,7 @@ import Data.Bitcoin.PaymentChannel.Internal.Serialization
 import Data.Bitcoin.PaymentChannel.Internal.Util
     (BitcoinAmount(..), toWord64,
     BitcoinLockTime(..), fromDate, usesBlockHeight)
-import qualified Data.Bitcoin.PaymentChannel.Internal.State as S (pcsChannelID, pcsChannelTotalValue,
-                                                   setClientChangeAddress,
-                                                   channelValueLeft, channelIsExhausted, pcsExpirationDate)
+import qualified Data.Bitcoin.PaymentChannel.Internal.State as S
 import Data.Bitcoin.PaymentChannel.Internal.Error (PayChanError(..))
 -- import Data.Bitcoin.PaymentChannel.Internal.Types ()
 import qualified  Data.Binary as Bin
@@ -62,6 +60,7 @@ class PaymentChannel a where
     getChannelState     :: a -> PaymentChannelState
     getChannelID        :: a -> HT.OutPoint
     getExpirationDate   :: a -> BitcoinLockTime
+    getNewestPayment    :: a -> Payment
     -- |Return True if channel expires earlier than given expiration date
     expiresBefore       :: BitcoinLockTime -> a -> Bool
     -- |For internal use
@@ -78,6 +77,10 @@ class PaymentChannel a where
     channelIsExhausted = S.channelIsExhausted . getChannelState
     expiresBefore expDate chan = getExpirationDate chan < expDate
 
+
+    getNewestPayment pcs = case S.pcsGetPayment (getChannelState pcs) of
+            Just payment -> payment
+            Nothing      -> error "BUG: PaymentChannel interface shouldn't allow payment-less PaymentChannel"
 
 -- |State object for the value sender
 data SenderPaymentChannel = CSenderPaymentChannel {

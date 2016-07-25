@@ -30,7 +30,7 @@ data PaymentChannelState = CPaymentChannelState {
     -- |Value left to send (starts at @ftiOutValue . pcsFundingTxInfo@)
     pcsValueLeft            ::  BitcoinAmount,
     -- |Signature over payment transaction of value 'pcsValueLeft'
-    --  unless no payment has been made yet
+    --  unless no payment has been registered yet
     pcsPaymentSignature     ::  Maybe PaymentSignature
 } deriving (Eq, Show)
 
