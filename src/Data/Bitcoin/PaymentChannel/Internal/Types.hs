@@ -1,3 +1,5 @@
+-- {-# LANGUAGE DeriveDataTypeable #-}
+
 module Data.Bitcoin.PaymentChannel.Internal.Types where
 
 import Data.Bitcoin.PaymentChannel.Internal.Util
@@ -11,6 +13,7 @@ import Data.Word (Word32, Word64, Word8)
 import qualified  Data.Binary as Bin
 import qualified  Data.Binary.Put as BinPut
 import qualified  Data.Binary.Get as BinGet
+import            Data.Typeable
 
 dUST_LIMIT = 700 :: BitcoinAmount
 mIN_CHANNEL_SIZE = dUST_LIMIT * 2
@@ -32,7 +35,7 @@ data PaymentChannelState = CPaymentChannelState {
     -- |Signature over payment transaction of value 'pcsValueLeft'
     --  unless no payment has been registered yet
     pcsPaymentSignature     ::  Maybe PaymentSignature
-} deriving (Eq, Show)
+} deriving (Eq, Show, Typeable)
 
 -- |Defines channel: sender, receiver, and expiration date
 data ChannelParameters = CChannelParameters {
@@ -40,7 +43,7 @@ data ChannelParameters = CChannelParameters {
     cpReceiverPubKey    ::  HC.PubKey,
     -- |Channel expiration date/time
     cpLockTime          ::  BitcoinLockTime
-} deriving (Eq, Show)
+} deriving (Eq, Show, Typeable)
 
 -- |Holds information about the Bitcoin transaction used to fund
 -- the channel
@@ -48,13 +51,13 @@ data FundingTxInfo = CFundingTxInfo {
     ftiHash         ::  HT.TxHash,      -- ^ Hash of funding transaction.
     ftiOutIndex     ::  Word32,         -- ^ Index/"vout" of funding output
     ftiOutValue     ::  BitcoinAmount   -- ^ Value of funding output (channel max value)
-} deriving (Eq, Show)
+} deriving (Eq, Show, Typeable)
 
 -- |Holds information about how to construct the payment transaction
 data PaymentTxConfig = CPaymentTxConfig {
     -- |Value sender change address
     ptcSenderChangeAddress  ::  HC.Address
-} deriving (Eq, Show)
+} deriving (Eq, Show, Typeable)
 
 -- |Used to transfer value from sender to receiver.
 data Payment = CPayment {
@@ -62,7 +65,7 @@ data Payment = CPayment {
     cpChannelValueLeft ::  BitcoinAmount,
     -- |Payment signature
     cpSignature        ::  PaymentSignature
-} deriving (Eq)
+} deriving (Eq, Typeable)
 
 -- |Contains payment signature plus sig hash flag byte
 data PaymentSignature = CPaymentSignature {
@@ -73,6 +76,6 @@ data PaymentSignature = CPaymentSignature {
     --  everything to the receiver. This is necessary so that no settling
     --  transaction containing an output below the "dust limit" is produced.
     ,psSigHash  ::  HS.SigHash
-} deriving (Eq, Show)
+} deriving (Eq, Show, Typeable)
 
 

@@ -21,6 +21,8 @@ import qualified Data.ByteString.Char8 as C
 import qualified Network.Haskoin.Transaction as HT
 import qualified Network.Haskoin.Script as HS
 import qualified Network.Haskoin.Crypto as HC
+import           Data.Typeable
+
 
 mapLeft f  = either (Left . f) Right
 mapRight f = either Left (Right . f)
@@ -47,7 +49,7 @@ fromHexString hexStr =
 --  Integer operations will never over- or underflow with this type.
 --  Convert to a Word64 using 'toWord64', which caps the final amount.
 newtype BitcoinAmount = CMoneyAmount Integer
-    deriving (Eq, Ord, Num, Enum, Real, Integral)
+    deriving (Eq, Ord, Num, Enum, Real, Integral, Typeable)
 instance Show BitcoinAmount where
     show ma = show (fromIntegral $ toWord64 ma) ++ " satoshi"
 
@@ -127,7 +129,7 @@ data BitcoinLockTime =
     -- |A value of "n" represents the point in time at which Bitcoin block number "n" appears
     LockTimeBlockHeight Word32 |
     -- |Specifies a point in time using a timestamp with 1-second accuraccy
-    LockTimeDate UTCTime deriving (Eq, Ord)
+    LockTimeDate UTCTime deriving (Eq, Ord, Typeable)
 
 instance Show BitcoinLockTime where
     show (LockTimeBlockHeight blockNum) = "block number " ++ show blockNum
