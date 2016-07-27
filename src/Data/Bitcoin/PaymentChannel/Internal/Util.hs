@@ -4,8 +4,8 @@ module Data.Bitcoin.PaymentChannel.Internal.Util where
 
 import Data.String (fromString)
 import qualified Data.Serialize as Ser (Serialize, encode, get, put)
-import qualified Data.Serialize.Put as SerPut (putWord64be)
-import qualified Data.Serialize.Get as SerGet (getWord64be)
+import qualified Data.Serialize.Put as SerPut
+import qualified Data.Serialize.Get as SerGet
 import qualified Data.Binary as Bin
 import qualified Data.Binary.Put as BinPut
 import qualified Data.Binary.Get as BinGet
@@ -49,7 +49,7 @@ fromHexString hexStr =
 --  Integer operations will never over- or underflow with this type.
 --  Convert to a Word64 using 'toWord64', which caps the final amount.
 newtype BitcoinAmount = CMoneyAmount Integer
-    deriving (Eq, Ord, Num, Enum, Real, Integral, Typeable)
+    deriving (Eq, Ord, Num, Enum, Real, Integral)
 instance Show BitcoinAmount where
     show ma = show (fromIntegral $ toWord64 ma) ++ " satoshi"
 
@@ -65,8 +65,8 @@ instance Bin.Binary BitcoinAmount where
     get = CMoneyAmount . fromIntegral <$> BinGet.getWord64le
 
 instance Ser.Serialize BitcoinAmount where
-    put = SerPut.putWord64be . toWord64
-    get = CMoneyAmount . fromIntegral <$> SerGet.getWord64be
+    put = SerPut.putWord64le . toWord64
+    get = CMoneyAmount . fromIntegral <$> SerGet.getWord64le
 
 
 -- | Converts a pay-to-pubkey-hash address string to Script.
