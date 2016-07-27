@@ -17,6 +17,7 @@ import qualified  Data.Binary.Put as BinPut
 import qualified  Data.Binary.Get as BinGet
 import qualified  Data.ByteString.Base64.URL as B64
 import qualified Data.ByteString as B
+import qualified Data.ByteString.Lazy as BL
 import qualified Data.Text as T
 import           Data.EitherR (fmapL)
 
@@ -42,7 +43,7 @@ b64Encode = B64.encode . toStrict . Bin.encode
 
 b64Decode :: Bin.Binary a => B.ByteString -> Either String a
 b64Decode b64 =
-    concatErr "failed to deserialize parsed base64 data: " . deserEither =<<
+    concatErr "failed to deserialize parsed base64 data: " . deserEither . BL.fromStrict =<<
     (concatErr "failed to parse base64 data: ") (b64Decode b64)
         where
             b64Decode = B64.decode . padToMod4
