@@ -107,7 +107,7 @@ deserEither bs = do
     let eitherRes = Bin.decodeOrFail bs
     case eitherRes of
         Left (leftoverBS,offset,e)    -> Left $
-            "Type " ++ show (typeOf (undefined :: a)) ++
+            "Type: " ++ show (typeOf (undefined :: a)) ++
             ". Error: " ++ e ++
             ". Data consumed (" ++ show offset ++ " bytes): " ++
             toHexString (BL.toStrict $ BL.take offset bs) ++
@@ -149,6 +149,7 @@ parseBitcoinLocktime :: Word32 -> BitcoinLockTime
 parseBitcoinLocktime i
     | i <   500000000 = LockTimeBlockHeight i
     | i >=  500000000 = LockTimeDate $ posixSecondsToUTCTime (fromIntegral i)
+    | otherwise       = error "GHC bug?"
 
 -- | Convert to Bitcoin format ('Word32')
 toWord32 :: BitcoinLockTime -> Word32
