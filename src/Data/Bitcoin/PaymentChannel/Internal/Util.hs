@@ -22,7 +22,7 @@ import qualified Network.Haskoin.Transaction as HT
 import qualified Network.Haskoin.Script as HS
 import qualified Network.Haskoin.Crypto as HC
 import           Data.Typeable
-
+-- import           Data.Text.p
 
 mapLeft f  = either (Left . f) Right
 mapRight f = either Left (Right . f)
@@ -103,9 +103,10 @@ deserialize = Bin.decode . BL.fromStrict
 
 deserEither :: Bin.Binary a => BL.ByteString -> Either String a
 deserEither bs = case Bin.decodeOrFail bs of
-       Left (leftoverBS,offset,e)    -> Left $ e ++ ". Leftover data: " ++
-            toHexString (BL.toStrict leftoverBS) ++ ", bytes consumed: " ++ show offset
-       Right (_,_,val) -> Right val
+    Left (leftoverBS,offset,e)    -> Left $ e ++
+        ", data consumed (" ++ show offset ++ " bytes): " ++ show (BL.take offset bs) ++
+        ". Leftover data: " ++ toHexString (BL.toStrict leftoverBS)
+    Right (_,_,val) -> Right val
 
 ----------BITCOIN-----------
 
