@@ -104,7 +104,8 @@ deserialize = Bin.decode . BL.fromStrict
 deserEither :: Bin.Binary a => BL.ByteString -> Either String a
 deserEither bs = case Bin.decodeOrFail bs of
     Left (leftoverBS,offset,e)    -> Left $ e ++
-        ", data consumed (" ++ show offset ++ " bytes): " ++ show (BL.take offset bs) ++
+        ", data consumed (" ++ show offset ++ " bytes): " ++
+        toHexString (BL.toStrict $ BL.take offset bs) ++
         ". Leftover data: " ++ toHexString (BL.toStrict leftoverBS)
     Right (_,_,val) -> Right val
 
