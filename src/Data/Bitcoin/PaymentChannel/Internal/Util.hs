@@ -10,7 +10,7 @@ import qualified Data.Binary as Bin
 import qualified Data.Binary.Put as BinPut
 import qualified Data.Binary.Get as BinGet
 import Data.Binary.Put (putWord32le)
-import Data.Binary.Get (getWord32le, runGetOrFail)
+import Data.Binary.Get (getWord32le)
 import Data.Word
 import Data.Time.Clock
 import Data.Time.Clock.POSIX
@@ -113,7 +113,7 @@ replaceScriptInput :: B.ByteString -> HT.Tx -> HT.Tx
 replaceScriptInput scriptIn (HT.Tx v (txIn:_) txOut lt)  =
     HT.Tx v [newTxIn] txOut lt
         where newTxIn = txIn { HT.scriptInput = scriptIn }
-replaceScriptInput scriptIn (HT.Tx v [] txOut lt) =
+replaceScriptInput scriptIn (HT.Tx _ [] _ _) =
     error "cannot replace scriptInput without any inputs"
 
 removeOutputs :: HT.Tx -> HT.Tx

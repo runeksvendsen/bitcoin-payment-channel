@@ -47,7 +47,7 @@ library
                         Data.Bitcoin.PaymentChannel.Internal.Util,
                         Data.Bitcoin.PaymentChannel.Internal.Version
 
---  ghc-options:          -Wall
+  ghc-options:          -W
 
   build-depends:        base >= 4.7 && < 5,
                         haskoin-core >= 0.3.0 && < 1.0.0,
