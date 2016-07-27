@@ -107,11 +107,12 @@ deserEither bs = do
     let eitherRes = Bin.decodeOrFail bs
     case eitherRes of
         Left (leftoverBS,offset,e)    -> Left $
-            "Failed to parse " ++ show (typeOf (undefined :: a)) ++
-            ": " ++ e ++
+            "Type " ++ show (typeOf (undefined :: a)) ++
+            ". Error: " ++ e ++
             ". Data consumed (" ++ show offset ++ " bytes): " ++
             toHexString (BL.toStrict $ BL.take offset bs) ++
-            ". Leftover data: " ++ toHexString (BL.toStrict leftoverBS)
+            ". Unconsumed data: (" ++ show ( BL.length bs - fromIntegral offset ) ++ " bytes): " ++
+            toHexString (BL.toStrict leftoverBS)
         Right (_,_,val) -> Right val
 
 
