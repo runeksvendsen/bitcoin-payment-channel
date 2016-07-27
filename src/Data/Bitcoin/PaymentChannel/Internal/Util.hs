@@ -1,4 +1,5 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module Data.Bitcoin.PaymentChannel.Internal.Util where
 
@@ -101,13 +102,18 @@ serialize = BL.toStrict . Bin.encode
 deserialize :: Bin.Binary a => B.ByteString -> a
 deserialize = Bin.decode . BL.fromStrict
 
-deserEither :: Bin.Binary a => BL.ByteString -> Either String a
-deserEither bs = case Bin.decodeOrFail bs of
-    Left (leftoverBS,offset,e)    -> Left $ e ++
-        ", data consumed (" ++ show offset ++ " bytes): " ++
-        toHexString (BL.toStrict $ BL.take offset bs) ++
-        ". Leftover data: " ++ toHexString (BL.toStrict leftoverBS)
-    Right (_,_,val) -> Right val
+deserEither :: forall m a. (Typeable a, Bin.Binary a) => BL.ByteString -> Either String a
+deserEither bs = do
+    let eitherRes = Bin.decodeOrFail bs
+    case eitherRes of
+        Left (leftoverBS,offset,e)    -> Left $
+            "Failed to parse " ++ show (typeOf (undefined :: a)) ++
+            ": " ++ e ++
+            ". Data consumed (" ++ show offset ++ " bytes): " ++
+            toHexString (BL.toStrict $ BL.take offset bs) ++
+            ". Leftover data: " ++ toHexString (BL.toStrict leftoverBS)
+        Right (_,_,val) -> Right val
+
 
 ----------BITCOIN-----------
 

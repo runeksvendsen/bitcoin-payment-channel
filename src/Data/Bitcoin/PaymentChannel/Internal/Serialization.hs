@@ -20,7 +20,7 @@ import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as BL
 import qualified Data.Text as T
 import           Data.EitherR (fmapL)
-
+import           Data.Typeable
 
 instance Show Payment where
     show (CPayment val sig) =
@@ -41,7 +41,7 @@ padToMod4 bs =
 b64Encode :: Bin.Binary a => a -> B.ByteString
 b64Encode = B64.encode . toStrict . Bin.encode
 
-b64Decode :: Bin.Binary a => B.ByteString -> Either String a
+b64Decode :: (Typeable a, Bin.Binary a) => B.ByteString -> Either String a
 b64Decode b64 =
     concatErr "failed to deserialize parsed base64 data: " . deserEither . BL.fromStrict =<<
     (concatErr "failed to parse base64 data: ") (b64Decode b64)
@@ -52,7 +52,7 @@ b64Decode b64 =
 txtB64Encode :: Bin.Binary a => a -> T.Text
 txtB64Encode = decodeLatin1 . b64Encode
 
-txtB64Decode :: Bin.Binary a => T.Text -> Parser a
+txtB64Decode :: (Typeable a, Bin.Binary a) => T.Text -> Parser a
 txtB64Decode = either fail return . b64Decode . encodeUtf8
 
 instance ToJSON Payment where
