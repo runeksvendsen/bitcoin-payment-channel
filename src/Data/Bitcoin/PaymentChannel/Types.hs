@@ -20,7 +20,7 @@ FundingTxInfo(..),
 ChannelParameters(..),
 PayChanError(..),
 PaymentChannelState,
-
+SendPubKey(..),RecvPubKey(..),IsPubKey(..),
 BitcoinAmount, toWord64,
 BitcoinLockTime(..), fromDate,
 usesBlockHeight,
@@ -36,7 +36,7 @@ where
 import Data.Bitcoin.PaymentChannel.Internal.Types
     (PaymentChannelState(..), Payment(..)
     ,FundingTxInfo(..), ChannelParameters(..),
-    PaymentSignature(..),
+    PaymentSignature(..), SendPubKey(..), RecvPubKey(..), IsPubKey(..),
     dUST_LIMIT, mIN_CHANNEL_SIZE)
 import Data.Bitcoin.PaymentChannel.Internal.Serialization
 --     ()

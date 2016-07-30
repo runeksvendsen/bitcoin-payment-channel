@@ -32,14 +32,14 @@ sigHashToByte :: SigHash -> Word8
 sigHashToByte = fromIntegral . ord . head . C.unpack . serialize
 
 -- |Generates OP_CHECKLOCKTIMEVERIFY redeemScript
-paymentChannelRedeemScript :: HC.PubKey -> HC.PubKey -> Word32 -> Script
+paymentChannelRedeemScript :: SendPubKey -> RecvPubKey -> Word32 -> Script
 paymentChannelRedeemScript clientPK serverPK lockTime = Script
      [OP_IF,
-         opPushData (serialize serverPK), OP_CHECKSIGVERIFY,
+         opPushData $ serialize (getPubKey serverPK), OP_CHECKSIGVERIFY,
      OP_ELSE,
          encodeScriptInt lockTime, op_CHECKLOCKTIMEVERIFY, OP_DROP,
      OP_ENDIF,
-     opPushData (serialize clientPK), OP_CHECKSIG]
+     opPushData $ serialize (getPubKey clientPK), OP_CHECKSIG]
          where encodeScriptInt i = opPushData $ B.pack $ HI.encodeInt (fromIntegral i)
             -- Note: HI.encodeInt encodes values up to and including 2^31-1 as 4 bytes
             --      and values 2^31 through 2^32-1 (upper limit) as 5 bytes.

@@ -49,8 +49,7 @@ getPaymentTxHashForSigning ::
     PaymentChannelState
     -> BitcoinAmount -- ^New sender value (newValueLeft)
     -> (HC.Hash256, HS.SigHash)  -- ^Hash of payment transaction with a single output paying to senderPK
-getPaymentTxHashForSigning st@(CPaymentChannelState
-    cp@(CChannelParameters senderPK rcvrPK lt) _ _ _ _) newValueLeft =
+getPaymentTxHashForSigning st@(CPaymentChannelState cp _ _ _ _) newValueLeft =
         (HS.txSigHash tx (getRedeemScript cp) 0 sigHash, sigHash)
             where (tx,sigHash) = getPaymentTxForSigning st newValueLeft
 
@@ -58,7 +57,7 @@ getPaymentTxHashForSigning st@(CPaymentChannelState
 verifyPaymentSig ::
     PaymentChannelState
     -> Payment
-    -> (HC.Hash256 -> HC.PubKey -> HC.Signature -> Bool)
+    -> (HC.Hash256 -> SendPubKey -> HC.Signature -> Bool)
     -> Bool
 verifyPaymentSig pcs
     (CPayment newSenderVal (CPaymentSignature sig sigHash)) verifyFunc =

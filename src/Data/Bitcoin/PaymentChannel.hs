@@ -194,8 +194,8 @@ recvPayment ::
     -> Payment -- ^Payment to verify and register
     -> Either PayChanError (BitcoinAmount, ReceiverPaymentChannel) -- ^Value received plus new receiver state object
 recvPayment rpc@(CReceiverPaymentChannel oldState) paymnt =
-    let verifyFunc hash pk sig = HC.verifySig hash sig pk in
-    if verifyPaymentSig oldState paymnt verifyFunc then
+    let verifySenderPayment hash pk sig = HC.verifySig hash sig (getPubKey pk) in
+    if verifyPaymentSig oldState paymnt verifySenderPayment then
         updatePaymentChannelState oldState paymnt >>=
         (\newState -> Right (
             S.channelValueLeft oldState - S.channelValueLeft newState

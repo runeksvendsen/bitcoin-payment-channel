@@ -1,4 +1,6 @@
-{-# LANGUAGE  OverloadedStrings #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE StandaloneDeriving #-}
 
 module Data.Bitcoin.PaymentChannel.Internal.Serialization where
 
@@ -27,6 +29,11 @@ import           Data.Typeable
 
 
 ---- JSON
+deriving instance ToJSON SendPubKey
+deriving instance FromJSON SendPubKey
+deriving instance ToJSON RecvPubKey
+deriving instance FromJSON RecvPubKey
+
 instance ToJSON BitcoinLockTime where
     toJSON blt = Number $ scientific
         (fromIntegral $ toWord32 blt) 0
@@ -57,6 +64,9 @@ instance FromJSON PaymentChannelState where
 
 
 --- Binary
+deriving instance Bin.Binary SendPubKey
+deriving instance Bin.Binary RecvPubKey
+
 instance Bin.Binary PaymentChannelState where
     put (CPaymentChannelState par fti payConf valLeft (Just sig)) =
         Bin.put par >> Bin.put fti >> Bin.put payConf >> Bin.put valLeft

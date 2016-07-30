@@ -42,7 +42,7 @@ mkChanPair = do
         ArbitraryPubKey recvPriv recvPK <- arbitrary
         -- expiration date
         lockTime <- arbitrary
-        let cp = CChannelParameters sendPK recvPK lockTime
+        let cp = CChannelParameters (MkSendPubKey sendPK) (MkRecvPubKey recvPK) lockTime
 
         fti <- arbitrary
 

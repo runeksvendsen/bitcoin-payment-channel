@@ -39,8 +39,8 @@ data PaymentChannelState = CPaymentChannelState {
 
 -- |Defines channel: sender, receiver, and expiration date
 data ChannelParameters = CChannelParameters {
-    cpSenderPubKey      ::  HC.PubKey,
-    cpReceiverPubKey    ::  HC.PubKey,
+    cpSenderPubKey      ::  SendPubKey,
+    cpReceiverPubKey    ::  RecvPubKey,
     -- |Channel expiration date/time
     cpLockTime          ::  BitcoinLockTime
 } deriving (Eq, Show, Typeable)
@@ -79,3 +79,19 @@ data PaymentSignature = CPaymentSignature {
 } deriving (Eq, Show, Typeable)
 
 
+-- Never confuse sender/receiver pubkey again: let compiler check
+newtype SendPubKey = MkSendPubKey {
+    getSenderPK        ::  HC.PubKey
+} deriving (Eq, Show)
+
+newtype RecvPubKey = MkRecvPubKey {
+    getReceiverPK        ::  HC.PubKey
+} deriving (Eq, Show)
+
+class IsPubKey a where
+    getPubKey :: a -> HC.PubKey
+
+instance IsPubKey SendPubKey where
+    getPubKey = getSenderPK
+instance IsPubKey RecvPubKey where
+    getPubKey = getReceiverPK
