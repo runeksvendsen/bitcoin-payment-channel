@@ -10,7 +10,7 @@ This library implements a type of payment channel where channel setup is safe fr
 
 ## Documentation/usage
 
-https://runeksvendsen.github.io/bitcoin-payment-channel/bitcoin-payment-channel-0.1.0.0/index.html
+See Hackage documentation: https://hackage.haskell.org/package/bitcoin-payment-channel-0.2.0.0#modules
 
 
 ## Contact/questions/bugs
