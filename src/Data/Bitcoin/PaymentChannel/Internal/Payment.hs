@@ -43,7 +43,7 @@ getPaymentTxForSigning ::
 getPaymentTxForSigning st@(CPaymentChannelState _ fti
     (CPaymentTxConfig sendAddr) chanValLeft _) newValueLeft =
         paymentTxAddOutput senderOut $ buildEmptyPaymentTx fti
-            where senderOut = HT.TxOut (toWord64 newValueLeft) (addressToScriptPubKeyBS sendAddr)
+            where senderOut = HT.TxOut (fromIntegral . toInteger $ newValueLeft) (addressToScriptPubKeyBS sendAddr)
 
 getPaymentTxHashForSigning ::
     PaymentChannelState

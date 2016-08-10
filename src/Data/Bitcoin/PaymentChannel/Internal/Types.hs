@@ -1,19 +1,23 @@
 -- {-# LANGUAGE DeriveDataTypeable #-}
 
-module Data.Bitcoin.PaymentChannel.Internal.Types where
+module Data.Bitcoin.PaymentChannel.Internal.Types
+(
+    module Data.Bitcoin.PaymentChannel.Internal.Types
+  , module Data.Bitcoin.PaymentChannel.Internal.BitcoinAmount
+)
+
+where
 
 import Data.Bitcoin.PaymentChannel.Internal.Util
 import Data.Bitcoin.PaymentChannel.Internal.Version
+import Data.Bitcoin.PaymentChannel.Internal.BitcoinAmount
 
 import qualified  Network.Haskoin.Transaction as HT
 import qualified  Network.Haskoin.Crypto as HC
 import qualified  Network.Haskoin.Script as HS
-import qualified Data.ByteString as B
-import Data.Word (Word32, Word64, Word8)
-import qualified  Data.Binary as Bin
-import qualified  Data.Binary.Put as BinPut
-import qualified  Data.Binary.Get as BinGet
 import            Data.Typeable
+import            Data.Word
+
 
 dUST_LIMIT = 700 :: BitcoinAmount
 mIN_CHANNEL_SIZE = dUST_LIMIT * 2

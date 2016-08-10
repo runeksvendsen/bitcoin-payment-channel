@@ -4,7 +4,7 @@
 module Data.Bitcoin.PaymentChannel.Internal.Util where
 
 import Data.String (fromString)
-import qualified Data.Serialize as Ser (Serialize, encode, get, put)
+import qualified Data.Serialize as Ser
 import qualified Data.Serialize.Put as SerPut
 import qualified Data.Serialize.Get as SerGet
 import qualified Data.Binary as Bin
@@ -43,32 +43,6 @@ fromHexString hexStr =
     case (B16.decode . C.pack) hexStr of
         (bs,e) ->
             if B.length e /= 0 then B.empty else bs
-
-
--- |Represents a bitcoin amount as number of satoshis.
---  1 satoshi = 1e-8 bitcoins.
---  Integer operations will never over- or underflow with this type.
---  Convert to a Word64 using 'toWord64', which caps the final amount.
-newtype BitcoinAmount = CMoneyAmount Integer
-    deriving (Eq, Ord, Num, Enum, Real, Integral)
-instance Show BitcoinAmount where
-    show ma = show (fromIntegral $ toWord64 ma) ++ " satoshi"
-
--- | Convert to 'Word64', with zero as floor, UINT64_MAX as ceiling
-toWord64 :: BitcoinAmount -> Word64
-toWord64 (CMoneyAmount i) = fromIntegral $
-    max 0 cappedValue
-        where
-            cappedValue = min i $ fromIntegral (maxBound :: Word64)
-
-instance Bin.Binary BitcoinAmount where
-    put = BinPut.putWord64le . toWord64
-    get = CMoneyAmount . fromIntegral <$> BinGet.getWord64le
-
-instance Ser.Serialize BitcoinAmount where
-    put = SerPut.putWord64le . toWord64
-    get = CMoneyAmount . fromIntegral <$> SerGet.getWord64le
-
 
 -- | Converts a pay-to-pubkey-hash address string to Script.
 -- | Eg. \"1PDGytNA7EJ5XrJdTGKv11VAUFxKnsfwke\" into
@@ -122,7 +96,7 @@ replaceScriptInput :: B.ByteString -> HT.Tx -> HT.Tx
 replaceScriptInput scriptIn (HT.Tx v (txIn:_) txOut lt)  =
     HT.Tx v [newTxIn] txOut lt
         where newTxIn = txIn { HT.scriptInput = scriptIn }
-replaceScriptInput scriptIn (HT.Tx _ [] _ _) =
+replaceScriptInput _ (HT.Tx _ [] _ _) =
     error "cannot replace scriptInput without any inputs"
 
 removeOutputs :: HT.Tx -> HT.Tx

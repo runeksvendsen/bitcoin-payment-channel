@@ -1,6 +1,6 @@
 module Data.Bitcoin.PaymentChannel.Internal.Error where
 
-import Data.Bitcoin.PaymentChannel.Internal.Util (BitcoinAmount)
+import Data.Bitcoin.PaymentChannel.Internal.Types (BitcoinAmount)
 
 data PayChanError =
     BadSignature |

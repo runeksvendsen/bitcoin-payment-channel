@@ -4,7 +4,7 @@ module Data.Bitcoin.PaymentChannel.Internal.State where
 
 import Data.Bitcoin.PaymentChannel.Internal.Types
 import Data.Bitcoin.PaymentChannel.Internal.Error
-import Data.Bitcoin.PaymentChannel.Internal.Util  (addressToScriptPubKeyBS, BitcoinAmount)
+import Data.Bitcoin.PaymentChannel.Internal.Util  (addressToScriptPubKeyBS)
 
 import qualified Network.Haskoin.Transaction as HT
 import qualified Network.Haskoin.Crypto as HC
@@ -17,7 +17,7 @@ pcsClientPubKey = cpSenderPubKey . pcsParameters
 pcsServerPubKey = cpReceiverPubKey . pcsParameters
 pcsExpirationDate = cpLockTime . pcsParameters
 pcsClientChangeAddress = ptcSenderChangeAddress . pcsPaymentConfig
-pcsClientChange = addressToScriptPubKeyBS . pcsClientChangeAddress
+pcsClientChangeScriptPubKey = addressToScriptPubKeyBS . pcsClientChangeAddress
 pcsLockTime = cpLockTime . pcsParameters
 
 pcsChannelID :: PaymentChannelState -> HT.OutPoint

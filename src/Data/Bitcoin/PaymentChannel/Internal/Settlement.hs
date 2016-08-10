@@ -24,7 +24,7 @@ getSettlementTxForSigning st@(CPaymentChannelState _ fti@(CFundingTxInfo _ _ cha
             (baseTx,_) = getPaymentTxForSigning st senderVal
             adjTx = if sigHash == HS.SigNone True then removeOutputs baseTx else baseTx
             receiverAmount = channelTotalValue - senderVal - txFee -- may be less than zero
-            recvOut = HT.TxOut (toWord64 receiverAmount) (addressToScriptPubKeyBS recvAddr)
+            recvOut = HT.TxOut (fromIntegral . toInteger $ receiverAmount) (addressToScriptPubKeyBS recvAddr)
         in
             paymentTxAddOutput recvOut adjTx
 getSettlementTxForSigning _ _ _ = error "no payment sig available"

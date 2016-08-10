@@ -14,13 +14,15 @@ getUnsignedRefundTx :: PaymentChannelState -> BitcoinAmount -> HT.Tx
 getUnsignedRefundTx st txFee = -- @CPaymentChannelState =
     let
         (baseTx,_) = getPaymentTxForSigning st 0 --create empty payment tx, which redeems funding tx
-        refundOut = HT.TxOut (toWord64 $ pcsChannelTotalValue st - txFee) (pcsClientChange st)
+        refundOut = HT.TxOut
+                (fromIntegral . toInteger $ pcsChannelTotalValue st - txFee)
+                (pcsClientChangeScriptPubKey st)
         txInput0 = head $ HT.txIn baseTx
     in
         baseTx {
             HT.txOut = [refundOut],
-            -- lockTime of refund tx must be equal to or greater than lockTime
-            -- in channel redeemScript
+            -- lockTime of refund tx must be greater than or equal to the lockTime
+            -- in the channel redeemScript
             HT.txLockTime = toWord32 (pcsLockTime st),
             -- if the sequence field equals maxBound (0xffffffff),
             -- lockTime features are disabled, so we set it to that minus one

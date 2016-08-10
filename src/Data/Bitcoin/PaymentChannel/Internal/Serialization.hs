@@ -6,7 +6,7 @@ module Data.Bitcoin.PaymentChannel.Internal.Serialization where
 
 import           Data.Bitcoin.PaymentChannel.Internal.Types
 import           Data.Bitcoin.PaymentChannel.Internal.Util
-                            (BitcoinAmount(..), toWord64, deserEither, toHexString,
+                            (deserEither, toHexString,
                              parseBitcoinLocktime, BitcoinLockTime(..), toWord32)
 
 import           Data.Aeson (Value(Number), FromJSON(..), ToJSON(..),
@@ -50,7 +50,7 @@ instance FromJSON Payment where
 
 instance ToJSON BitcoinAmount where
     toJSON amt = Number $ scientific
-        (fromIntegral $ toWord64 amt) 0
+        (fromIntegral $ toInteger amt) 0
 
 instance FromJSON BitcoinAmount where
     parseJSON = withScientific "BitcoinAmount" $
@@ -113,8 +113,8 @@ instance Show Payment where
 
     -- Needed to convert from Scientific
 instance Bounded BitcoinAmount where
-    minBound = CMoneyAmount 0
-    maxBound = CMoneyAmount $ round $ 21e6 * 1e8
+    minBound = BitcoinAmount 0
+    maxBound = BitcoinAmount $ round $ 21e6 * 1e8
 
 
 --- Util
@@ -138,7 +138,7 @@ txtB64Decode = either fail return . b64Decode . encodeUtf8
 parseJSONInt :: Scientific -> Parser Integer
 parseJSONInt s =
     case toBoundedInteger s of
-        Just (CMoneyAmount i) -> return i
+        Just (BitcoinAmount i) -> return i
         Nothing -> fail $ "failed to decode JSON number to integer. data: " ++ show s
 
 parseJSONWord :: Scientific -> Parser Word64
