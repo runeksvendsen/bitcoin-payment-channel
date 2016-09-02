@@ -28,8 +28,7 @@ usesBlockHeight,
 -- Util
 b64Encode,
 -- Constants
-dUST_LIMIT,
-mIN_CHANNEL_SIZE
+defaultDustLimit,
 )
 where
 
@@ -38,7 +37,7 @@ import Data.Bitcoin.PaymentChannel.Internal.Types
      PaymentChannelState(..), Payment(..)
     ,FundingTxInfo(..), ChannelParameters(..),
     PaymentSignature(..), SendPubKey(..), RecvPubKey(..), IsPubKey(..),
-    dUST_LIMIT, mIN_CHANNEL_SIZE)
+    defaultDustLimit)
 import Data.Bitcoin.PaymentChannel.Internal.Serialization
 --     ()
 import Data.Bitcoin.PaymentChannel.Internal.Util
@@ -72,23 +71,15 @@ class PaymentChannel a where
 
     getChannelID       = S.pcsChannelID . getChannelState
     getExpirationDate  = S.pcsExpirationDate . getChannelState
-
     channelValueLeft   = S.channelValueLeft . getChannelState
     channelIsExhausted = S.channelIsExhausted . getChannelState
     expiresBefore expDate chan = getExpirationDate chan < expDate
-
-
-    getNewestPayment pcs = case S.pcsGetPayment (getChannelState pcs) of
-            Just payment -> payment
-            Nothing      -> error "BUG: PaymentChannel interface shouldn't allow payment-less PaymentChannel"
+    getNewestPayment pcs = S.pcsGetPayment (getChannelState pcs)
 
 -- |State object for the value sender
 data SenderPaymentChannel = CSenderPaymentChannel {
     -- |Internal state object
     spcState     ::  PaymentChannelState,
-    -- |Used to sign payments from sender.
-    --  This function, when given a 'HC.Hash256', produces a signature that
-    --  verifies against 'cpSenderPubKey'.
     spcSignFunc  ::  HC.Hash256 -> HC.Signature
 }
 

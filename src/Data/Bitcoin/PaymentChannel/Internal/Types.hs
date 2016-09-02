@@ -9,7 +9,6 @@ module Data.Bitcoin.PaymentChannel.Internal.Types
 where
 
 import Data.Bitcoin.PaymentChannel.Internal.Util
-import Data.Bitcoin.PaymentChannel.Internal.Version
 import Data.Bitcoin.PaymentChannel.Internal.BitcoinAmount
 
 import qualified  Network.Haskoin.Transaction as HT
@@ -19,9 +18,8 @@ import            Data.Typeable
 import            Data.Word
 
 
-dUST_LIMIT = 700 :: BitcoinAmount
-mIN_CHANNEL_SIZE = dUST_LIMIT * 2
-pROTOCOL_VERSION = CVersion 2 0
+defaultDustLimit = 700 :: BitcoinAmount
+defaultMinChanSize = defaultDustLimit * 2
 
 newtype UnsignedPaymentTx = CUnsignedPaymentTx { unsignedTx :: HT.Tx } deriving Show
 type FinalTx = HT.Tx
@@ -32,13 +30,11 @@ data PaymentChannelState = CPaymentChannelState {
     pcsParameters           ::  ChannelParameters,
     -- |Retrieved by looking at the in-blockchain funding transaction
     pcsFundingTxInfo        ::  FundingTxInfo,
-
     pcsPaymentConfig        ::  PaymentTxConfig,
-    -- |Value left to send (starts at @ftiOutValue . pcsFundingTxInfo@)
+    -- |Value left to send (starts at @`-` dustLimit . ftiOutValue . pcsFundingTxInfo@)
     pcsValueLeft            ::  BitcoinAmount,
     -- |Signature over payment transaction of value 'pcsValueLeft'
-    --  unless no payment has been registered yet
-    pcsPaymentSignature     ::  Maybe PaymentSignature
+    pcsPaymentSignature     ::  PaymentSignature
 } deriving (Eq, Show, Typeable)
 
 -- |Defines channel: sender, receiver, and expiration date
@@ -46,7 +42,13 @@ data ChannelParameters = CChannelParameters {
     cpSenderPubKey      ::  SendPubKey,
     cpReceiverPubKey    ::  RecvPubKey,
     -- |Channel expiration date/time
-    cpLockTime          ::  BitcoinLockTime
+    cpLockTime          ::  BitcoinLockTime,
+    -- |Use a per-channel dust limit, such that when the remaining channel value
+    --  hits this limit (rather than zero), we say the channel is exhausted.
+    --  This avoids the relatively complex SigSingle/SigNone logic, and reduces
+    --  a payment to just a ANYONECANPAY|SigSingle signature with a corresponding
+    --  change output, which is set to the channel funding address.
+    cpDustLimit         ::  BitcoinAmount
 } deriving (Eq, Show, Typeable)
 
 -- |Holds information about the Bitcoin transaction used to fund

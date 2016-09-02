@@ -1,5 +1,5 @@
 name:                 bitcoin-payment-channel
-version:              0.2.2.0
+version:              0.3.0.0
 synopsis:             Library for working with Bitcoin payment channels
 description:
     A Bitcoin payment channel allows secure and instant transfer of bitcoins from one
@@ -33,23 +33,25 @@ source-repository head
 library
   exposed-modules:      Data.Bitcoin.PaymentChannel,
                         Data.Bitcoin.PaymentChannel.Types,
-                        Data.Bitcoin.PaymentChannel.Util
+                        Data.Bitcoin.PaymentChannel.Util,
+                        -- Exposed for testing purposes only
+                        Data.Bitcoin.PaymentChannel.Internal.State
 
   other-modules:
                         Data.Bitcoin.PaymentChannel.Internal.Error
                         Data.Bitcoin.PaymentChannel.Internal.BitcoinAmount,
                         Data.Bitcoin.PaymentChannel.Internal.Payment,
                         Data.Bitcoin.PaymentChannel.Internal.Refund,
-                        Data.Bitcoin.PaymentChannel.Internal.Script,
+                        Data.Bitcoin.PaymentChannel.Internal.Bitcoin.Script
+                        Data.Bitcoin.PaymentChannel.Internal.Bitcoin.Util,
+                        Data.Bitcoin.PaymentChannel.Internal.Bitcoin.LockTime,
                         Data.Bitcoin.PaymentChannel.Internal.Settlement,
-                        Data.Bitcoin.PaymentChannel.Internal.State,
                         Data.Bitcoin.PaymentChannel.Internal.Types,
                         Data.Bitcoin.PaymentChannel.Internal.Serialization,
-                        Data.Bitcoin.PaymentChannel.Internal.Util,
-                        Data.Bitcoin.PaymentChannel.Internal.Version
+                        Data.Bitcoin.PaymentChannel.Internal.Util
 
 
-  ghc-options:          -W
+  ghc-options:          -Werror -W
 
   build-depends:        base >= 4.7 && < 5,
                         haskoin-core >= 0.3.1 && < 1.0.0,

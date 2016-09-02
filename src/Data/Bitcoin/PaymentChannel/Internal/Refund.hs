@@ -2,7 +2,7 @@ module Data.Bitcoin.PaymentChannel.Internal.Refund where
 
 import Data.Bitcoin.PaymentChannel.Internal.Types
 import Data.Bitcoin.PaymentChannel.Internal.State
-import Data.Bitcoin.PaymentChannel.Internal.Script
+import Data.Bitcoin.PaymentChannel.Internal.Bitcoin.Script
 import Data.Bitcoin.PaymentChannel.Internal.Payment
 import Data.Bitcoin.PaymentChannel.Internal.Util
 
@@ -13,7 +13,7 @@ import qualified Network.Haskoin.Script as HS
 getUnsignedRefundTx :: PaymentChannelState -> BitcoinAmount -> HT.Tx
 getUnsignedRefundTx st txFee = -- @CPaymentChannelState =
     let
-        (baseTx,_) = getPaymentTxForSigning st 0 --create empty payment tx, which redeems funding tx
+        baseTx = toUnsignedBitcoinTx $ fromState st --create empty payment tx, which redeems funding tx
         refundOut = HT.TxOut
                 (fromIntegral . toInteger $ pcsChannelTotalValue st - txFee)
                 (pcsClientChangeScriptPubKey st)
@@ -24,8 +24,8 @@ getUnsignedRefundTx st txFee = -- @CPaymentChannelState =
             -- lockTime of refund tx must be greater than or equal to the lockTime
             -- in the channel redeemScript
             HT.txLockTime = toWord32 (pcsLockTime st),
-            -- if the sequence field equals maxBound (0xffffffff),
-            -- lockTime features are disabled, so we set it to that minus one
+            -- if the sequence field equals maxBound (0xffffffff)
+            -- lockTime features are disabled, so we subtract one
             HT.txIn = [ txInput0 { HT.txInSequence = maxBound-1 } ]
 }
 

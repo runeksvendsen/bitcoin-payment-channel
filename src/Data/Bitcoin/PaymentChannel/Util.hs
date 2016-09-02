@@ -13,8 +13,8 @@ module Data.Bitcoin.PaymentChannel.Util
 getFundingAddress,
 setSenderChangeAddress,
 
-serialize, serialize',
-BitcoinLockTime, parseBitcoinLocktime, toWord32, fromDate, deserEither,
+serialize, serialize',  deserEither,
+BitcoinLockTime, parseBitcoinLocktime, toWord32, fromDate,
 parseJSONInt,
 
 unsafeUpdateRecvState
@@ -22,14 +22,14 @@ unsafeUpdateRecvState
 where
 
 import Data.Bitcoin.PaymentChannel.Internal.Types
-    (PaymentChannelState(..), PaymentTxConfig(..),
+    (PaymentChannelState(..),
     Payment(..))
 -- import Data.Bitcoin.PaymentChannel.Internal.State
 --     (ptcSenderChangeAddress)
-import Data.Bitcoin.PaymentChannel.Internal.Script
+import Data.Bitcoin.PaymentChannel.Internal.Bitcoin.Script
     (getP2SHFundingAddress)
 import Data.Bitcoin.PaymentChannel.Internal.Util
-    (BitcoinLockTime, parseBitcoinLocktime, toWord32, fromDate, deserEither,
+    (parseBitcoinLocktime, toWord32, deserEither,
      serialize, serialize')
 import Data.Bitcoin.PaymentChannel.Internal.State
     (setClientChangeAddress)
@@ -46,6 +46,7 @@ import qualified Network.Haskoin.Crypto as HC
 --  The transaction which pays to this address is the channel funding transaction,
 --  and information about this transaction is contained in
 --  'FundingTxInfo'.
+getFundingAddress :: ChannelParameters -> HC.Address
 getFundingAddress = getP2SHFundingAddress
 
 -- |Set new value sender change address
@@ -58,5 +59,6 @@ setSenderChangeAddress pch addr =
 --  verified the signature, and it just needs to be stored.
 unsafeUpdateRecvState :: ReceiverPaymentChannel -> Payment -> ReceiverPaymentChannel
 unsafeUpdateRecvState (CReceiverPaymentChannel s) (CPayment val sig) =
-    CReceiverPaymentChannel $ s { pcsValueLeft = val, pcsPaymentSignature = Just sig}
+    CReceiverPaymentChannel $ s { pcsValueLeft = val, pcsPaymentSignature = sig}
+
 

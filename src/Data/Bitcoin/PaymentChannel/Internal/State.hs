@@ -15,6 +15,7 @@ pcsValueTransferred cs = pcsChannelTotalValue cs - pcsValueLeft cs
 pcsChannelValueLeft = pcsValueLeft
 pcsClientPubKey = cpSenderPubKey . pcsParameters
 pcsServerPubKey = cpReceiverPubKey . pcsParameters
+pcsDustLimit = cpDustLimit . pcsParameters
 pcsExpirationDate = cpLockTime . pcsParameters
 pcsClientChangeAddress = ptcSenderChangeAddress . pcsPaymentConfig
 pcsClientChangeScriptPubKey = addressToScriptPubKeyBS . pcsClientChangeAddress
@@ -24,8 +25,8 @@ pcsChannelID :: PaymentChannelState -> HT.OutPoint
 pcsChannelID pcs = HT.OutPoint (ftiHash fti) (ftiOutIndex fti)
     where fti = pcsFundingTxInfo pcs
 
-pcsGetPayment :: PaymentChannelState -> Maybe Payment
-pcsGetPayment (CPaymentChannelState _ _ _ val maybeSig) = CPayment val <$> maybeSig
+pcsGetPayment :: PaymentChannelState -> Payment
+pcsGetPayment (CPaymentChannelState _ _ _ val sig) = CPayment val sig
 
 -- |Set new client/sender change address.
 -- Use this function if the client wishes to change its change address.
@@ -36,43 +37,42 @@ setClientChangeAddress pcs@(CPaymentChannelState _ _ pConf _ _) addr =
     pcs { pcsPaymentConfig = newPayConf }
         where newPayConf = pConf { ptcSenderChangeAddress = addr }
 
--- |
+-- |We subtract the specified "dust" limit from the total available value,
+--  in order to avoid creating a Bitcoin transaction that won't circulate
+--  in the Bitcoin P2P network.
 channelValueLeft :: PaymentChannelState -> BitcoinAmount
-channelValueLeft pcs   =
-    if channelIsExhausted pcs then 0 else pcsValueLeft pcs
+channelValueLeft pcs@(CPaymentChannelState (CChannelParameters _ _ _ dustLimit) _ _ _ _)   =
+    pcsValueLeft pcs - dustLimit
 
 -- |Returns 'True' if all available channel value has been transferred, 'False' otherwise
 channelIsExhausted  :: PaymentChannelState -> Bool
 channelIsExhausted pcs =
-    case pcsPaymentSignature pcs of
-        Nothing -> False
-        -- Channel can be auto-closed when sender has given up all value
-        -- which requires a SigNone signature
-        Just paySig -> psSigHash paySig == HS.SigNone True
+    psSigHash (pcsPaymentSignature pcs) == HS.SigNone True ||
+        channelValueLeft pcs == 0
 
-newPaymentChannelState channelParameters fundingTxInfo paymentConfig =
+newPaymentChannelState channelParameters fundingTxInfo paymentConfig paySig =
     CPaymentChannelState {
         pcsParameters           = channelParameters,
         pcsFundingTxInfo        = fundingTxInfo,
         pcsPaymentConfig        = paymentConfig,
         pcsValueLeft            = ftiOutValue fundingTxInfo,
-        pcsPaymentSignature     = Nothing
+        pcsPaymentSignature     = paySig
     }
 
--- |Update state with verified payment
+-- |Update state with verified payment. Check value (including dust limit).
 updatePaymentChannelState  ::
     PaymentChannelState
     -> Payment
     -> Either PayChanError PaymentChannelState
-updatePaymentChannelState pcs@(CPaymentChannelState par fun pconf oldSenderVal oldSig)
-    payment@(CPayment newSenderVal newSig)
+updatePaymentChannelState (CPaymentChannelState cp fun pconf oldSenderVal _)
+    payment@(CPayment newSenderVal _)
         | newSenderVal <= oldSenderVal =
-            fmap (Just . cpSignature) (checkDustLimit payment) >>=
-                return . (CPaymentChannelState par fun pconf newSenderVal) -- (Just newSig)
+            CPaymentChannelState cp fun pconf newSenderVal . cpSignature <$>
+                checkDustLimit cp payment
         | otherwise = Left $ BadPaymentValue (newSenderVal - oldSenderVal)
 
-checkDustLimit :: Payment -> Either PayChanError Payment
-checkDustLimit payment@(CPayment senderChangeVal sig)
-    | senderChangeVal < dUST_LIMIT =
-        if psSigHash sig /= HS.SigNone True then Left DustOutput else Right payment
+checkDustLimit :: ChannelParameters -> Payment -> Either PayChanError Payment
+checkDustLimit (CChannelParameters _ _ _ dustLimit) payment@(CPayment senderChangeVal _)
+    | senderChangeVal < dustLimit =
+        Left DustOutput
     | otherwise = Right payment

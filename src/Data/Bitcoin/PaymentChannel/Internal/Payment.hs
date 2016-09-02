@@ -2,93 +2,114 @@
 module Data.Bitcoin.PaymentChannel.Internal.Payment where
 
 import Data.Bitcoin.PaymentChannel.Internal.Types
-import Data.Bitcoin.PaymentChannel.Internal.State
-import Data.Bitcoin.PaymentChannel.Internal.Script
+import Data.Bitcoin.PaymentChannel.Internal.Bitcoin.Script
 import Data.Bitcoin.PaymentChannel.Internal.Util
-import Data.Bitcoin.PaymentChannel.Internal.Error
 
 import qualified  Network.Haskoin.Transaction as HT
-import qualified  Network.Haskoin.Internals as HI
 import qualified  Network.Haskoin.Crypto as HC
 import qualified  Network.Haskoin.Script as HS
-import Data.Word (Word32, Word64, Word8)
-import Data.Maybe (fromJust, isJust)
 import qualified Data.ByteString as B
 
----Payment Tx builer---
-buildEmptyPaymentTx :: FundingTxInfo -> HT.Tx
-buildEmptyPaymentTx (CFundingTxInfo hash idx _) =
-    HT.Tx 1 --version 1
-    -- Redeems payment channel output from blockchain Tx
-    [HT.TxIn
-        (HT.OutPoint hash idx)
-        B.empty
-        maxBound]
-    [] --no outputs
-    0 --lockTime 0
 
-paymentTxAddOutput :: HT.TxOut -> HT.Tx -> (HT.Tx, HS.SigHash)
-paymentTxAddOutput addOut tx@(HT.Tx _ _ outs _)
-    | HT.outValue addOut >= fromIntegral dUST_LIMIT =
-        (tx { HT.txOut = outs ++ [addOut] }, HS.SigSingle True)
-    | otherwise =
-        (tx, HS.SigNone True)
----Payment Tx builer---
+-- |Represents a P2SH ANYONECANPAY input/output pair from a payment channel.
+--  This input/output pair can be added to any transaction, as long as the
+--  input and corresponding output are at the same index number
+--  (and tx version and lockTime match as well).
+data UnsignedPayment = UnsignedPayment
+  {  fundingOutPoint    :: HT.OutPoint
+  ,  outPointValue      :: BitcoinAmount
+  ,  redeemScript       :: HS.Script
+  ,  changeAddress      :: HC.Address
+  ,  changeValue        :: BitcoinAmount
+  }
 
+fromState :: PaymentChannelState -> UnsignedPayment
+fromState (CPaymentChannelState cp (CFundingTxInfo hash idx val)
+          (CPaymentTxConfig changeAddr) changeValue _) =
+    UnsignedPayment (HT.OutPoint hash idx) val (getRedeemScript cp) changeAddr changeValue
 
-getPaymentTxForSigning ::
+toUnsignedBitcoinTx :: UnsignedPayment -> HT.Tx
+toUnsignedBitcoinTx (UnsignedPayment fundingOutPoint _ _ changeAddr changeVal) =
+    HT.Tx
+        1 --version 1
+        -- Redeems payment channel output from blockchain Tx
+        [HT.TxIn
+            fundingOutPoint
+            B.empty
+            maxBound]
+        [senderOut] -- change output
+        0 --lockTime 0
+    where senderOut = HT.TxOut
+            (fromIntegral . toInteger $ changeVal)
+            (addressToScriptPubKeyBS changeAddr)
+
+getHashForSigning :: UnsignedPayment -> HS.SigHash -> HC.Hash256
+getHashForSigning up@(UnsignedPayment _ _ redeemScript _ _) =
+    HS.txSigHash
+        (toUnsignedBitcoinTx up)
+        redeemScript
+        0 -- In the tx we construct using 'toUnsignedBitcoinTx',
+          --  the input in question is always at index 0
+
+---Payment create/verify---
+-- |Create payment, from state. No check of value is performed.
+paymentFromState ::
     PaymentChannelState
-    -> BitcoinAmount      -- ^New sender value (newValueLeft)
-    -> (HT.Tx, HS.SigHash)
-getPaymentTxForSigning st@(CPaymentChannelState _ fti
-    (CPaymentTxConfig sendAddr) chanValLeft _) newValueLeft =
-        paymentTxAddOutput senderOut $ buildEmptyPaymentTx fti
-            where senderOut = HT.TxOut (fromIntegral . toInteger $ newValueLeft) (addressToScriptPubKeyBS sendAddr)
-
-getPaymentTxHashForSigning ::
-    PaymentChannelState
-    -> BitcoinAmount -- ^New sender value (newValueLeft)
-    -> (HC.Hash256, HS.SigHash)  -- ^Hash of payment transaction with a single output paying to senderPK
-getPaymentTxHashForSigning st@(CPaymentChannelState cp _ _ _ _) newValueLeft =
-        (HS.txSigHash tx (getRedeemScript cp) 0 sigHash, sigHash)
-            where (tx,sigHash) = getPaymentTxForSigning st newValueLeft
-
----Payment build/verify---
-verifyPaymentSig ::
-    PaymentChannelState
-    -> Payment
-    -> (HC.Hash256 -> SendPubKey -> HC.Signature -> Bool)
-    -> Bool
-verifyPaymentSig pcs
-    (CPayment newSenderVal (CPaymentSignature sig sigHash)) verifyFunc =
-        let (hash,_) = case sigHash of --SigHash in signature overrides newSenderVal
-                HS.SigSingle True   -> getPaymentTxHashForSigning pcs newSenderVal
-                --sender has relinquished remaining channel value
-                HS.SigNone   True   -> getPaymentTxHashForSigning pcs 0
-                unknownSigHash      -> (dummyHash256,sigHash) --will fail verification
-        in
-            verifyFunc hash (pcsClientPubKey pcs) sig
-
-createPayment ::
-    PaymentChannelState
-    -> BitcoinAmount -- ^ newSenderVal
+    -> BitcoinAmount                -- ^ sender change value (subtract 'n' from current sender change value to get payment of value 'n')
     -> (HC.Hash256 -> HC.Signature) -- ^ signing function
     -> Payment
-createPayment pcs@(CPaymentChannelState _ _ _ currSenderVal _)
-    newSenderVal signFunc =
+paymentFromState (CPaymentChannelState cp fti (CPaymentTxConfig changeAddr) _ _) =
+    createPayment cp fti changeAddr
+
+-- |Create payment, pure.
+createPayment ::
+    ChannelParameters
+    -> FundingTxInfo
+    -> HC.Address
+    -> BitcoinAmount -- ^ sender change value (subtract 'n' from current sender change value to get payment of value 'n')
+    -> (HC.Hash256 -> HC.Signature) -- ^ signing function
+    -> Payment
+createPayment cp (CFundingTxInfo hash idx val) changeAddr changeVal signFunc =
     let
-        (hash,sigHash) = getPaymentTxHashForSigning pcs newSenderVal
-        sig = signFunc hash
-        pSig = CPaymentSignature sig sigHash
+        payProxy = UnsignedPayment
+                (HT.OutPoint hash idx) val (getRedeemScript cp)
+                changeAddr changeVal
+        sigHash = if changeVal /= 0 then HS.SigSingle True else HS.SigNone True
+        hashToSign = getHashForSigning payProxy sigHash
+        sig = signFunc hashToSign
     in
-        case sigHash of
-            HS.SigSingle    _ -> CPayment newSenderVal pSig
-            --sender has reliquished the remaining channel value,
-            -- due to it being below the "dust" limit.
-            HS.SigNone      _ -> CPayment 0 pSig
-            _                 -> error
-                "BUG: unsupported SigHash created by 'getPaymentTxHashForSigning'"
----Payment build/verify---
+        CPayment changeVal (CPaymentSignature sig sigHash)
+
+verifyPaymentSig ::
+    ChannelParameters
+    -> FundingTxInfo
+    -> HC.Address
+    -> SendPubKey
+    -> (HC.Hash256 -> SendPubKey -> HC.Signature -> Bool)
+    -> Payment
+    -> Bool
+verifyPaymentSig cp (CFundingTxInfo fundTxId idx val) changeAddr sendPK verifyFunc
+    (CPayment newSenderVal (CPaymentSignature sig sigHash)) =
+        let
+            payProxy = UnsignedPayment
+                    (HT.OutPoint fundTxId idx) val (getRedeemScript cp)
+                     changeAddr newSenderVal
+            hash = case sigHash of
+                HS.SigSingle True   -> getHashForSigning payProxy sigHash
+                --sender has relinquished remaining channel value
+                HS.SigNone   True   -> getHashForSigning payProxy sigHash
+                _                   -> dummyHash256 --will fail verification
+        in
+            verifyFunc hash sendPK sig
+
+verifyPaymentSigFromState ::
+    PaymentChannelState
+    -> (HC.Hash256 -> SendPubKey -> HC.Signature -> Bool)
+    -> Payment
+    -> Bool
+verifyPaymentSigFromState (CPaymentChannelState cp fti (CPaymentTxConfig changeAddr) _ _) =
+    verifyPaymentSig cp fti changeAddr (cpSenderPubKey cp)
+---Payment create/verify---
 
 
 

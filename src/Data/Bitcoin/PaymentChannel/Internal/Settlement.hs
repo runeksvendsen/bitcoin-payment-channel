@@ -2,56 +2,85 @@ module Data.Bitcoin.PaymentChannel.Internal.Settlement where
 
 import Data.Bitcoin.PaymentChannel.Internal.Types
 import Data.Bitcoin.PaymentChannel.Internal.Payment
-import Data.Bitcoin.PaymentChannel.Internal.State
-import Data.Bitcoin.PaymentChannel.Internal.Script
+import Data.Bitcoin.PaymentChannel.Internal.Bitcoin.Script
+import Data.Bitcoin.PaymentChannel.Internal.Bitcoin.Util
 import Data.Bitcoin.PaymentChannel.Internal.Util
-import Data.Bitcoin.PaymentChannel.Internal.Error
 
 import qualified  Network.Haskoin.Transaction as HT
-import qualified  Network.Haskoin.Internals as HI
 import qualified  Network.Haskoin.Crypto as HC
 import qualified  Network.Haskoin.Script as HS
 
+-- |Sign everything, and do not allow additional inputs to be added afterwards.
+serverSigHash = HS.SigAll False
 
-getSettlementTxForSigning ::
-    PaymentChannelState
-    -> HC.Address
-    -> BitcoinAmount -- ^Bitcoin transaction fee for final payment transaction
-    -> (HT.Tx, HS.SigHash) -- ^ Transaction plus valueReceiver SigHash
-getSettlementTxForSigning st@(CPaymentChannelState _ fti@(CFundingTxInfo _ _ channelTotalValue)
-    _ senderVal (Just (CPaymentSignature sig sigHash))) recvAddr txFee =
-        let
-            (baseTx,_) = getPaymentTxForSigning st senderVal
-            adjTx = if sigHash == HS.SigNone True then removeOutputs baseTx else baseTx
-            receiverAmount = channelTotalValue - senderVal - txFee -- may be less than zero
-            recvOut = HT.TxOut (fromIntegral . toInteger $ receiverAmount) (addressToScriptPubKeyBS recvAddr)
-        in
-            paymentTxAddOutput recvOut adjTx
-getSettlementTxForSigning _ _ _ = error "no payment sig available"
+-- |Contains data, except receiver signature, to construct a transaction.
+data ClientSignedPayment = ClientSignedPayment
+  {  funds      :: UnsignedPayment
+  ,  clientSig  :: PaymentSignature
+  }
+
+csFromState :: PaymentChannelState -> ClientSignedPayment
+csFromState cs@(CPaymentChannelState _ _ _ _ clientSig) =
+    ClientSignedPayment (fromState cs) clientSig
+
+toUnsignedSettlementTx :: ClientSignedPayment -> HC.Address -> BitcoinAmount -> HT.Tx
+toUnsignedSettlementTx
+        (ClientSignedPayment
+            unsignedPayment@(UnsignedPayment _ valueAvailable _ _ senderVal)
+        (CPaymentSignature _ sigHash) ) recvAddr txFee =
+    let
+        baseTx = toUnsignedBitcoinTx unsignedPayment
+        adjustedTx = if sigHash == HS.SigNone True then removeOutputs baseTx else baseTx
+        -- TODO: check dust?
+        receiverAmount = valueAvailable - senderVal - txFee
+        recvOut = HT.TxOut
+                (fromIntegral . toInteger $ receiverAmount)
+                (addressToScriptPubKeyBS recvAddr)
+    in
+        appendOutput adjustedTx recvOut
 
 getSettlementTxHashForSigning ::
-    PaymentChannelState
-    -> HC.Address
+    ClientSignedPayment
+    -> ChannelParameters
+    -> FundingTxInfo
+    -> HC.Address    -- ^Receiver destination address
     -> BitcoinAmount -- ^Bitcoin transaction fee
     -> HC.Hash256
-getSettlementTxHashForSigning pcs@(CPaymentChannelState cp _ _ _ _) recvAddr txFee =
-    HS.txSigHash tx (getRedeemScript cp) 0 sigHash
-        where (tx,sigHash) = getSettlementTxForSigning pcs recvAddr txFee
+getSettlementTxHashForSigning csPayment cp fti recvAddr txFee =
+    HS.txSigHash tx (getRedeemScript cp) 0 serverSigHash
+        where tx = toUnsignedSettlementTx csPayment fti recvAddr txFee
+
+settlementSigningTxHashFromState ::
+    PaymentChannelState
+    -> HC.Address    -- ^Receiver destination address
+    -> BitcoinAmount -- ^Bitcoin transaction fee
+    -> HC.Hash256
+settlementSigningTxHashFromState cs@(CPaymentChannelState cp fti _ _ _) =
+    getSettlementTxHashForSigning (csFromState cs) cp fti
 
 getSignedSettlementTx ::
-    PaymentChannelState
-    -> HC.Address       -- ^Receiver/server change address
+    ClientSignedPayment
+    -> ChannelParameters
+    -> FundingTxInfo
+    -> HC.Address       -- ^Receiver/server funds destination address
     -> BitcoinAmount    -- ^Bitcoin tx fee
     -> HC.Signature     -- ^Signature over 'getSettlementTxHashForSigning' which verifies against serverPubKey
-    -> Maybe FinalTx
-getSignedSettlementTx pcs@(CPaymentChannelState
-    cp@(CChannelParameters senderPK rcvrPK lt) _ _ _ (Just clientSig)) recvAddr txFee serverRawSig =
+    -> HT.Tx
+getSignedSettlementTx csPayment@(ClientSignedPayment _ clientSig)
+                      cp fti recvAddr txFee serverRawSig =
         let
-            (tx,recvSigHash) = getSettlementTxForSigning pcs recvAddr txFee
-            serverSig = CPaymentSignature serverRawSig recvSigHash
+            unsignedTx = toUnsignedSettlementTx csPayment fti recvAddr txFee
+            serverSig = CPaymentSignature serverRawSig serverSigHash
             inputScript = getInputScript cp $ paymentTxScriptSig clientSig serverSig
         in
-            Just $ replaceScriptInput (serialize inputScript) tx
-getSignedSettlementTx (CPaymentChannelState _ _ _ _ Nothing) _ _ _ = Nothing
+            replaceScriptInput (serialize inputScript) unsignedTx
 
-
+signedSettlementTxFromState ::
+    PaymentChannelState
+    -> (HC.Hash256 -> HC.Signature) -- ^ Server/receiver's signing function. Produces a signature which verifies against 'cpReceiverPubKey'
+    -> HC.Address       -- ^Receiver/server funds destination address
+    -> BitcoinAmount    -- ^Bitcoin tx fee
+    -> HT.Tx
+signedSettlementTxFromState cs@(CPaymentChannelState cp fti _ _ _) signFunc recvAddr txFee =
+    getSignedSettlementTx (csFromState cs) cp fti serverSig recvAddr txFee
+        where serverSig = signFunc (settlementSigningTxHashFromState cs recvAddr txFee)

@@ -14,7 +14,7 @@ import           Data.Aeson (Value(Number), FromJSON(..), ToJSON(..),
 import           Data.Aeson.Types (Parser)
 import           Data.Scientific (Scientific, scientific, toBoundedInteger)
 import           Data.Text.Encoding       (decodeLatin1, encodeUtf8)
-import           Data.ByteString.Lazy (toStrict, fromStrict)
+import           Data.ByteString.Lazy (toStrict)
 import qualified Data.Binary as Bin
 import qualified Data.Binary.Put as BinPut
 import qualified Data.Binary.Get as BinGet
@@ -68,22 +68,19 @@ deriving instance Bin.Binary SendPubKey
 deriving instance Bin.Binary RecvPubKey
 
 instance Bin.Binary PaymentChannelState where
-    put (CPaymentChannelState par fti payConf valLeft (Just sig)) =
+    put (CPaymentChannelState par fti payConf valLeft sig) =
         Bin.put par >> Bin.put fti >> Bin.put payConf >> Bin.put valLeft
-        >> BinPut.putWord8 1 >> Bin.put sig
-    put (CPaymentChannelState par fti payConf valLeft Nothing) =
-            Bin.put par >> Bin.put fti >> Bin.put payConf >> Bin.put valLeft
-            >> BinPut.putWord8 0
+        >> BinPut.putWord8 1 >> Bin.put sig -- Keep the 0x01 Word8 for format backwards compatibility
     get = CPaymentChannelState <$> Bin.get <*> Bin.get <*>
         Bin.get <*> Bin.get <*> (BinGet.getWord8 >>=
         \w -> case w of
-            1 -> fmap Just Bin.get
-            _ -> return Nothing)
+            1 -> Bin.get
+            _ -> error "empty PaymentChannelState no longer supported")
 
 instance Bin.Binary ChannelParameters where
-    put (CChannelParameters pks pkr lt) =
-        Bin.put pks >> Bin.put pkr >> Bin.put lt
-    get = CChannelParameters <$> Bin.get <*> Bin.get <*> Bin.get
+    put (CChannelParameters pks pkr lt dustLimit) =
+        Bin.put pks >> Bin.put pkr >> Bin.put lt >> Bin.put dustLimit
+    get = CChannelParameters <$> Bin.get <*> Bin.get <*> Bin.get <*> Bin.get
 
 instance Bin.Binary FundingTxInfo where
     put (CFundingTxInfo h idx val) =
@@ -100,8 +97,8 @@ instance Bin.Binary Payment where
     get = CPayment <$> Bin.get <*> Bin.get
 
 instance Bin.Binary PaymentSignature where
-    put ps = Bin.put (psSig ps)
-        >> Bin.put (psSigHash ps)
+    put ps = Bin.put (psSig ps) >>
+        Bin.put (psSigHash ps)
     get = CPaymentSignature <$> Bin.get <*> Bin.get
 
 
