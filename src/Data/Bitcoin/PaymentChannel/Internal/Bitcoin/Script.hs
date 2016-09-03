@@ -3,7 +3,7 @@
 module Data.Bitcoin.PaymentChannel.Internal.Bitcoin.Script where
 
 import Data.Bitcoin.PaymentChannel.Internal.Types
-import Data.Bitcoin.PaymentChannel.Internal.Serialization
+import Data.Bitcoin.PaymentChannel.Internal.Serialization   ()
 import Data.Bitcoin.PaymentChannel.Internal.Util
 
 import qualified  Network.Haskoin.Internals as HI
@@ -12,31 +12,39 @@ import Network.Haskoin.Script
     (Script(..), SigHash(..), ScriptOp(..), opPushData)
 
 import qualified Data.ByteString as B
-import Data.Word
 
 valReceiverSigHash = SigAll True
 
--- |Generates OP_CHECKLOCKTIMEVERIFY redeemScript
-paymentChannelRedeemScript :: SendPubKey -> RecvPubKey -> Word32 -> Script
-paymentChannelRedeemScript clientPK serverPK lockTime = Script
-     [OP_IF,
-         opPushData $ serialize (getPubKey serverPK), OP_CHECKSIGVERIFY,
-     OP_ELSE,
-         encodeScriptInt lockTime, op_CHECKLOCKTIMEVERIFY, OP_DROP,
-     OP_ENDIF,
-     opPushData $ serialize (getPubKey clientPK), OP_CHECKSIG]
-         where encodeScriptInt i = opPushData $ B.pack $ HI.encodeInt (fromIntegral i)
-            -- Note: HI.encodeInt encodes values up to and including 2^31-1 as 4 bytes
-            --      and values 2^31 through 2^32-1 (upper limit) as 5 bytes.
+-- |Generates OP_CHECKLOCKTIMEVERIFY redeemScript, which can be redeemed in two ways:
+--  1) by providing a signature from both server and client
+--  2) after the date specified by lockTime: by providing only a client signature
+paymentChannelRedeemScript :: SendPubKey -> RecvPubKey -> BitcoinLockTime -> Script
+paymentChannelRedeemScript clientPK serverPK lockTime =
+    let
+        -- Note: HI.encodeInt encodes values up to and including 2^31-1 as 4 bytes
+        --      and values 2^31 through 2^32-1 (upper limit) as 5 bytes.
+        encodeScriptInt = B.pack . HI.encodeInt . fromIntegral . toWord32
+        serverPubKey    = getPubKey serverPK
+        clientPubKey    = getPubKey clientPK
+    in Script
+             [OP_IF,
+                 opPushData $ serialize serverPubKey, OP_CHECKSIGVERIFY,
+             OP_ELSE,
+                 opPushData $ encodeScriptInt lockTime, op_CHECKLOCKTIMEVERIFY, OP_DROP,
+             OP_ENDIF,
+             opPushData $ serialize clientPubKey, OP_CHECKSIG]
 
--- |scriptSig fulfilling a payment redeemScript
+
+
+-- |scriptSig fulfilling 'paymentChannelRedeemScript' using two signatures (client+server)
 paymentTxScriptSig :: PaymentSignature -> PaymentSignature -> Script --ScriptSig
 paymentTxScriptSig clientSig serverSig = Script
     [opPushData $ serialize clientSig, --sig including SigHash byte
     opPushData $ serialize serverSig, --sig including SigHash byte
     OP_1]   -- Signal that we want to provide both PubKeys
 
--- |scriptSig used for the valueSender refund transaction
+-- |scriptSig fulfilling 'paymentChannelRedeemScript' using a single signature (client)
+--  (not valid until specified lockTime)
 refundTxScriptSig :: HC.Signature -> Script
 refundTxScriptSig clientSig = Script
     [opPushData (B.append (serialize clientSig) hashTypeByte),
@@ -53,9 +61,9 @@ scriptToP2SHAddress = HC.ScriptAddress . HC.hash160 . HC.getHash256 . HC.hash256
 getP2SHFundingAddress :: ChannelParameters -> HC.Address
 getP2SHFundingAddress = scriptToP2SHAddress . getRedeemScript
 
-getRedeemScript :: ChannelParameters -> Script --RedeemScript
+getRedeemScript :: ChannelParameters -> Script
 getRedeemScript (CChannelParameters senderPK recvrPK lockTime _) =
-    paymentChannelRedeemScript senderPK recvrPK (toWord32 lockTime)
+    paymentChannelRedeemScript senderPK recvrPK lockTime
 
 getRedeemScriptBS :: ChannelParameters -> B.ByteString
 getRedeemScriptBS = serialize . getRedeemScript

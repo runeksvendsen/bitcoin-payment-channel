@@ -36,15 +36,14 @@ import Data.Bitcoin.PaymentChannel.Internal.Types
     (BitcoinAmount(..),
      PaymentChannelState(..), Payment(..)
     ,FundingTxInfo(..), ChannelParameters(..),
-    PaymentSignature(..), SendPubKey(..), RecvPubKey(..), IsPubKey(..),
-    defaultDustLimit)
+    SendPubKey(..), RecvPubKey(..), IsPubKey(..),
+    defaultDustLimit,
+    BitcoinLockTime(..), fromDate, usesBlockHeight)
 import Data.Bitcoin.PaymentChannel.Internal.Serialization
---     ()
-import Data.Bitcoin.PaymentChannel.Internal.Util
-    (BitcoinLockTime(..), fromDate, usesBlockHeight)
+
 import qualified Data.Bitcoin.PaymentChannel.Internal.State as S
 import Data.Bitcoin.PaymentChannel.Internal.Error (PayChanError(..))
--- import Data.Bitcoin.PaymentChannel.Internal.Types ()
+
 import qualified  Data.Binary as Bin
 import            Data.Aeson as JSON -- (FromJSON, ToJSON)
 import qualified  Network.Haskoin.Crypto as HC

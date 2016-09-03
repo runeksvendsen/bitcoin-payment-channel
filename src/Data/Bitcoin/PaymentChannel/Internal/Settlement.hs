@@ -42,34 +42,32 @@ toUnsignedSettlementTx
 getSettlementTxHashForSigning ::
     ClientSignedPayment
     -> ChannelParameters
-    -> FundingTxInfo
     -> HC.Address    -- ^Receiver destination address
     -> BitcoinAmount -- ^Bitcoin transaction fee
     -> HC.Hash256
-getSettlementTxHashForSigning csPayment cp fti recvAddr txFee =
+getSettlementTxHashForSigning csPayment cp recvAddr txFee =
     HS.txSigHash tx (getRedeemScript cp) 0 serverSigHash
-        where tx = toUnsignedSettlementTx csPayment fti recvAddr txFee
+        where tx = toUnsignedSettlementTx csPayment recvAddr txFee
 
 settlementSigningTxHashFromState ::
     PaymentChannelState
     -> HC.Address    -- ^Receiver destination address
     -> BitcoinAmount -- ^Bitcoin transaction fee
     -> HC.Hash256
-settlementSigningTxHashFromState cs@(CPaymentChannelState cp fti _ _ _) =
-    getSettlementTxHashForSigning (csFromState cs) cp fti
+settlementSigningTxHashFromState cs@(CPaymentChannelState cp _ _ _ _) =
+    getSettlementTxHashForSigning (csFromState cs) cp
 
 getSignedSettlementTx ::
     ClientSignedPayment
     -> ChannelParameters
-    -> FundingTxInfo
     -> HC.Address       -- ^Receiver/server funds destination address
     -> BitcoinAmount    -- ^Bitcoin tx fee
     -> HC.Signature     -- ^Signature over 'getSettlementTxHashForSigning' which verifies against serverPubKey
     -> HT.Tx
 getSignedSettlementTx csPayment@(ClientSignedPayment _ clientSig)
-                      cp fti recvAddr txFee serverRawSig =
+                      cp recvAddr txFee serverRawSig =
         let
-            unsignedTx = toUnsignedSettlementTx csPayment fti recvAddr txFee
+            unsignedTx = toUnsignedSettlementTx csPayment recvAddr txFee
             serverSig = CPaymentSignature serverRawSig serverSigHash
             inputScript = getInputScript cp $ paymentTxScriptSig clientSig serverSig
         in
@@ -81,6 +79,6 @@ signedSettlementTxFromState ::
     -> HC.Address       -- ^Receiver/server funds destination address
     -> BitcoinAmount    -- ^Bitcoin tx fee
     -> HT.Tx
-signedSettlementTxFromState cs@(CPaymentChannelState cp fti _ _ _) signFunc recvAddr txFee =
-    getSignedSettlementTx (csFromState cs) cp fti serverSig recvAddr txFee
+signedSettlementTxFromState cs@(CPaymentChannelState cp _ _ _ _) signFunc recvAddr txFee =
+    getSignedSettlementTx (csFromState cs) cp recvAddr txFee serverSig
         where serverSig = signFunc (settlementSigningTxHashFromState cs recvAddr txFee)

@@ -20,7 +20,6 @@ import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as BL
 import qualified Data.ByteString.Char8 as C
 import qualified Network.Haskoin.Transaction as HT
-import qualified Network.Haskoin.Script as HS
 import qualified Network.Haskoin.Crypto as HC
 
 
@@ -52,7 +51,7 @@ serialize = BL.toStrict . Bin.encode
 deserialize :: Bin.Binary a => B.ByteString -> a
 deserialize = Bin.decode . BL.fromStrict
 
-deserEither :: forall m a. (Typeable a, Bin.Binary a) => BL.ByteString -> Either String a
+deserEither :: forall a. (Typeable a, Bin.Binary a) => BL.ByteString -> Either String a
 deserEither bs = do
     let eitherRes = Bin.decodeOrFail bs
     case eitherRes of

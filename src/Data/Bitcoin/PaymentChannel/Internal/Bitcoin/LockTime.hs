@@ -14,7 +14,7 @@ import           Data.Time.Format ()    -- instance Show UTCTime
 data BitcoinLockTime =
     -- |A value of "n" represents the point in time at which Bitcoin block number "n" appears
     LockTimeBlockHeight Word32 |
-    -- |Specifies a point in time using a timestamp with 1-second accuraccy
+    -- |Specifies a point in time using a timestamp with 1-second accuracy
     LockTimeDate UTCTime deriving (Eq, Ord, Typeable)
 
 instance Show BitcoinLockTime where
