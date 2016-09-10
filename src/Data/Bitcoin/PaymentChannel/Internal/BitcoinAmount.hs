@@ -23,7 +23,7 @@ instance Show BitcoinAmount where
 
 instance Num BitcoinAmount where
     -- We leave multiplication of two money amounts as undefined
-    (BitcoinAmount _)  * (BitcoinAmount _)  = undefined
+    (BitcoinAmount a1) * (BitcoinAmount a2) = BitcoinAmount (fromIntegral . capToWord64 $ a1*a2)
     (BitcoinAmount a1) + (BitcoinAmount a2) = BitcoinAmount (fromIntegral . capToWord64 $ a1+a2)
     (BitcoinAmount a1) - (BitcoinAmount a2) = BitcoinAmount (fromIntegral . capToWord64 $ a1-a2)
     abs = id    -- Always positive
@@ -41,7 +41,8 @@ instance Real BitcoinAmount where
 instance Integral BitcoinAmount where
     toInteger (BitcoinAmount int) = int
     -- Dividing one money amounts by another doesn't make sense either
-    quotRem (BitcoinAmount _) (BitcoinAmount _) = undefined
+    quotRem (BitcoinAmount _) (BitcoinAmount _) =
+        error "Division of two BitcoinAmounts is undefined"
 
 -- | Convert to 'Word64', with zero as floor, (maxBound :: Word64) as ceiling
 capToWord64 :: Integer -> Word64

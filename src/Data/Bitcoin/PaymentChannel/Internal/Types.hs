@@ -20,7 +20,7 @@ import            Data.Word
 
 
 dUST_LIMIT = 700 :: BitcoinAmount
-mIN_CHANNEL_SIZE = dUST_LIMIT * 2
+mIN_CHANNEL_SIZE = 1400 :: BitcoinAmount
 pROTOCOL_VERSION = CVersion 2 0
 
 newtype UnsignedPaymentTx = CUnsignedPaymentTx { unsignedTx :: HT.Tx } deriving Show
