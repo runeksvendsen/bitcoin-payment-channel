@@ -12,9 +12,6 @@ import qualified Data.ByteString as B
 
 
 -- |Represents a P2SH ANYONECANPAY input/output pair from a payment channel.
---  This input/output pair can be added to any transaction, as long as the
---  input and corresponding output are at the same index number
---  (and tx version and lockTime match as well).
 data UnsignedPayment = UnsignedPayment
   {  fundingOutPoint    :: HT.OutPoint
   ,  outPointValue      :: BitcoinAmount
@@ -23,10 +20,18 @@ data UnsignedPayment = UnsignedPayment
   ,  changeValue        :: BitcoinAmount
   }
 
+-- |Contains ncessary data, except receiver signature, to construct a transaction.
+data ClientSignedPayment = ClientSignedPayment
+  {  funds      :: UnsignedPayment
+  ,  clientSig  :: PaymentSignature
+  }
+
 fromState :: PaymentChannelState -> UnsignedPayment
-fromState (CPaymentChannelState cp (CFundingTxInfo hash idx val)
+fromState (CPaymentChannelState cp (CFundingTxInfo hash idx fundingVal)
           (CPaymentTxConfig changeAddr) changeValue _) =
-    UnsignedPayment (HT.OutPoint hash idx) val (getRedeemScript cp) changeAddr changeValue
+    UnsignedPayment
+        (HT.OutPoint hash idx) fundingVal
+        (getRedeemScript cp)   changeAddr changeValue
 
 toUnsignedBitcoinTx :: UnsignedPayment -> HT.Tx
 toUnsignedBitcoinTx (UnsignedPayment fundingOutPoint _ _ changeAddr changeVal) =
@@ -68,17 +73,18 @@ createPayment ::
     -> HC.Address
     -> BitcoinAmount -- ^ sender change value (subtract 'n' from current sender change value to get payment of value 'n')
     -> (HC.Hash256 -> HC.Signature) -- ^ signing function
-    -> Payment
+    -> Payment --ClientSignedPayment
 createPayment cp (CFundingTxInfo hash idx val) changeAddr changeVal signFunc =
     let
-        payProxy = UnsignedPayment
+        unsignedPayment = UnsignedPayment
                 (HT.OutPoint hash idx) val (getRedeemScript cp)
                 changeAddr changeVal
         sigHash = if changeVal /= 0 then HS.SigSingle True else HS.SigNone True
-        hashToSign = getHashForSigning payProxy sigHash
+        hashToSign = getHashForSigning unsignedPayment sigHash
         sig = signFunc hashToSign
     in
         CPayment changeVal (CPaymentSignature sig sigHash)
+        -- ClientSignedPayment unsignedPayment (CPaymentSignature sig sigHash)
 
 verifyPaymentSig ::
     ChannelParameters

@@ -68,8 +68,8 @@ getRedeemScript (CChannelParameters senderPK recvrPK lockTime _) =
 getRedeemScriptBS :: ChannelParameters -> B.ByteString
 getRedeemScriptBS = serialize . getRedeemScript
 
-getInputScript :: ChannelParameters -> Script -> Script
-getInputScript cp scriptSig =
+getP2SHInputScript :: ChannelParameters -> Script -> Script
+getP2SHInputScript cp scriptSig =
     Script $ scriptOps scriptSig ++ redeemScript
         where
              redeemScript = [opPushData $ getRedeemScriptBS cp]

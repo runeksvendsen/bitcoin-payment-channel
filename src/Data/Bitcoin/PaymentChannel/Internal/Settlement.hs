@@ -13,12 +13,6 @@ import qualified  Network.Haskoin.Script as HS
 -- |Sign everything, and do not allow additional inputs to be added afterwards.
 serverSigHash = HS.SigAll False
 
--- |Contains data, except receiver signature, to construct a transaction.
-data ClientSignedPayment = ClientSignedPayment
-  {  funds      :: UnsignedPayment
-  ,  clientSig  :: PaymentSignature
-  }
-
 csFromState :: PaymentChannelState -> ClientSignedPayment
 csFromState cs@(CPaymentChannelState _ _ _ _ clientSig) =
     ClientSignedPayment (fromState cs) clientSig
@@ -69,7 +63,7 @@ getSignedSettlementTx csPayment@(ClientSignedPayment _ clientSig)
         let
             unsignedTx = toUnsignedSettlementTx csPayment recvAddr txFee
             serverSig = CPaymentSignature serverRawSig serverSigHash
-            inputScript = getInputScript cp $ paymentTxScriptSig clientSig serverSig
+            inputScript = getP2SHInputScript cp $ paymentTxScriptSig clientSig serverSig
         in
             replaceScriptInput (serialize inputScript) unsignedTx
 

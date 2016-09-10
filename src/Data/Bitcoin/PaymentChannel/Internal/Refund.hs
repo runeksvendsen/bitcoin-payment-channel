@@ -44,7 +44,7 @@ refundTxAddSignature ::
     -> FinalTx
 refundTxAddSignature pcs@(CPaymentChannelState cp _ _ _ _) txFee clientRawSig =
         let
-            inputScript = getInputScript cp $ refundTxScriptSig clientRawSig
+            inputScript = getP2SHInputScript cp $ refundTxScriptSig clientRawSig
         in
             replaceScriptInput (serialize inputScript) $ getUnsignedRefundTx pcs txFee
 
