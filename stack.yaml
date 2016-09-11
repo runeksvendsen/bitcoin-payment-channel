@@ -2,10 +2,15 @@ resolver: lts-6.4
 
 # haskoin dependencies
 extra-deps:
-- haskoin-core-0.3.1
-- murmur3-1.0.2
+- haskoin-core-0.4.0
+- murmur3-1.0.3
 - pbkdf-1.1.1.1
 - secp256k1-0.4.6
+
+#- haskoin-core-0.3.1
+#- murmur3-1.0.2
+#- pbkdf-1.1.1.1
+#- secp256k1-0.4.6
 
 flags: {}
 
