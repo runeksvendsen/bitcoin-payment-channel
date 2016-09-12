@@ -3,14 +3,14 @@
 module Data.Bitcoin.PaymentChannel.Internal.Types
 (
     module Data.Bitcoin.PaymentChannel.Internal.Types
-  , module Data.Bitcoin.PaymentChannel.Internal.BitcoinAmount
+  , module Data.Bitcoin.PaymentChannel.Internal.Bitcoin.Amount
   , module Data.Bitcoin.PaymentChannel.Internal.Bitcoin.LockTime
 )
 
 where
 
 import Data.Bitcoin.PaymentChannel.Internal.Util
-import Data.Bitcoin.PaymentChannel.Internal.BitcoinAmount
+import Data.Bitcoin.PaymentChannel.Internal.Bitcoin.Amount
 import Data.Bitcoin.PaymentChannel.Internal.Bitcoin.LockTime
 
 import qualified  Network.Haskoin.Transaction as HT
