@@ -9,15 +9,10 @@ import qualified Data.Bitcoin.PaymentChannel.Internal.State as S
 
 import qualified  Network.Haskoin.Transaction as HT
 import qualified  Network.Haskoin.Crypto as HC
--- import Network.Haskoin.Test.Crypto
-import Network.Haskoin.Test -- (ArbitraryHash256, ArbitraryTxHash(..))
-import Network.Haskoin.Constants
-import Data.Maybe
-import Control.Monad
+import            Network.Haskoin.Test
 
-import Test.QuickCheck -- (elements, Gen, arbitrary, Property, quickCheck, (==>))
-import Test.QuickCheck.Monadic -- (assert, monadicIO, pick, pre, run)
-import Debug.Trace
+import Test.QuickCheck
+
 
 dUST_LIMIT = 700 :: BitcoinAmount
 mIN_CHANNEL_SIZE = 1400 :: BitcoinAmount
@@ -27,22 +22,26 @@ testAddrLivenet = "14wjVnwHwMAXDr6h5Fw38shCWUB6RSEa63" :: HC.Address
 
 
 data ArbChannelPair = ArbChannelPair
-    SenderPaymentChannel ReceiverPaymentChannel [BitcoinAmount] (HC.Hash256 -> HC.Signature)
+    SenderPaymentChannel ReceiverPaymentChannel [BitcoinAmount] [BitcoinAmount] (HC.Hash256 -> HC.Signature)
 
 instance Show ArbChannelPair where
-    show (ArbChannelPair spc rpc _ _) =
+    show (ArbChannelPair spc rpc _ _ _) =
         "SendState: " ++ show spc ++ "\n" ++
         "RecvState: " ++ show rpc
 
 doPayment :: ArbChannelPair -> BitcoinAmount -> ArbChannelPair
-doPayment (ArbChannelPair spc rpc payList f) amount =
+doPayment (ArbChannelPair spc rpc sendList recvList f) amount =
     let
         (amountSent, pmn, newSpc) = sendPayment spc amount
         eitherRpc = recvPayment rpc pmn
     in
         case eitherRpc of
             Left e -> error (show e)
-            Right (rAmt, newRpc) -> ArbChannelPair newSpc newRpc (amountSent : payList) f
+            Right (recvAmount, newRpc) ->
+                ArbChannelPair newSpc newRpc
+                    (amountSent : sendList)
+                    (recvAmount : recvList)
+                    f
 
 instance Arbitrary ArbChannelPair where
     arbitrary = mkChanPair
@@ -58,8 +57,6 @@ mkChanPair = do
         fti <- arbitrary
         let cp = CChannelParameters
                 (MkSendPubKey sendPK) (MkRecvPubKey recvPK) lockTime dUST_LIMIT
-        -- total channel value
-        let chanAmount = fromIntegral $ ftiOutValue fti :: Integer
         -- value of first payment
         initPayAmount <- arbitrary -- fromIntegral <$> choose (0, chanAmount)
 
@@ -70,8 +67,9 @@ mkChanPair = do
 
         case eitherRecvChan of
             Left e -> error (show e)
-            Right (val,recvChan) -> return $ ArbChannelPair
-                    sendChan recvChan [initPayActualAmount] (flip HC.signMsg recvPriv)
+            Right (initRecvAmount,recvChan) -> return $ ArbChannelPair
+                    sendChan recvChan [initPayActualAmount] [initRecvAmount]
+                    (flip HC.signMsg recvPriv)
 
 instance Arbitrary BitcoinLockTime where
     arbitrary = fmap parseBitcoinLocktime arbitrary
@@ -93,16 +91,13 @@ runChanPair chanPair paymentAmountList =
     (foldl doPayment chanPair paymentAmountList, paymentAmountList)
 
 checkChanPair :: (ArbChannelPair, [BitcoinAmount]) -> Bool
-checkChanPair (ArbChannelPair sendChan recvChan amountList recvSignFunc, _) = do
+checkChanPair (ArbChannelPair sendChan recvChan amountSent amountRecvd recvSignFunc, _) = do
     let settleTx = getSettlementBitcoinTx recvChan recvSignFunc testAddrLivenet 0
-    let clientChangeAmount = case settleTx of
-            (HT.Tx _ _ (clientOut:_) _) ->
-                 HT.outValue clientOut
-            _ -> error "BUG: Bad settlement tx format"
+    let clientChangeAmount = HT.outValue . head . HT.txOut $ settleTx
     -- Check that the client change amount in the settlement transaction equals the
     --  channel funding amount minus the sum of all payment amounts.
     let fundAmountMinusPaySum = S.pcsChannelTotalValue (getChannelState recvChan) -
-            fromIntegral (sum amountList)
+            fromIntegral (sum amountSent)
     let clientValueIsGood = fromIntegral clientChangeAmount == fundAmountMinusPaySum :: Bool
     -- Debug print
     let checkGoodClientValue goodCV = if not goodCV then
@@ -112,7 +107,9 @@ checkChanPair (ArbChannelPair sendChan recvChan amountList recvSignFunc, _) = do
                 goodCV
     -- Check that sender/receiver (client/server) agree on channel state
     let statesMatch = getChannelState recvChan == getChannelState sendChan
-    checkGoodClientValue clientValueIsGood && statesMatch
+    -- Send/recv value lists match
+    let recvSendAmountMatch = amountSent == amountRecvd
+    checkGoodClientValue clientValueIsGood && statesMatch && recvSendAmountMatch
 
 
 testChanPair :: ArbChannelPair -> [BitcoinAmount] -> Bool

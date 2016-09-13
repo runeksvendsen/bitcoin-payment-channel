@@ -13,7 +13,7 @@ module Data.Bitcoin.PaymentChannel.Util
 getFundingAddress,
 setSenderChangeAddress,
 
-serialize, serialize',  deserEither,
+serialize, deserEither,
 BitcoinLockTime, parseBitcoinLocktime, toWord32, fromDate,
 parseJSONInt,
 
@@ -29,8 +29,7 @@ import Data.Bitcoin.PaymentChannel.Internal.Types
 import Data.Bitcoin.PaymentChannel.Internal.Bitcoin.Script
     (getP2SHFundingAddress)
 import Data.Bitcoin.PaymentChannel.Internal.Util
-    (parseBitcoinLocktime, toWord32, deserEither,
-     serialize, serialize')
+    (parseBitcoinLocktime, toWord32, deserEither, serialize)
 import Data.Bitcoin.PaymentChannel.Internal.State
     (setClientChangeAddress)
 import Data.Bitcoin.PaymentChannel.Internal.Serialization

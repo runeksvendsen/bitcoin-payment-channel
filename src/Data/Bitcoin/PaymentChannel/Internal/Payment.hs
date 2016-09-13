@@ -35,7 +35,7 @@ fromState (CPaymentChannelState cp (CFundingTxInfo hash idx fundingVal)
 
 toUnsignedBitcoinTx :: UnsignedPayment -> HT.Tx
 toUnsignedBitcoinTx (UnsignedPayment fundingOutPoint _ _ changeAddr changeVal) =
-    HT.Tx
+    HT.createTx
         1 --version 1
         -- Redeems payment channel output from blockchain Tx
         [HT.TxIn

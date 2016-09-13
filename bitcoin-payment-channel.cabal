@@ -51,8 +51,8 @@ library
 
   ghc-options:          -W
 
-  build-depends:        base >= 4.7 && < 5,
-                        haskoin-core        >= 0.3.1  && < 0.4.0,
+  build-depends:        base                >= 4.7    && < 5,
+                        haskoin-core        >= 0.4.0  && < 0.5.0,
                         base16-bytestring   >= 0.1.0  && < 0.2.0,
                         base64-bytestring   >= 1.0.0  && < 1.1.0,
                         binary              >= 0.7.0  && < 0.9.0,

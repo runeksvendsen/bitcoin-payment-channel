@@ -4,13 +4,14 @@
 module Data.Bitcoin.PaymentChannel.Internal.Bitcoin.Util where
 
 
-import qualified Data.Binary as Bin
+import qualified Data.Serialize as Ser
 import qualified Data.ByteString as B
-import qualified Data.ByteString.Lazy as BL
 import qualified Data.ByteString.Char8 as C
 import qualified Network.Haskoin.Transaction as HT
+import qualified Network.Haskoin.Util as HU
 import qualified Network.Haskoin.Script as HS
 import qualified Network.Haskoin.Crypto as HC
+import           Data.Word (Word32)
 
 
 -- | Converts a pay-to-pubkey-hash address string to Script.
@@ -36,21 +37,22 @@ addressToScript addr =
 addressToScriptPubKeyBS :: HC.Address -> B.ByteString
 addressToScriptPubKeyBS = HS.encodeOutputBS . addressToScript
 
-replaceScriptInput :: B.ByteString -> HT.Tx -> HT.Tx
-replaceScriptInput scriptIn (HT.Tx v (txIn:_) txOut lt)  =
-    HT.Tx v [newTxIn] txOut lt
-        where newTxIn = txIn { HT.scriptInput = scriptIn }
-replaceScriptInput _ (HT.Tx _ [] _ _) =
-    error "cannot replace scriptInput without any inputs"
+replaceScriptInput :: Word32 -> B.ByteString -> HT.Tx -> HT.Tx
+replaceScriptInput index scriptIn tx =
+    HT.createTx (HT.txVersion tx) newTxIns (HT.txOut tx) (HT.txLockTime tx)
+        where newTxIns = HU.updateIndex (fromIntegral index) (HT.txIn tx) replaceScriptIn
+              replaceScriptIn txIn = txIn { HT.scriptInput = scriptIn}
 
 removeOutputs :: HT.Tx -> HT.Tx
-removeOutputs tx = tx { HT.txOut = [] }
+removeOutputs tx =
+    HT.createTx (HT.txVersion tx) (HT.txIn tx) [] (HT.txLockTime tx)
 
 appendOutput :: HT.Tx -> HT.TxOut -> HT.Tx
-appendOutput tx@HT.Tx{ HT.txOut = oldOuts } txOut =
-    tx { HT.txOut = oldOuts ++ [txOut] }
+appendOutput tx txOut =
+    HT.createTx (HT.txVersion tx) (HT.txIn tx) ( oldOuts ++ [txOut] ) (HT.txLockTime tx)
+        where oldOuts = HT.txOut tx
 
 bitcoinPayPK :: HC.PubKey -> HS.Script
 bitcoinPayPK pk = HS.encodeOutput $ HS.PayPKHash $ HC.pubKeyAddr pk
 bitcoinPayPKBS = serialize . bitcoinPayPK
-    where serialize = BL.toStrict . Bin.encode
+    where serialize = Ser.encode

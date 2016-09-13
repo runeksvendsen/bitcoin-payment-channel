@@ -44,11 +44,11 @@ import Data.Bitcoin.PaymentChannel.Internal.Serialization
 import qualified Data.Bitcoin.PaymentChannel.Internal.State as S
 import Data.Bitcoin.PaymentChannel.Internal.Error (PayChanError(..))
 
-import qualified  Data.Binary as Bin
+import qualified  Data.Serialize as Bin
 import            Data.Aeson as JSON -- (FromJSON, ToJSON)
 import qualified  Network.Haskoin.Crypto as HC
 import qualified  Network.Haskoin.Transaction as HT
-import qualified  Network.Haskoin.Script as HS
+
 
 -- |Get various information about an open payment channel.
 class PaymentChannel a where
@@ -86,7 +86,7 @@ data SenderPaymentChannel = CSenderPaymentChannel {
 newtype ReceiverPaymentChannel = CReceiverPaymentChannel {
     -- |Internal state object
     rpcState        ::  PaymentChannelState
-} deriving (Eq, Bin.Binary, FromJSON, ToJSON)
+} deriving (Eq, Bin.Serialize, FromJSON, ToJSON)
 
 instance PaymentChannel SenderPaymentChannel where
     valueToMe = channelValueLeft

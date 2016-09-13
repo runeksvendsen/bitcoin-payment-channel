@@ -19,15 +19,16 @@ getUnsignedRefundTx st txFee = -- @CPaymentChannelState =
                 (pcsClientChangeScriptPubKey st)
         txInput0 = head $ HT.txIn baseTx
     in
-        baseTx {
-            HT.txOut = [refundOut],
-            -- lockTime of refund tx must be greater than or equal to the lockTime
-            -- in the channel redeemScript
-            HT.txLockTime = toWord32 (pcsLockTime st),
+        HT.createTx
+            (HT.txVersion baseTx)
             -- if the sequence field equals maxBound (0xffffffff)
             -- lockTime features are disabled, so we subtract one
-            HT.txIn = [ txInput0 { HT.txInSequence = maxBound-1 } ]
-}
+            [ txInput0 { HT.txInSequence = maxBound-1 } ]
+            [refundOut]
+            -- lockTime of refund tx must be greater than or equal to the lockTime
+            -- in the channel redeemScript
+            (toWord32 $ pcsLockTime st)
+
 
 getRefundTxHashForSigning ::
     PaymentChannelState
@@ -46,5 +47,5 @@ refundTxAddSignature pcs@(CPaymentChannelState cp _ _ _ _) txFee clientRawSig =
         let
             inputScript = getP2SHInputScript cp $ refundTxScriptSig clientRawSig
         in
-            replaceScriptInput (serialize inputScript) $ getUnsignedRefundTx pcs txFee
+            replaceScriptInput 0 (serialize inputScript) $ getUnsignedRefundTx pcs txFee
 

@@ -65,7 +65,7 @@ getSignedSettlementTx csPayment@(ClientSignedPayment _ clientSig)
             serverSig = CPaymentSignature serverRawSig serverSigHash
             inputScript = getP2SHInputScript cp $ paymentTxScriptSig clientSig serverSig
         in
-            replaceScriptInput (serialize inputScript) unsignedTx
+            replaceScriptInput 0 (serialize inputScript) unsignedTx
 
 signedSettlementTxFromState ::
     PaymentChannelState
