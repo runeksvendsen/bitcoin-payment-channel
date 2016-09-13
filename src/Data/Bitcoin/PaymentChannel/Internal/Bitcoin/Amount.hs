@@ -3,9 +3,6 @@ module Data.Bitcoin.PaymentChannel.Internal.Bitcoin.Amount where
 import qualified Data.Serialize     as Ser
 import qualified Data.Serialize.Put as SerPut
 import qualified Data.Serialize.Get as SerGet
-import qualified Data.Binary        as Bin
-import qualified Data.Binary.Put    as BinPut
-import qualified Data.Binary.Get    as BinGet
 import           Data.Word
 
 
@@ -48,10 +45,6 @@ capToWord64 i = fromIntegral $
     max 0 cappedValue
         where
             cappedValue = min i $ fromIntegral (maxBound :: Word64)
-
-instance Bin.Binary BitcoinAmount where
-    put = BinPut.putWord64le . fromIntegral . toInteger
-    get = BitcoinAmount . fromIntegral <$> BinGet.getWord64le
 
 instance Ser.Serialize BitcoinAmount where
     put = SerPut.putWord64le . fromIntegral . toInteger

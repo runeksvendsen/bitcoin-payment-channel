@@ -1,5 +1,5 @@
 name:                 bitcoin-payment-channel
-version:              0.3.0.0
+version:              0.3.0.1
 synopsis:             Library for working with Bitcoin payment channels
 description:
     A Bitcoin payment channel allows secure and instant transfer of bitcoins from one
@@ -55,7 +55,6 @@ library
                         haskoin-core        >= 0.4.0  && < 0.5.0,
                         base16-bytestring   >= 0.1.0  && < 0.2.0,
                         base64-bytestring   >= 1.0.0  && < 1.1.0,
-                        binary              >= 0.7.0  && < 0.9.0,
                         bytestring          >= 0.10.0 && < 0.11.0,
                         cereal              >= 0.5.0  && < 0.6.0,
                         errors              >= 2.0.0  && < 2.2.0,
@@ -74,12 +73,13 @@ executable Test
 
   ghc-options:          -W
 
-  build-depends:        base >= 4.7 && < 5,
-                        haskoin-core >= 0.3.0 && < 1.0.0,
-                        bytestring, base16-bytestring, base64-bytestring,
-                        base58string, hexstring, text,
+  build-depends:        base         >= 4.7   && < 5,
+                        haskoin-core >= 0.4.0 && < 1.0.0,
+                        bytestring,
+                        base16-bytestring, base64-bytestring,
+                        hexstring, text,
                         time,
-                        cereal, binary, aeson,
+                        cereal, aeson,
 
                         QuickCheck,
                         bitcoin-payment-channel
