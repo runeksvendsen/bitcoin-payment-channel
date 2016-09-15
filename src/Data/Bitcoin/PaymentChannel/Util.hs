@@ -10,7 +10,7 @@ Utility functions for "Data.Bitcoin.PaymentChannel".
 
 module Data.Bitcoin.PaymentChannel.Util
 (
-getFundingAddress,
+getFundingAddress,getRedeemScript,
 setSenderChangeAddress,
 
 serialize, deserEither,
@@ -27,7 +27,7 @@ import Data.Bitcoin.PaymentChannel.Internal.Types
 -- import Data.Bitcoin.PaymentChannel.Internal.State
 --     (ptcSenderChangeAddress)
 import Data.Bitcoin.PaymentChannel.Internal.Bitcoin.Script
-    (getP2SHFundingAddress)
+    (getP2SHFundingAddress, getRedeemScript)
 import Data.Bitcoin.PaymentChannel.Internal.Util
     (parseBitcoinLocktime, toWord32, deserEither, serialize)
 import Data.Bitcoin.PaymentChannel.Internal.State
