@@ -15,7 +15,7 @@ module Data.Bitcoin.PaymentChannel.Types
 PaymentChannel(..),
 SenderPaymentChannel(..),
 ReceiverPaymentChannel(..),
-Payment,
+Payment,cpSignature,
 FullPayment(..),
 FundingTxInfo(..),
 ChannelParameters(..),
