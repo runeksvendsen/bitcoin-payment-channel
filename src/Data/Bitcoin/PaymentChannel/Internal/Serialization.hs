@@ -79,7 +79,7 @@ parseFullPayment o = CFullPayment
                  o .: "funding_txid" <*>
                  o .: "funding_vout")
     <*>     (o .: "redeem_script" >>= deserHex)
-    <*>      o .: "change_addressT"
+    <*>      o .: "change_address"
 
 instance ToJSON BitcoinAmount where
     toJSON amt = Number $ scientific
