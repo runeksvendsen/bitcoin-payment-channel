@@ -129,8 +129,10 @@ jsonSerDeser :: (Show a, Eq a, JSON.FromJSON a, JSON.ToJSON a) => a -> Bool
 jsonSerDeser fp = maybe False checkEquals $
     (\bs -> cs bs `trace` JSON.decode bs) (JSON.encode fp)
         where checkEquals serDeserVal =
-                serDeserVal == fp ||
-                    error ("Ser/deser mismatch.\nOriginal: " ++ show fp ++ "\nCopy: " ++ show serDeserVal)
+                if serDeserVal /= fp then
+                        error ("Ser/deser mismatch.\nOriginal: " ++ show fp ++ "\nCopy: " ++ show serDeserVal)
+                    else
+                        True
 
 testPaymentJSON :: FullPayment -> Bool
 testPaymentJSON = jsonSerDeser

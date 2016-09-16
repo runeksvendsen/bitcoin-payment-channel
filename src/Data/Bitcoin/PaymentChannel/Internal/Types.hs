@@ -1,4 +1,4 @@
--- {-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE DeriveGeneric #-}
 
 module Data.Bitcoin.PaymentChannel.Internal.Types
 (
@@ -24,7 +24,7 @@ import qualified Network.Haskoin.Crypto as HC
 import qualified Network.Haskoin.Script as HS
 import           Data.Typeable
 import           Data.Word
-
+import           GHC.Generics
 
 defaultDustLimit = 700 :: BitcoinAmount
 defaultMinChanSize = defaultDustLimit * 2
@@ -43,7 +43,7 @@ data PaymentChannelState = CPaymentChannelState {
     pcsValueLeft            ::  BitcoinAmount,
     -- |Signature over payment transaction of value 'pcsValueLeft'
     pcsPaymentSignature     ::  PaymentSignature
-} deriving (Eq, Show, Typeable)
+} deriving (Eq, Show, Typeable, Generic)
 
 -- |Defines channel: sender, receiver, and expiration date
 data ChannelParameters = CChannelParameters {
@@ -79,7 +79,7 @@ data Payment = CPayment {
     cpClientChange :: BitcoinAmount
     -- |Payment signature
   , cpSignature    :: PaymentSignature
-} deriving (Eq, Typeable)
+} deriving (Eq, Typeable, Generic)
 
 -- |Contains all information required to construct the payment transaction
 data FullPayment = CFullPayment {
@@ -89,7 +89,7 @@ data FullPayment = CFullPayment {
   , fpRedeemScript :: HS.Script
     -- |Client change output address in the payment tx
   , fpChangeAddr   :: HC.Address
-} deriving (Eq, Typeable)
+} deriving (Eq, Typeable, Generic)
 
 -- |Contains payment signature plus sig hash flag byte
 data PaymentSignature = CPaymentSignature {
@@ -100,7 +100,7 @@ data PaymentSignature = CPaymentSignature {
     --  everything to the receiver. This is necessary so that no settling
     --  transaction containing an output below the "dust limit" is produced.
     ,psSigHash  ::  HS.SigHash
-} deriving (Eq, Show, Typeable)
+} deriving (Eq, Show, Typeable, Generic)
 
 
 -- Never confuse sender/receiver pubkey again: let compiler check

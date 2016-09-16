@@ -21,7 +21,7 @@ import qualified Data.Text as T
 import           Data.Word (Word64)
 import           Data.EitherR (fmapL)
 import           Data.Typeable
-
+import           Data.Monoid ((<>))
 
 
 --- JSON
@@ -38,26 +38,30 @@ instance FromJSON BitcoinLockTime where
     parseJSON = withScientific "BitcoinLockTime" $
         fmap (parseBitcoinLocktime . fromIntegral) . parseJSONInt
 
+instance ToJSON PaymentSignature
+instance ToJSON Signature where toJSON = String . serHex
+instance ToJSON Script where    toJSON = String . serHex
+
 instance ToJSON Payment where
-    toJSON (CPayment changeVal (CPaymentSignature sig flag)) =
-        object [
-            "change_value"      .= changeVal
-        ,   "signature_data"    .= serHex sig
-        ,   "sighash_flag"      .= serHex flag
-        ]
+    toEncoding = pairs . toJSONObject
+
+toJSONObject :: Payment -> Series
+toJSONObject (CPayment changeVal (CPaymentSignature sig flag)) =
+        "change_value"      .= changeVal
+    <>  "signature_data"    .= sig
+    <>  "sighash_flag"      .= String (serHex flag)
 
 instance ToJSON FullPayment where
-    toJSON CFullPayment {
+    toEncoding CFullPayment {
         fpPayment       = payment,
         fpOutPoint      = (HT.OutPoint txid vout), fpRedeemScript = script,
         fpChangeAddr    = addr } =
-            object [
-                "payment"           .= payment
-            ,   "funding_txid"      .= txid
-            ,   "funding_vout"      .= vout
-            ,   "redeem_script"     .= serHex script
-            ,   "change_address"    .= addr
-        ]
+            pairs $
+                 toJSONObject payment
+            <>   "funding_txid"     .= txid
+            <>   "funding_vout"     .= vout
+            <>   "redeem_script"    .= script
+            <>   "change_address"   .= addr
 
 instance FromJSON FullPayment where
     parseJSON = withObject "FullPayment" parseFullPayment
@@ -71,7 +75,7 @@ parsePayment o = CPayment
 
 parseFullPayment :: Object -> Parser FullPayment
 parseFullPayment o = CFullPayment
-    <$>     (o .: "payment" >>= parsePayment)
+    <$>     parsePayment o
     <*>     (HT.OutPoint <$>
                  o .: "funding_txid" <*>
                  o .: "funding_vout")
