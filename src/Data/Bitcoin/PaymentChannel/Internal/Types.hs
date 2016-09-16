@@ -43,7 +43,7 @@ data PaymentChannelState = CPaymentChannelState {
     pcsValueLeft            ::  BitcoinAmount,
     -- |Signature over payment transaction of value 'pcsValueLeft'
     pcsPaymentSignature     ::  PaymentSignature
-} deriving (Eq, Show, Typeable, Generic)
+} deriving (Eq, Show, Typeable)
 
 -- |Defines channel: sender, receiver, and expiration date
 data ChannelParameters = CChannelParameters {
@@ -79,7 +79,7 @@ data Payment = CPayment {
     cpClientChange :: BitcoinAmount
     -- |Payment signature
   , cpSignature    :: PaymentSignature
-} deriving (Eq, Typeable, Generic)
+} deriving (Eq, Typeable)
 
 -- |Contains all information required to construct the payment transaction
 data FullPayment = CFullPayment {
@@ -89,7 +89,7 @@ data FullPayment = CFullPayment {
   , fpRedeemScript :: HS.Script
     -- |Client change output address in the payment tx
   , fpChangeAddr   :: HC.Address
-} deriving (Eq, Typeable, Generic)
+} deriving (Eq, Typeable)
 
 -- |Contains payment signature plus sig hash flag byte
 data PaymentSignature = CPaymentSignature {
@@ -100,7 +100,7 @@ data PaymentSignature = CPaymentSignature {
     --  everything to the receiver. This is necessary so that no settling
     --  transaction containing an output below the "dust limit" is produced.
     ,psSigHash  ::  HS.SigHash
-} deriving (Eq, Show, Typeable, Generic)
+} deriving (Eq, Show, Typeable)
 
 
 -- Never confuse sender/receiver pubkey again: let compiler check
