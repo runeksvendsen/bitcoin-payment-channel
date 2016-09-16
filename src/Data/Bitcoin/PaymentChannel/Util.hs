@@ -16,6 +16,7 @@ setSenderChangeAddress,
 serialize, deserEither,
 BitcoinLockTime, parseBitcoinLocktime, toWord32, fromDate,
 parseJSONInt,
+getSig,
 
 unsafeUpdateRecvState
 )
@@ -23,9 +24,7 @@ where
 
 import Data.Bitcoin.PaymentChannel.Internal.Types
     (PaymentChannelState(..),
-    Payment(..))
--- import Data.Bitcoin.PaymentChannel.Internal.State
---     (ptcSenderChangeAddress)
+    Payment(..), PaymentSignature(..))
 import Data.Bitcoin.PaymentChannel.Internal.Bitcoin.Script
     (getP2SHFundingAddress, getRedeemScript)
 import Data.Bitcoin.PaymentChannel.Internal.Util
@@ -60,4 +59,5 @@ unsafeUpdateRecvState :: ReceiverPaymentChannel -> Payment -> ReceiverPaymentCha
 unsafeUpdateRecvState (CReceiverPaymentChannel s) (CPayment val sig) =
     CReceiverPaymentChannel $ s { pcsValueLeft = val, pcsPaymentSignature = sig}
 
-
+getSig :: FullPayment -> HC.Signature
+getSig = psSig . cpSignature . fpPayment
