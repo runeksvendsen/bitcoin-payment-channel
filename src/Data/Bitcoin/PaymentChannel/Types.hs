@@ -17,6 +17,7 @@ SenderPaymentChannel(..),
 ReceiverPaymentChannel(..),
 Payment,
 FullPayment(..),
+PaymentSignature(..),
 FundingTxInfo(..),
 ChannelParameters(..),
 PayChanError(..),
@@ -35,7 +36,8 @@ where
 
 import Data.Bitcoin.PaymentChannel.Internal.Types
     (BitcoinAmount(..),
-     PaymentChannelState(..), Payment(..), FullPayment(..),
+     PaymentChannelState(..),
+     Payment(..), FullPayment(..), PaymentSignature(..),
      FundingTxInfo(..), ChannelParameters(..),
      SendPubKey(..), RecvPubKey(..), IsPubKey(..),
      defaultDustLimit,
