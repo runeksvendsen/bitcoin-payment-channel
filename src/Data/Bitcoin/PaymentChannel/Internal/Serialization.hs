@@ -144,6 +144,11 @@ instance Show Payment where
         "<Payment: valLeft=" ++ show val ++
         ", sig=" ++ toHexString (Bin.encode sig) ++ ">"
 
+instance Show FullPayment where
+    show (CFullPayment p op script addr) =
+        "<FullPayment: payment = " ++ show p ++ " " ++
+        show (op, script, addr) ++ ">"
+
 -- Needed to convert from Scientific
 instance Bounded BitcoinAmount where
     minBound = BitcoinAmount 0
