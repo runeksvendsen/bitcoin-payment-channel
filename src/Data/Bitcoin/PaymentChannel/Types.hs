@@ -16,6 +16,7 @@ PaymentChannel(..),
 SenderPaymentChannel(..),
 ReceiverPaymentChannel(..),
 Payment,
+FullPayment(..),
 FundingTxInfo(..),
 ChannelParameters(..),
 PayChanError(..),
@@ -34,11 +35,11 @@ where
 
 import Data.Bitcoin.PaymentChannel.Internal.Types
     (BitcoinAmount(..),
-     PaymentChannelState(..), Payment(..)
-    ,FundingTxInfo(..), ChannelParameters(..),
-    SendPubKey(..), RecvPubKey(..), IsPubKey(..),
-    defaultDustLimit,
-    BitcoinLockTime(..), fromDate, usesBlockHeight)
+     PaymentChannelState(..), Payment(..), FullPayment(..),
+     FundingTxInfo(..), ChannelParameters(..),
+     SendPubKey(..), RecvPubKey(..), IsPubKey(..),
+     defaultDustLimit,
+     BitcoinLockTime(..), fromDate, usesBlockHeight)
 import Data.Bitcoin.PaymentChannel.Internal.Serialization
 
 import qualified Data.Bitcoin.PaymentChannel.Internal.State as S
