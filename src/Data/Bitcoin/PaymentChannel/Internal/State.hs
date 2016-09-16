@@ -5,6 +5,7 @@ module Data.Bitcoin.PaymentChannel.Internal.State where
 import Data.Bitcoin.PaymentChannel.Internal.Types
 import Data.Bitcoin.PaymentChannel.Internal.Error
 import Data.Bitcoin.PaymentChannel.Internal.Util  (addressToScriptPubKeyBS)
+import Data.Bitcoin.PaymentChannel.Internal.Bitcoin.Script
 
 import qualified Network.Haskoin.Transaction as HT
 import qualified Network.Haskoin.Crypto as HC
@@ -59,13 +60,20 @@ newPaymentChannelState channelParameters fundingTxInfo paymentConfig paySig =
         pcsPaymentSignature     = paySig
     }
 
--- |Update state with verified payment. Check value (including dust limit).
+-- |Update state with verified payment.
 updatePaymentChannelState  ::
     PaymentChannelState
-    -> Payment
+    -> FullPayment
     -> Either PayChanError PaymentChannelState
-updatePaymentChannelState (CPaymentChannelState cp fun pconf oldSenderVal _)
-    payment@(CPayment newSenderVal _)
+updatePaymentChannelState (CPaymentChannelState cp fun@(CFundingTxInfo h i _)
+                          pconf@(CPaymentTxConfig addr) oldSenderVal _)
+    (CFullPayment payment@(CPayment newSenderVal _) payOP payScript payChgAddr)
+        | (HT.outPointHash payOP /= h) || (HT.outPointIndex payOP /= i) =
+            Left $ OutPointMismatch $ OutPoint h i
+        | payChgAddr /= addr =
+            Left $ ChangeAddrMismatch addr
+        | payScript /= getRedeemScript cp =
+            Left $ RedeemScriptMismatch $ getRedeemScript cp
         | newSenderVal <= oldSenderVal =
             CPaymentChannelState cp fun pconf newSenderVal . cpSignature <$>
                 checkDustLimit cp payment
@@ -74,5 +82,5 @@ updatePaymentChannelState (CPaymentChannelState cp fun pconf oldSenderVal _)
 checkDustLimit :: ChannelParameters -> Payment -> Either PayChanError Payment
 checkDustLimit (CChannelParameters _ _ _ dustLimit) payment@(CPayment senderChangeVal _)
     | senderChangeVal < dustLimit =
-        Left DustOutput
+        Left $ DustOutput dustLimit
     | otherwise = Right payment

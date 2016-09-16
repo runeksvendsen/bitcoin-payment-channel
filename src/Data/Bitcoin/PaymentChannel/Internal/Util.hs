@@ -5,6 +5,7 @@ module Data.Bitcoin.PaymentChannel.Internal.Util
     module Data.Bitcoin.PaymentChannel.Internal.Util
 ,   module Data.Bitcoin.PaymentChannel.Internal.Bitcoin.Util
 ,   module Data.Bitcoin.PaymentChannel.Internal.Bitcoin.LockTime
+,   cs
 )
     where
 
@@ -20,7 +21,11 @@ import           Data.Typeable
 import qualified Data.ByteString.Base16 as B16
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Char8 as C
+import qualified Data.Text as T
+import qualified Data.Aeson.Types as JSON
 import qualified Network.Haskoin.Crypto as HC
+import           Data.String.Conversions (cs)
+import           Data.Text.Encoding       (decodeLatin1, encodeUtf8)
 
 
 mapLeft f  = either (Left . f) Right
@@ -33,6 +38,9 @@ toHexString =  C.unpack . B16.encode
 
 toHexBS :: B.ByteString -> B.ByteString
 toHexBS =  B16.encode
+
+fromHexBS :: B.ByteString -> B.ByteString
+fromHexBS = fst . B16.decode
 
 fromHexString :: String -> B.ByteString
 fromHexString hexStr =
@@ -61,4 +69,10 @@ deserEither bs = do
                     toHexString leftoverBS
                         where offset = B.length bs - B.length leftoverBS
 
+deserHex :: (Typeable a, Bin.Serialize a) => T.Text -> JSON.Parser a
+deserHex = either
+   (fail . ("failed to decode hex: " ++)) return .
+   deserEither . fromHexBS . encodeUtf8
 
+serHex :: Bin.Serialize a => a -> T.Text
+serHex = decodeLatin1 . toHexBS . Bin.encode

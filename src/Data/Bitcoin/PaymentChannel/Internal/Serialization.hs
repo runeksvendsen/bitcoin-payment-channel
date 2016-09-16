@@ -5,8 +5,9 @@
 module Data.Bitcoin.PaymentChannel.Internal.Serialization where
 
 import           Data.Bitcoin.PaymentChannel.Internal.Types
-import           Data.Bitcoin.PaymentChannel.Internal.Util (deserEither, toHexString)
-import           Data.Aeson (Value(Number), FromJSON(..), ToJSON(..), withText, withScientific)
+import           Data.Bitcoin.PaymentChannel.Internal.Util
+import qualified Network.Haskoin.Transaction as HT
+import           Data.Aeson
 import           Data.Aeson.Types (Parser)
 import           Data.Scientific (Scientific, scientific, toBoundedInteger)
 import           Data.Text.Encoding       (decodeLatin1, encodeUtf8)
@@ -38,10 +39,47 @@ instance FromJSON BitcoinLockTime where
         fmap (parseBitcoinLocktime . fromIntegral) . parseJSONInt
 
 instance ToJSON Payment where
-    toJSON = toJSON . txtB64Encode
+    toJSON (CPayment changeVal (CPaymentSignature sig flag)) =
+        object [
+            "change_value"      .= changeVal
+        ,   "signature_data"    .= serHex sig
+        ,   "sighash_flag"      .= serHex flag
+        ]
+
+instance ToJSON FullPayment where
+    toJSON CFullPayment {
+        fpPayment       = payment,
+        fpOutPoint      = (HT.OutPoint txid vout), fpRedeemScript = script,
+        fpChangeAddr    = addr } =
+            object [
+                "payment"           .= payment
+            ,   "funding_txid"      .= txid
+            ,   "funding_vout"      .= vout
+            ,   "redeem_script"     .= serHex script
+            ,   "change_address"    .= addr
+        ]
 
 instance FromJSON Payment where
-    parseJSON = withText "Payment" txtB64Decode
+    parseJSON = withObject "Payment" parsePayment
+
+instance FromJSON FullPayment where
+    parseJSON = withObject "FullPayment" parseFullPayment
+
+parsePayment :: Object -> Parser Payment
+parsePayment o = CPayment
+       <$>      o .: "change_value"
+       <*>     (CPaymentSignature <$>
+                   (o .: "signature_data" >>= deserHex) <*>
+                   (o .: "sighash_flag"   >>= deserHex))
+
+parseFullPayment :: Object -> Parser FullPayment
+parseFullPayment o = CFullPayment
+    <$>     parsePayment o
+    <*>     (HT.OutPoint <$>
+                 o .: "funding_txid" <*>
+                 o .: "funding_vout")
+    <*>     (o .: "redeem_script" >>= deserHex)
+    <*>      o .: "change_address"
 
 instance ToJSON BitcoinAmount where
     toJSON amt = Number $ scientific
@@ -64,13 +102,10 @@ deriving instance Bin.Serialize RecvPubKey
 
 instance Bin.Serialize PaymentChannelState where
     put (CPaymentChannelState par fti payConf valLeft sig) =
-        Bin.put par >> Bin.put fti >> Bin.put payConf >> Bin.put valLeft
-        >> BinPut.putWord8 1 >> Bin.put sig -- Keep the 0x01 Word8 for format backwards compatibility
+        Bin.put par >> Bin.put fti >> Bin.put payConf >>
+        Bin.put valLeft >> Bin.put sig
     get = CPaymentChannelState <$> Bin.get <*> Bin.get <*>
-        Bin.get <*> Bin.get <*> (BinGet.getWord8 >>=
-        \w -> case w of
-            1 -> Bin.get
-            _ -> error "empty PaymentChannelState no longer supported")
+        Bin.get <*> Bin.get <*> Bin.get
 
 instance Bin.Serialize ChannelParameters where
     put (CChannelParameters pks pkr lt dustLimit) =
@@ -88,8 +123,14 @@ instance Bin.Serialize PaymentTxConfig where
     get = CPaymentTxConfig <$> Bin.get
 
 instance Bin.Serialize Payment where
-    put (CPayment val sig) = Bin.put val >> Bin.put sig
+    put (CPayment val sig) =
+        Bin.put val >> Bin.put sig
     get = CPayment <$> Bin.get <*> Bin.get
+
+instance Bin.Serialize FullPayment where
+    put (CFullPayment p op script addr) =
+        Bin.put p >> Bin.put op >> Bin.put script >> Bin.put addr
+    get = CFullPayment <$> Bin.get <*> Bin.get <*> Bin.get <*> Bin.get
 
 instance Bin.Serialize PaymentSignature where
     put ps = Bin.put (psSig ps) >>

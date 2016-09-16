@@ -62,7 +62,7 @@ paymentFromState ::
     PaymentChannelState
     -> BitcoinAmount                -- ^ sender change value (subtract 'n' from current sender change value to get payment of value 'n')
     -> (HC.Hash256 -> HC.Signature) -- ^ signing function
-    -> Payment
+    -> FullPayment
 paymentFromState (CPaymentChannelState cp fti (CPaymentTxConfig changeAddr) _ _) =
     createPayment cp fti changeAddr
 
@@ -73,18 +73,19 @@ createPayment ::
     -> HC.Address
     -> BitcoinAmount -- ^ sender change value (subtract 'n' from current sender change value to get payment of value 'n')
     -> (HC.Hash256 -> HC.Signature) -- ^ signing function
-    -> Payment --ClientSignedPayment
+    -> FullPayment
 createPayment cp (CFundingTxInfo hash idx val) changeAddr changeVal signFunc =
     let
-        unsignedPayment = UnsignedPayment
+        unsignedPayment@(UnsignedPayment op _ script _ _) = UnsignedPayment
                 (HT.OutPoint hash idx) val (getRedeemScript cp)
                 changeAddr changeVal
         sigHash = if changeVal /= 0 then HS.SigSingle True else HS.SigNone True
         hashToSign = getHashForSigning unsignedPayment sigHash
         sig = signFunc hashToSign
+        payment = CPayment changeVal (CPaymentSignature sig sigHash)
     in
-        CPayment changeVal (CPaymentSignature sig sigHash)
-        -- ClientSignedPayment unsignedPayment (CPaymentSignature sig sigHash)
+        CFullPayment payment op script changeAddr
+
 
 verifyPaymentSig ::
     ChannelParameters

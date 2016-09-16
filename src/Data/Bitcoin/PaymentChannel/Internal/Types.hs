@@ -5,6 +5,9 @@ module Data.Bitcoin.PaymentChannel.Internal.Types
     module Data.Bitcoin.PaymentChannel.Internal.Types
   , module Data.Bitcoin.PaymentChannel.Internal.Bitcoin.Amount
   , module Data.Bitcoin.PaymentChannel.Internal.Bitcoin.LockTime
+  , module Network.Haskoin.Transaction
+  , module Network.Haskoin.Crypto
+  , module Network.Haskoin.Script
 )
 
 where
@@ -13,11 +16,14 @@ import Data.Bitcoin.PaymentChannel.Internal.Util
 import Data.Bitcoin.PaymentChannel.Internal.Bitcoin.Amount
 import Data.Bitcoin.PaymentChannel.Internal.Bitcoin.LockTime
 
-import qualified  Network.Haskoin.Transaction as HT
-import qualified  Network.Haskoin.Crypto as HC
-import qualified  Network.Haskoin.Script as HS
-import            Data.Typeable
-import            Data.Word
+import           Network.Haskoin.Transaction
+import           Network.Haskoin.Crypto
+import           Network.Haskoin.Script
+import qualified Network.Haskoin.Transaction as HT
+import qualified Network.Haskoin.Crypto as HC
+import qualified Network.Haskoin.Script as HS
+import           Data.Typeable
+import           Data.Word
 
 
 defaultDustLimit = 700 :: BitcoinAmount
@@ -70,10 +76,20 @@ data PaymentTxConfig = CPaymentTxConfig {
 -- |Used to transfer value from sender to receiver.
 data Payment = CPayment {
     -- |Channel value remaining ('pcsValueLeft' of the state from which this payment was made)
-    cpChannelValueLeft ::  BitcoinAmount,
+    cpClientChange :: BitcoinAmount
     -- |Payment signature
-    cpSignature        ::  PaymentSignature
+  , cpSignature    :: PaymentSignature
 } deriving (Eq, Typeable)
+
+-- |Contains all information required to construct the payment transaction
+data FullPayment = CFullPayment {
+    fpPayment      :: Payment
+    -- |The payment transaction redeems this outpoint
+  , fpOutPoint     :: HT.OutPoint
+  , fpRedeemScript :: HS.Script
+    -- |Client change output address in the payment tx
+  , fpChangeAddr   :: HC.Address
+}
 
 -- |Contains payment signature plus sig hash flag byte
 data PaymentSignature = CPaymentSignature {
