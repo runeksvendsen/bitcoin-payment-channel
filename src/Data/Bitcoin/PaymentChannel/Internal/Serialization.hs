@@ -74,7 +74,7 @@ parsePayment o = CPayment
 
 parseFullPayment :: Object -> Parser FullPayment
 parseFullPayment o = CFullPayment
-    <$>     parsePayment o
+    <$>     (o .: "payment" >>= parsePayment)
     <*>     (HT.OutPoint <$>
                  o .: "funding_txid" <*>
                  o .: "funding_vout")
