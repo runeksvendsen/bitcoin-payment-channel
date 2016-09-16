@@ -16,7 +16,7 @@ setSenderChangeAddress,
 serialize, deserEither,
 BitcoinLockTime, parseBitcoinLocktime, toWord32, fromDate,
 parseJSONInt,
-getSig,
+pGetSig,fpGetSig,
 
 unsafeUpdateRecvState
 )
@@ -59,5 +59,8 @@ unsafeUpdateRecvState :: ReceiverPaymentChannel -> Payment -> ReceiverPaymentCha
 unsafeUpdateRecvState (CReceiverPaymentChannel s) (CPayment val sig) =
     CReceiverPaymentChannel $ s { pcsValueLeft = val, pcsPaymentSignature = sig}
 
-getSig :: FullPayment -> HC.Signature
-getSig = psSig . cpSignature . fpPayment
+fpGetSig :: FullPayment -> HC.Signature
+fpGetSig = psSig . cpSignature . fpPayment
+
+pGetSig :: Payment -> HC.Signature
+pGetSig = psSig . cpSignature
