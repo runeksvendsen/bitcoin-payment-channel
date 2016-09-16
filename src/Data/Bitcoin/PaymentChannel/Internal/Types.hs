@@ -89,7 +89,7 @@ data FullPayment = CFullPayment {
   , fpRedeemScript :: HS.Script
     -- |Client change output address in the payment tx
   , fpChangeAddr   :: HC.Address
-} deriving (Eq, Show, Typeable)
+} deriving (Eq, Typeable)
 
 -- |Contains payment signature plus sig hash flag byte
 data PaymentSignature = CPaymentSignature {
