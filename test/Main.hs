@@ -2,17 +2,20 @@
 
 module Main where
 
-import Data.Bitcoin.PaymentChannel
-import Data.Bitcoin.PaymentChannel.Types
-import Data.Bitcoin.PaymentChannel.Util
+
+import           Data.Bitcoin.PaymentChannel
+import           Data.Bitcoin.PaymentChannel.Types
+import           Data.Bitcoin.PaymentChannel.Util
 import qualified Data.Bitcoin.PaymentChannel.Internal.State as S
 
-import qualified  Network.Haskoin.Transaction as HT
-import qualified  Network.Haskoin.Crypto as HC
-import            Network.Haskoin.Test
+import qualified Network.Haskoin.Transaction as HT
+import qualified Network.Haskoin.Crypto as HC
+import           Network.Haskoin.Test
+import qualified Data.Aeson as JSON
+import           Data.String.Conversions (cs)
 
 import Test.QuickCheck
-
+import Debug.Trace
 
 dUST_LIMIT = 700 :: BitcoinAmount
 mIN_CHANNEL_SIZE = 1400 :: BitcoinAmount
@@ -44,9 +47,13 @@ doPayment (ArbChannelPair spc rpc sendList recvList f) amount =
                     f
 
 instance Arbitrary ArbChannelPair where
-    arbitrary = mkChanPair
+    arbitrary = fmap fst mkChanPair
 
-mkChanPair :: Gen ArbChannelPair -- (Either String ArbChannelPair)
+instance Arbitrary FullPayment where
+    arbitrary = fmap snd mkChanPair
+
+
+mkChanPair :: Gen (ArbChannelPair, FullPayment)
 mkChanPair = do
         -- sender key pair
         ArbitraryPubKey sendPriv sendPK <- arbitrary
@@ -67,9 +74,11 @@ mkChanPair = do
 
         case eitherRecvChan of
             Left e -> error (show e)
-            Right (initRecvAmount,recvChan) -> return $ ArbChannelPair
-                    sendChan recvChan [initPayActualAmount] [initRecvAmount]
-                    (flip HC.signMsg recvPriv)
+            Right (initRecvAmount,recvChan) -> return
+                    (ArbChannelPair
+                        sendChan recvChan [initPayActualAmount] [initRecvAmount]
+                        (flip HC.signMsg recvPriv),
+                    paymnt)
 
 instance Arbitrary BitcoinLockTime where
     arbitrary = fmap parseBitcoinLocktime arbitrary
@@ -112,12 +121,24 @@ checkChanPair (ArbChannelPair sendChan recvChan amountSent amountRecvd recvSignF
     checkGoodClientValue clientValueIsGood && statesMatch && recvSendAmountMatch
 
 
-testChanPair :: ArbChannelPair -> [BitcoinAmount] -> Bool
-testChanPair arbChanPair paymentAmountList =
+testPaymentSession :: ArbChannelPair -> [BitcoinAmount] -> Bool
+testPaymentSession arbChanPair paymentAmountList =
     checkChanPair (runChanPair arbChanPair paymentAmountList)
 
+jsonSerDeser :: (Show a, Eq a, JSON.FromJSON a, JSON.ToJSON a) => a -> Bool
+jsonSerDeser fp = maybe False checkEquals $
+    (\bs -> cs bs `trace` JSON.decode bs) (JSON.encode fp)
+        where checkEquals serDeserVal =
+                serDeserVal == fp ||
+                    error ("Ser/deser mismatch.\nOriginal: " ++ show fp ++ "\nCopy: " ++ show serDeserVal)
+
+testPaymentJSON :: FullPayment -> Bool
+testPaymentJSON = jsonSerDeser
+
 main :: IO ()
-main = quickCheckWith stdArgs testChanPair
+main = do
+    quickCheckWith stdArgs testPaymentSession
+--     quickCheckWith stdArgs testPaymentJSON
 
 
 

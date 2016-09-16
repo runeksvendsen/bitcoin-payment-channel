@@ -79,6 +79,7 @@ executable Test
                         bytestring,
                         base16-bytestring, base64-bytestring,
                         hexstring, text,
+                        string-conversions,
                         time,
                         cereal, aeson,
 

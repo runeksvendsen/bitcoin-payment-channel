@@ -59,9 +59,6 @@ instance ToJSON FullPayment where
             ,   "change_address"    .= addr
         ]
 
-instance FromJSON Payment where
-    parseJSON = withObject "Payment" parsePayment
-
 instance FromJSON FullPayment where
     parseJSON = withObject "FullPayment" parseFullPayment
 
