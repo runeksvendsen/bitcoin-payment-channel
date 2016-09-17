@@ -12,8 +12,8 @@ import qualified Network.Haskoin.Crypto as HC
 import qualified Network.Haskoin.Script as HS
 
 pcsChannelTotalValue = ftiOutValue . pcsFundingTxInfo
-pcsValueTransferred cs = pcsChannelTotalValue cs - pcsValueLeft cs
-pcsChannelValueLeft = pcsValueLeft
+pcsValueTransferred cs = pcsChannelTotalValue cs - pcsClientChangeVal cs
+pcsChannelValueLeft = pcsClientChangeVal
 pcsClientPubKey = cpSenderPubKey . pcsParameters
 pcsServerPubKey = cpReceiverPubKey . pcsParameters
 pcsDustLimit = cpDustLimit . pcsParameters
@@ -21,6 +21,7 @@ pcsExpirationDate = cpLockTime . pcsParameters
 pcsClientChangeAddress = ptcSenderChangeAddress . pcsPaymentConfig
 pcsClientChangeScriptPubKey = addressToScriptPubKeyBS . pcsClientChangeAddress
 pcsLockTime = cpLockTime . pcsParameters
+pcsPrevOut (CPaymentChannelState _ (CFundingTxInfo h i _) _ _ _) = OutPoint h i
 
 pcsChannelID :: PaymentChannelState -> HT.OutPoint
 pcsChannelID pcs = HT.OutPoint (ftiHash fti) (ftiOutIndex fti)
@@ -38,12 +39,16 @@ setClientChangeAddress pcs@(CPaymentChannelState _ _ pConf _ _) addr =
     pcs { pcsPaymentConfig = newPayConf }
         where newPayConf = pConf { ptcSenderChangeAddress = addr }
 
+setFundingSource :: PaymentChannelState -> FundingTxInfo -> PaymentChannelState
+setFundingSource pcs fti =
+    pcs { pcsFundingTxInfo = fti }
+
 -- |We subtract the specified "dust" limit from the total available value,
 --  in order to avoid creating a Bitcoin transaction that won't circulate
 --  in the Bitcoin P2P network.
 channelValueLeft :: PaymentChannelState -> BitcoinAmount
 channelValueLeft pcs@(CPaymentChannelState (CChannelParameters _ _ _ dustLimit) _ _ _ _)   =
-    pcsValueLeft pcs - dustLimit
+    pcsClientChangeVal pcs - dustLimit
 
 -- |Returns 'True' if all available channel value has been transferred, 'False' otherwise
 channelIsExhausted  :: PaymentChannelState -> Bool
@@ -56,7 +61,7 @@ newPaymentChannelState channelParameters fundingTxInfo paymentConfig paySig =
         pcsParameters           = channelParameters,
         pcsFundingTxInfo        = fundingTxInfo,
         pcsPaymentConfig        = paymentConfig,
-        pcsValueLeft            = ftiOutValue fundingTxInfo,
+        pcsClientChangeVal            = ftiOutValue fundingTxInfo,
         pcsPaymentSignature     = paySig
     }
 

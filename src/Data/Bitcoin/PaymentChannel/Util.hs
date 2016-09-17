@@ -57,7 +57,7 @@ setSenderChangeAddress pch addr =
 --  verified the signature, and it just needs to be stored.
 unsafeUpdateRecvState :: ReceiverPaymentChannel -> Payment -> ReceiverPaymentChannel
 unsafeUpdateRecvState (CReceiverPaymentChannel s) (CPayment val sig) =
-    CReceiverPaymentChannel $ s { pcsValueLeft = val, pcsPaymentSignature = sig}
+    CReceiverPaymentChannel $ s { pcsClientChangeVal = val, pcsPaymentSignature = sig}
 
 fpGetSig :: FullPayment -> HC.Signature
 fpGetSig = psSig . cpSignature . fpPayment

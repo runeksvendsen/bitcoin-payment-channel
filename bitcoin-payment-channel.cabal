@@ -48,6 +48,7 @@ library
                         Data.Bitcoin.PaymentChannel.Internal.Types,
                         Data.Bitcoin.PaymentChannel.Internal.Serialization,
                         Data.Bitcoin.PaymentChannel.Internal.Util
+                        Data.Bitcoin.PaymentChannel.Movable
 
   ghc-options:          -W
 

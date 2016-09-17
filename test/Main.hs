@@ -140,7 +140,7 @@ testPaymentJSON = jsonSerDeser
 main :: IO ()
 main = do
     quickCheckWith stdArgs testPaymentSession
---     quickCheckWith stdArgs testPaymentJSON
+    quickCheckWith stdArgs testPaymentJSON
 
 
 

@@ -10,7 +10,7 @@ data PayChanError =
     ChangeAddrMismatch Address |
     RedeemScriptMismatch Script |
     DustOutput BitcoinAmount |
-    InternalError String
+    PartialPaymentBadValue BitcoinAmount
 
 instance Show PayChanError where
     show SigVerifyFailed = "signature verification failed"
@@ -20,7 +20,8 @@ instance Show PayChanError where
     show (ChangeAddrMismatch addr) = "unexpected change address. expected: " ++ show addr
     show (RedeemScriptMismatch scr) = "unexpected redeem script. expected: " ++
         cs (serHex scr)
+    show (PartialPaymentBadValue expVal) = "partial payment change value mismatch." ++
+        " payment 1/2 with change value " ++ show expVal ++
+        " was accepted, expecting second payment change value to match that."
     show (DustOutput limit) = "server dust limit of " ++ show limit ++
         " not respected by client change output"
-    show (InternalError e) = "Internal error: " ++ e
-

@@ -96,7 +96,7 @@ module Data.Bitcoin.PaymentChannel
 where
 
 import Data.Bitcoin.PaymentChannel.Internal.Types
-    (PaymentTxConfig(..), Payment(..), FullPayment(..), pcsValueLeft)
+    (PaymentTxConfig(..), Payment(..), FullPayment(..), pcsClientChangeVal)
 import Data.Bitcoin.PaymentChannel.Internal.State
     (newPaymentChannelState, updatePaymentChannelState)
 import qualified Data.Bitcoin.PaymentChannel.Internal.State as S
@@ -140,8 +140,8 @@ sendPayment ::
     -> (BitcoinAmount, FullPayment, SenderPaymentChannel)  -- ^ Actual amount sent, payment, and updated sender state object
 sendPayment (CSenderPaymentChannel cs signFunc) amountToSend =
     let
-        valSent = pcsValueLeft cs - newSenderValue
-        newSenderValue = max (S.pcsDustLimit cs) (pcsValueLeft cs - amountToSend)
+        valSent = pcsClientChangeVal cs - newSenderValue
+        newSenderValue = max (S.pcsDustLimit cs) (pcsClientChangeVal cs - amountToSend)
         fullPay = paymentFromState cs newSenderValue signFunc
     in
         case updatePaymentChannelState cs fullPay of

@@ -67,11 +67,14 @@ class PaymentChannel a where
     _setChannelState    :: a -> PaymentChannelState -> a
 
     channelValueLeft    :: a -> BitcoinAmount
+    senderChangeValue   :: a -> BitcoinAmount
     -- |Returns 'True' if all available channel value has been transferred, 'False' otherwise
     channelIsExhausted  :: a -> Bool
 
     getChannelID       = S.pcsChannelID . getChannelState
     getExpirationDate  = S.pcsExpirationDate . getChannelState
+    senderChangeValue  = pcsClientChangeVal . getChannelState
+    -- TODO: exclude dust limit
     channelValueLeft   = S.channelValueLeft . getChannelState
     channelIsExhausted = S.channelIsExhausted . getChannelState
     expiresBefore expDate chan = getExpirationDate chan < expDate

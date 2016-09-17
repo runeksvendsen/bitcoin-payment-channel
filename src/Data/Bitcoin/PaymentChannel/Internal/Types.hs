@@ -39,8 +39,8 @@ data PaymentChannelState = CPaymentChannelState {
     -- |Retrieved by looking at the in-blockchain funding transaction
     pcsFundingTxInfo        ::  FundingTxInfo,
     pcsPaymentConfig        ::  PaymentTxConfig,
-    -- |Value left to send (starts at @`-` dustLimit . ftiOutValue . pcsFundingTxInfo@)
-    pcsValueLeft            ::  BitcoinAmount,
+    -- |Client change value
+    pcsClientChangeVal      ::  BitcoinAmount,
     -- |Signature over payment transaction of value 'pcsValueLeft'
     pcsPaymentSignature     ::  PaymentSignature
 } deriving (Eq, Show, Typeable)
