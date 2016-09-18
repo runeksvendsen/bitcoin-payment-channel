@@ -14,9 +14,10 @@ module Data.Bitcoin.PaymentChannel.Movable where
 import           Data.Bitcoin.PaymentChannel
 import           Data.Bitcoin.PaymentChannel.Types
 import           Data.Bitcoin.PaymentChannel.Internal.Types
-import           Data.Bitcoin.PaymentChannel.Internal.State
+import qualified Data.Bitcoin.PaymentChannel.Internal.State as S
 import qualified Network.Haskoin.Crypto as HC
 import qualified Data.Serialize         as Bin
+
 
 -- |A ReceiverPaymentChannel whose received value can be redeemed while
 --  keeping the channel open, by switching between two different OutPoints
@@ -42,6 +43,14 @@ data ChannelPair = ChannelPair {
 data PartialPayment =
     NewNeedsUpdate ChannelPair BitcoinAmount
   | OldNeedsUpdate ChannelPair BitcoinAmount
+
+instance PaymentChannel MovableChan where
+    valueToMe = channelValueLeft . fst . getStateForClosing
+    getChannelState = rpcState . fst . getStateForClosing
+    _setChannelState (Settled v rpc) s = Settled v (rpc { rpcState = s })
+    _setChannelState (Unsettled (ChannelPair v old new) fp) s =
+        Unsettled (ChannelPair v (setState s old) (setState s new)) fp
+            where setState s rpc = rpc { rpcState = s }
 
 newMovableChan ::
     ChannelParameters
@@ -78,7 +87,7 @@ moveChannel (Settled v rpc) signFunc destAddr txFee =
     else
         Nothing
     where settleTx = getSettlementBitcoinTx rpc signFunc destAddr txFee
-          newRpc = CReceiverPaymentChannel $ setFundingSource (getChannelState rpc) fti
+          newRpc = CReceiverPaymentChannel $ S.setFundingSource (getChannelState rpc) fti
           fti = CFundingTxInfo (txHash settleTx)
                 -- Client output always at index zero
                 0 (senderChangeValue rpc)
@@ -102,9 +111,9 @@ recvSinglePayment (Settled v rpc) fp = recvPayment rpc fp >>=
     \(a, newRpc) -> Right (a, Settled v newRpc)
 -- Accept payment 1/2
 recvSinglePayment (Unsettled cp@(ChannelPair _ old new) Nothing) fp@(CFullPayment _ op _ _)
-    | pcsPrevOut (getChannelState old) == op = oldRecvPay cp fp
-    | pcsPrevOut (getChannelState new) == op = newRecvPay cp fp
-    | otherwise = Left . OutPointMismatch . pcsPrevOut . getChannelState $ new
+    | S.pcsPrevOut (getChannelState old) == op = oldRecvPay cp fp
+    | S.pcsPrevOut (getChannelState new) == op = newRecvPay cp fp
+    | otherwise = Left . OutPointMismatch . S.pcsPrevOut . getChannelState $ new
 -- If we've already received paymed 1/2, we receive 2/2 with this
 recvSinglePayment (Unsettled _ (Just pp)) fp = receiveSecondPayment pp fp
 

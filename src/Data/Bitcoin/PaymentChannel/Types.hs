@@ -58,6 +58,7 @@ class PaymentChannel a where
     valueToMe           :: a -> BitcoinAmount
     -- |Retrieve internal state object
     getChannelState     :: a -> PaymentChannelState
+
     getChannelID        :: a -> HT.OutPoint
     getExpirationDate   :: a -> BitcoinLockTime
     getSenderPubKey     :: a -> SendPubKey
