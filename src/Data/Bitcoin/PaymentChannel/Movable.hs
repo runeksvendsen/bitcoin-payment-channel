@@ -1,3 +1,14 @@
+{-|
+Module      : Data.Bitcoin.PaymentChannel.Movable
+Description : Bitcoin payment channel library
+License     : PublicDomain
+Maintainer  : runesvend@gmail.com
+Stability   : experimental
+Portability : POSIX
+
+TODO
+-}
+
 module Data.Bitcoin.PaymentChannel.Movable where
 
 import           Data.Bitcoin.PaymentChannel
@@ -8,7 +19,8 @@ import qualified Network.Haskoin.Crypto as HC
 
 
 -- |A ReceiverPaymentChannel whose received value can be redeemed while
---  keeping the channel open.
+--  keeping the channel open, by switching between two different OutPoints
+--  in the FundingTxInfo.
 data MovableChan =
       Settled   {
         beginVal    :: BitcoinAmount

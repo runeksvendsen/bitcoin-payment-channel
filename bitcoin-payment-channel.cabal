@@ -31,24 +31,24 @@ source-repository head
     location: git://github.com/runeksvendsen/bitcoin-payment-channel.git
 
 library
-  exposed-modules:      Data.Bitcoin.PaymentChannel,
-                        Data.Bitcoin.PaymentChannel.Types,
-                        Data.Bitcoin.PaymentChannel.Util,
+  exposed-modules:      Data.Bitcoin.PaymentChannel
+                        Data.Bitcoin.PaymentChannel.Types
+                        Data.Bitcoin.PaymentChannel.Util
+                        Data.Bitcoin.PaymentChannel.Movable
                         -- Exposed for testing purposes
                         Data.Bitcoin.PaymentChannel.Internal.State
 
   other-modules:        Data.Bitcoin.PaymentChannel.Internal.Error
-                        Data.Bitcoin.PaymentChannel.Internal.Payment,
-                        Data.Bitcoin.PaymentChannel.Internal.Refund,
-                        Data.Bitcoin.PaymentChannel.Internal.Bitcoin.Amount,
+                        Data.Bitcoin.PaymentChannel.Internal.Payment
+                        Data.Bitcoin.PaymentChannel.Internal.Refund
+                        Data.Bitcoin.PaymentChannel.Internal.Bitcoin.Amount
                         Data.Bitcoin.PaymentChannel.Internal.Bitcoin.Script
-                        Data.Bitcoin.PaymentChannel.Internal.Bitcoin.Util,
-                        Data.Bitcoin.PaymentChannel.Internal.Bitcoin.LockTime,
-                        Data.Bitcoin.PaymentChannel.Internal.Settlement,
-                        Data.Bitcoin.PaymentChannel.Internal.Types,
-                        Data.Bitcoin.PaymentChannel.Internal.Serialization,
+                        Data.Bitcoin.PaymentChannel.Internal.Bitcoin.Util
+                        Data.Bitcoin.PaymentChannel.Internal.Bitcoin.LockTime
+                        Data.Bitcoin.PaymentChannel.Internal.Settlement
+                        Data.Bitcoin.PaymentChannel.Internal.Types
+                        Data.Bitcoin.PaymentChannel.Internal.Serialization
                         Data.Bitcoin.PaymentChannel.Internal.Util
-                        Data.Bitcoin.PaymentChannel.Movable
 
   ghc-options:          -W
 

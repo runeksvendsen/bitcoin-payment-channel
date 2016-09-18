@@ -61,7 +61,7 @@ mkChanPair = do
         ArbitraryPubKey recvPriv recvPK <- arbitrary
         -- expiration date
         lockTime <- arbitrary
-        fti <- show lockTime `trace` arbitrary  -- DEBUG
+        fti <- arbitrary
         let cp = CChannelParameters
                 (MkSendPubKey sendPK) (MkRecvPubKey recvPK) lockTime dUST_LIMIT
         -- value of first payment

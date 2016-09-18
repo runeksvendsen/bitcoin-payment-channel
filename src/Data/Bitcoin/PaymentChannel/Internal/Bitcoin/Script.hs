@@ -1,4 +1,4 @@
--- {-# OPTIONS_GHC -fwarn-incomplete-patterns -Werror #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 module Data.Bitcoin.PaymentChannel.Internal.Bitcoin.Script where
 
@@ -8,10 +8,8 @@ import Data.Bitcoin.PaymentChannel.Internal.Util
 
 import qualified  Network.Haskoin.Internals as HI
 import qualified  Network.Haskoin.Crypto as HC
-import Network.Haskoin.Script
-    (Script(..), SigHash(..), ScriptOp(..), opPushData)
-
 import qualified Data.ByteString as B
+
 
 valReceiverSigHash = SigAll True
 
@@ -23,14 +21,19 @@ paymentChannelRedeemScript clientPK serverPK lockTime =
     let
         -- Note: HI.encodeInt encodes values up to and including 2^31-1 as 4 bytes
         --      and values 2^31 through 2^32-1 (upper limit) as 5 bytes.
-        encodeScriptInt = B.pack . HI.encodeInt . fromIntegral . toWord32
+        encodeScriptInt = convertEmptyPush . opPushData . B.pack .
+                          HI.encodeInt . fromIntegral . toWord32
+        -- A push of an empty byte string and OP_0 are one and the same,
+        --  but haskoin-core deserializes into OP_0.
+        convertEmptyPush (OP_PUSHDATA "" OPCODE) = OP_0
+        convertEmptyPush whatever = whatever
         serverPubKey    = getPubKey serverPK
         clientPubKey    = getPubKey clientPK
     in Script
              [OP_IF,
                  opPushData $ serialize serverPubKey, OP_CHECKSIGVERIFY,
              OP_ELSE,
-                 opPushData . encodeScriptInt $ lockTime, op_CHECKLOCKTIMEVERIFY, OP_DROP,
+                  encodeScriptInt $ lockTime, op_CHECKLOCKTIMEVERIFY, OP_DROP,
              OP_ENDIF,
              opPushData $ serialize clientPubKey, OP_CHECKSIG]
 
