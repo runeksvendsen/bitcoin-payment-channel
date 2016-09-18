@@ -61,17 +61,16 @@ mkChanPair = do
         ArbitraryPubKey recvPriv recvPK <- arbitrary
         -- expiration date
         lockTime <- arbitrary
-        fti <- arbitrary
+        fti <- show lockTime `trace` arbitrary  -- DEBUG
         let cp = CChannelParameters
                 (MkSendPubKey sendPK) (MkRecvPubKey recvPK) lockTime dUST_LIMIT
         -- value of first payment
         initPayAmount <- arbitrary -- fromIntegral <$> choose (0, chanAmount)
-
+        -- create states
         let (initPayActualAmount,paymnt,sendChan) = channelWithInitialPaymentOf
                 cp fti (flip HC.signMsg sendPriv) (HC.pubKeyAddr sendPK) initPayAmount
         let eitherRecvChan = channelFromInitialPayment
                 cp fti (HC.pubKeyAddr sendPK) paymnt
-
         case eitherRecvChan of
             Left e -> error (show e)
             Right (initRecvAmount,recvChan) -> return
@@ -126,11 +125,13 @@ testPaymentSession arbChanPair paymentAmountList =
     checkChanPair (runChanPair arbChanPair paymentAmountList)
 
 jsonSerDeser :: (Show a, Eq a, JSON.FromJSON a, JSON.ToJSON a) => a -> Bool
-jsonSerDeser fp = maybe False checkEquals $
-    (\bs -> cs bs `trace` JSON.decode bs) (JSON.encode fp)
-        where checkEquals serDeserVal =
+jsonSerDeser fp =
+    maybe False checkEquals decodedObj
+        where json = JSON.encode fp
+              decodedObj = JSON.decode json
+              checkEquals serDeserVal =
                 if serDeserVal /= fp then
-                        error ("Ser/deser mismatch.\nOriginal: " ++ show fp ++ "\nCopy: " ++ show serDeserVal)
+                        error ("Ser/deser mismatch.\nOriginal: " ++ show fp ++ "\nCopy: " ++ show decodedObj)
                     else
                         True
 

@@ -10,7 +10,7 @@ import qualified Network.Haskoin.Transaction as HT
 import           Data.Aeson
 import           Data.Aeson.Types (Parser, Pair)
 import           Data.Scientific (Scientific, scientific, toBoundedInteger)
-import           Data.Text.Encoding       (decodeLatin1, encodeUtf8)
+import           Data.Text.Encoding       (decodeUtf8, encodeUtf8)
 import qualified Data.Serialize     as Bin
 import qualified Data.Serialize.Put as BinPut
 import qualified Data.Serialize.Get as BinGet
@@ -21,7 +21,6 @@ import qualified Data.Text as T
 import           Data.Word (Word64)
 import           Data.EitherR (fmapL)
 import           Data.Typeable
-import           Data.Monoid ((<>))
 
 
 --- JSON
@@ -167,7 +166,7 @@ b64Decode b64 =
             concatErr e = fmapL (e ++)
 
 txtB64Encode :: Bin.Serialize a => a -> T.Text
-txtB64Encode = decodeLatin1 . b64Encode
+txtB64Encode = decodeUtf8 . b64Encode
 
 txtB64Decode :: (Typeable a, Bin.Serialize a) => T.Text -> Parser a
 txtB64Decode = either fail return . b64Decode . encodeUtf8

@@ -43,8 +43,8 @@ setFundingSource :: PaymentChannelState -> FundingTxInfo -> PaymentChannelState
 setFundingSource pcs fti =
     pcs { pcsFundingTxInfo = fti }
 
--- |We subtract the specified "dust" limit from the total available value,
---  in order to avoid creating a Bitcoin transaction that won't circulate
+-- |We subtract the specified "dust" limit from the total available value.
+--  This avoids creating a Bitcoin transaction that won't circulate
 --  in the Bitcoin P2P network.
 channelValueLeft :: PaymentChannelState -> BitcoinAmount
 channelValueLeft pcs@(CPaymentChannelState (CChannelParameters _ _ _ dustLimit) _ _ _ _)   =

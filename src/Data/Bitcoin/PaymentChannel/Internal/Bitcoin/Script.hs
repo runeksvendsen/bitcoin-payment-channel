@@ -30,7 +30,7 @@ paymentChannelRedeemScript clientPK serverPK lockTime =
              [OP_IF,
                  opPushData $ serialize serverPubKey, OP_CHECKSIGVERIFY,
              OP_ELSE,
-                 opPushData $ encodeScriptInt lockTime, op_CHECKLOCKTIMEVERIFY, OP_DROP,
+                 opPushData . encodeScriptInt $ lockTime, op_CHECKLOCKTIMEVERIFY, OP_DROP,
              OP_ENDIF,
              opPushData $ serialize clientPubKey, OP_CHECKSIG]
 

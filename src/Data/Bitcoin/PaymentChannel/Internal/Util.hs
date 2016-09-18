@@ -25,7 +25,7 @@ import qualified Data.Text as T
 import qualified Data.Aeson.Types as JSON
 import qualified Network.Haskoin.Crypto as HC
 import           Data.String.Conversions (cs)
-import           Data.Text.Encoding       (decodeLatin1, encodeUtf8)
+import           Data.Text.Encoding       (decodeUtf8, encodeUtf8)
 
 
 mapLeft f  = either (Left . f) Right
@@ -75,4 +75,4 @@ deserHex = either
    deserEither . fromHexBS . encodeUtf8
 
 serHex :: Bin.Serialize a => a -> T.Text
-serHex = decodeLatin1 . toHexBS . Bin.encode
+serHex = decodeUtf8 . toHexBS . Bin.encode

@@ -60,6 +60,7 @@ class PaymentChannel a where
     getChannelState     :: a -> PaymentChannelState
     getChannelID        :: a -> HT.OutPoint
     getExpirationDate   :: a -> BitcoinLockTime
+    getSenderPubKey     :: a -> SendPubKey
     getNewestPayment    :: a -> Payment
     -- |Return True if channel expires earlier than given expiration date
     expiresBefore       :: BitcoinLockTime -> a -> Bool
@@ -73,8 +74,8 @@ class PaymentChannel a where
 
     getChannelID       = S.pcsChannelID . getChannelState
     getExpirationDate  = S.pcsExpirationDate . getChannelState
+    getSenderPubKey    = S.pcsClientPubKey . getChannelState
     senderChangeValue  = pcsClientChangeVal . getChannelState
-    -- TODO: exclude dust limit
     channelValueLeft   = S.channelValueLeft . getChannelState
     channelIsExhausted = S.channelIsExhausted . getChannelState
     expiresBefore expDate chan = getExpirationDate chan < expDate
