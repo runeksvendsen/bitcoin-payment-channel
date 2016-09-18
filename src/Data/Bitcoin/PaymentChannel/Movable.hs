@@ -59,6 +59,11 @@ newMovableChan cp fti@(CFundingTxInfo _ _ chanVal)
                 else
                     Right fullPayment
 
+getStateForClosing :: MovableChan -> (ReceiverPaymentChannel,BitcoinAmount)
+getStateForClosing (Settled v rpc) = (rpc,v)
+getStateForClosing (Unsettled (ChannelPair v _ newRpc) _) = (newRpc,v)
+
+
 moveChannel ::
     MovableChan
     -> (HC.Hash256 -> HC.Signature) -- ^ Function which produces a signature which verifies against 'cpReceiverPubKey'
