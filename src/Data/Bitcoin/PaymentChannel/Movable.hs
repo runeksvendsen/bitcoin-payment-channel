@@ -17,7 +17,7 @@ import           Data.Bitcoin.PaymentChannel.Internal.Types
 import qualified Data.Bitcoin.PaymentChannel.Internal.State as S
 import qualified Network.Haskoin.Crypto as HC
 import qualified Data.Serialize         as Bin
-
+import           Control.Applicative    ((<|>))
 
 -- |A ReceiverPaymentChannel whose received value can be redeemed while
 --  keeping the channel open, by switching between two different OutPoints
@@ -72,6 +72,16 @@ getStateForClosing :: MovableChan -> (ReceiverPaymentChannel,BitcoinAmount)
 getStateForClosing (Settled v rpc) = (rpc,v)
 getStateForClosing (Unsettled (ChannelPair v _ newRpc) _) = (newRpc,v)
 
+getStateByInfo :: MovableChan -> BitcoinLockTime -> OutPoint -> Maybe ReceiverPaymentChannel
+getStateByInfo mc lt op = case mc of
+    (Settled _ rpc)                       -> checkInfo rpc
+    (Unsettled (ChannelPair _ old new) _) -> checkInfo new <|> checkInfo old
+    where checkInfo rpc =
+            if  getChannelID      rpc == op &&
+                getExpirationDate rpc == lt then
+                    Just rpc
+                else
+                    Nothing
 
 moveChannel ::
     MovableChan
