@@ -99,6 +99,16 @@ instance FromJSON PaymentChannelState where
 
 
 --- Binary
+instance Bin.Serialize ChanScript where
+    put (ChanScript s) =
+        BinPut.putWord16be scriptBSLen >>
+        BinPut.putByteString scriptBS
+            where scriptBS    = Bin.encode s
+                  scriptBSLen = fromIntegral $ B.length scriptBS
+    get = either error ChanScript . Bin.decode <$>
+            (BinGet.getWord16be >>=
+             BinGet.getByteString . fromIntegral)
+
 deriving instance Bin.Serialize SendPubKey
 deriving instance Bin.Serialize RecvPubKey
 
@@ -130,18 +140,14 @@ instance Bin.Serialize Payment where
     get = CPayment <$> Bin.get <*> Bin.get
 
 instance Bin.Serialize FullPayment where
-    put (CFullPayment p op script addr) = toHexString (Bin.encode addr) `trace`  -- DEBUG
-        Bin.put p >> Bin.put op >> Bin.put script >> Bin.put addr
-    get = CFullPayment <$> printGet <*> printGet <*> printGet <*> printGet
-        where
-            printGet :: (Bin.Serialize a, Show a) => Bin.Get a
-            printGet = Bin.get >>= (\v -> show v `trace` return v)
+    put (CFullPayment p op script addr) =
+        Bin.put p >> Bin.put op >> Bin.put (ChanScript script) >> Bin.put addr
+    get = CFullPayment <$> Bin.get <*> Bin.get <*> fmap getScript Bin.get <*> Bin.get
 
 instance Bin.Serialize PaymentSignature where
     put (CPaymentSignature sig sigHash) =
         Bin.put sig >> Bin.put sigHash
     get = CPaymentSignature <$> Bin.get <*> Bin.get
-
 
 --- Misc.
 instance Show Payment where

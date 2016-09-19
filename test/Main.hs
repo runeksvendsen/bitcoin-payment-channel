@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 module Main where
 
@@ -10,9 +11,11 @@ import qualified Data.Bitcoin.PaymentChannel.Internal.State as S
 
 import qualified Network.Haskoin.Transaction as HT
 import qualified Network.Haskoin.Crypto as HC
+import qualified Network.Haskoin.Script as HS
 import           Network.Haskoin.Test
-import qualified Data.Aeson as JSON
-import           Data.String.Conversions (cs)
+import qualified Data.Aeson         as JSON
+import qualified Data.Serialize     as Bin
+import           Data.Typeable
 
 import Test.QuickCheck
 import Debug.Trace
@@ -46,31 +49,43 @@ doPayment (ArbChannelPair spc rpc sendList recvList f) amount =
                     (recvAmount : recvList)
                     f
 
+newtype ChanScript = ChanScript HS.Script deriving (Eq,Show,Bin.Serialize)
+
 instance Arbitrary ArbChannelPair where
     arbitrary = fmap fst mkChanPair
 
 instance Arbitrary FullPayment where
     arbitrary = fmap snd mkChanPair
 
+instance Arbitrary ChannelParameters where
+    arbitrary = fmap fst mkChanParams
+
+instance Arbitrary ChanScript where
+    arbitrary = ChanScript . getRedeemScript <$> arbitrary
+
+mkChanParams :: Gen (ChannelParameters, (HC.PrvKey, HC.PrvKey))
+mkChanParams = do
+    -- sender key pair
+    ArbitraryPubKey sendPriv sendPK <- arbitrary
+    -- receiver key pair
+    ArbitraryPubKey recvPriv recvPK <- arbitrary
+    -- expiration date
+    lockTime <- arbitrary
+    return (CChannelParameters
+                (MkSendPubKey sendPK) (MkRecvPubKey recvPK) lockTime dUST_LIMIT,
+           (sendPriv, recvPriv))
 
 mkChanPair :: Gen (ArbChannelPair, FullPayment)
 mkChanPair = do
-        -- sender key pair
-        ArbitraryPubKey sendPriv sendPK <- arbitrary
-        -- receiver key pair
-        ArbitraryPubKey recvPriv recvPK <- arbitrary
-        -- expiration date
-        lockTime <- arbitrary
+        (cp, (sendPriv, recvPriv)) <- mkChanParams
         fti <- arbitrary
-        let cp = CChannelParameters
-                (MkSendPubKey sendPK) (MkRecvPubKey recvPK) lockTime dUST_LIMIT
         -- value of first payment
         initPayAmount <- arbitrary -- fromIntegral <$> choose (0, chanAmount)
         -- create states
         let (initPayActualAmount,paymnt,sendChan) = channelWithInitialPaymentOf
-                cp fti (flip HC.signMsg sendPriv) (HC.pubKeyAddr sendPK) initPayAmount
+                cp fti (flip HC.signMsg sendPriv) (getFundingAddress cp) initPayAmount
         let eitherRecvChan = channelFromInitialPayment
-                cp fti (HC.pubKeyAddr sendPK) paymnt
+                cp fti (getFundingAddress cp) paymnt
         case eitherRecvChan of
             Left e -> error (show e)
             Right (initRecvAmount,recvChan) -> return
@@ -120,9 +135,6 @@ checkChanPair (ArbChannelPair sendChan recvChan amountSent amountRecvd recvSignF
     checkGoodClientValue clientValueIsGood && statesMatch && recvSendAmountMatch
 
 
-testPaymentSession :: ArbChannelPair -> [BitcoinAmount] -> Bool
-testPaymentSession arbChanPair paymentAmountList =
-    checkChanPair (runChanPair arbChanPair paymentAmountList)
 
 jsonSerDeser :: (Show a, Eq a, JSON.FromJSON a, JSON.ToJSON a) => a -> Bool
 jsonSerDeser fp =
@@ -135,13 +147,32 @@ jsonSerDeser fp =
                     else
                         True
 
-testPaymentJSON :: FullPayment -> Bool
-testPaymentJSON = jsonSerDeser
+binSerDeser :: (Typeable a, Show a, Eq a, Bin.Serialize a) => a -> Bool
+binSerDeser fp =
+    checkEquals decodeRes
+        where bs = Bin.encode fp
+              decodeRes = deserEither bs
+              checkEquals serDeserRes = case serDeserRes of
+                    Left e      -> error $ "Serialize/deserialize error: " ++ show e
+                    Right res   -> if res /= fp then
+                                    error ("Ser/deser mismatch.\nOriginal: " ++ show fp ++ "\nCopy: " ++ show res)
+                                else
+                                    True
+
+testPaymentSession :: ArbChannelPair -> [BitcoinAmount] -> Bool
+testPaymentSession arbChanPair paymentAmountList =
+    checkChanPair (runChanPair arbChanPair paymentAmountList)
+
+testPaymentJSON = jsonSerDeser :: FullPayment -> Bool
+testPaymentBin = binSerDeser :: FullPayment -> Bool
+testScriptBin = binSerDeser :: ChanScript -> Bool
 
 main :: IO ()
 main = do
     quickCheckWith stdArgs testPaymentSession
     quickCheckWith stdArgs testPaymentJSON
+    quickCheckWith stdArgs testPaymentBin
+--     quickCheckWith stdArgs testScriptBin
 
 
 

@@ -102,6 +102,8 @@ data PaymentSignature = CPaymentSignature {
     ,psSigHash  ::  HS.SigHash
 } deriving (Eq, Show, Typeable)
 
+-- |Wraps a Network.Haskoin.Script.Script
+newtype ChanScript = ChanScript { getScript :: HS.Script } deriving (Eq, Show)
 
 -- Never confuse sender/receiver pubkey again: let compiler check
 newtype SendPubKey = MkSendPubKey {
