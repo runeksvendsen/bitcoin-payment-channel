@@ -22,6 +22,7 @@ import qualified Data.Text as T
 import           Data.Word (Word64)
 import           Data.EitherR (fmapL)
 import           Data.Typeable
+import           Debug.Trace
 
 -- Generic PayChanError instance
 instance Bin.Serialize PayChanError
@@ -129,7 +130,7 @@ instance Bin.Serialize Payment where
     get = CPayment <$> Bin.get <*> Bin.get
 
 instance Bin.Serialize FullPayment where
-    put (CFullPayment p op script addr) =
+    put (CFullPayment p op script addr) = cs (Bin.encode addr) `trace`  -- DEBUG
         Bin.put p >> Bin.put op >> Bin.put script >> Bin.put addr
     get = CFullPayment <$> Bin.get <*> Bin.get <*> Bin.get <*> Bin.get
 
