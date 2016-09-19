@@ -72,14 +72,14 @@ getStateForClosing :: MovableChan -> (ReceiverPaymentChannel,BitcoinAmount)
 getStateForClosing (Settled v rpc) = (rpc,v)
 getStateForClosing (Unsettled (ChannelPair v _ newRpc) _) = (newRpc,v)
 
-getStateByInfo :: MovableChan -> BitcoinLockTime -> OutPoint -> Maybe ReceiverPaymentChannel
+getStateByInfo :: MovableChan -> BitcoinLockTime -> OutPoint -> Maybe (ReceiverPaymentChannel,BitcoinAmount)
 getStateByInfo mc lt op = case mc of
-    (Settled _ rpc)                       -> checkInfo rpc
-    (Unsettled (ChannelPair _ old new) _) -> checkInfo new <|> checkInfo old
-    where checkInfo rpc =
+    (Settled v rpc)                       -> checkInfo rpc v
+    (Unsettled (ChannelPair v old new) _) -> checkInfo new v <|> checkInfo old v
+    where checkInfo rpc v =
             if  getChannelID      rpc == op &&
                 getExpirationDate rpc == lt then
-                    Just rpc
+                    Just (rpc,v)
                 else
                     Nothing
 
