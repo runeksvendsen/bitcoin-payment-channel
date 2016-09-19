@@ -1,7 +1,10 @@
+{-# LANGUAGE DeriveGeneric #-}
+
 module Data.Bitcoin.PaymentChannel.Internal.Error where
 
 import Data.Bitcoin.PaymentChannel.Internal.Types
 import Data.Bitcoin.PaymentChannel.Internal.Util
+import           GHC.Generics
 
 data PayChanError =
     SigVerifyFailed |
@@ -11,6 +14,7 @@ data PayChanError =
     RedeemScriptMismatch Script |
     DustOutput BitcoinAmount |
     PartialPaymentBadValue BitcoinAmount
+        deriving Generic
 
 instance Show PayChanError where
     show SigVerifyFailed = "signature verification failed"

@@ -6,6 +6,7 @@ module Data.Bitcoin.PaymentChannel.Internal.Serialization where
 
 import           Data.Bitcoin.PaymentChannel.Internal.Types
 import           Data.Bitcoin.PaymentChannel.Internal.Util
+import           Data.Bitcoin.PaymentChannel.Internal.Error
 import qualified Network.Haskoin.Transaction as HT
 import           Data.Aeson
 import           Data.Aeson.Types (Parser, Pair)
@@ -22,6 +23,8 @@ import           Data.Word (Word64)
 import           Data.EitherR (fmapL)
 import           Data.Typeable
 
+-- Generic PayChanError instance
+instance Bin.Serialize PayChanError
 
 --- JSON
 deriving instance ToJSON SendPubKey
