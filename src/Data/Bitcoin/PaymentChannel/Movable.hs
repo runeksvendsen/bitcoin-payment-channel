@@ -116,9 +116,9 @@ markAsSettled (Unsettled (ChannelPair v _ newRpc) Nothing) =
 recvSinglePayment ::
     MovableChan
     -> FullPayment
-    -> Either PayChanError (BitcoinAmount, MovableChan)
+    -> Either PayChanError (BitcoinAmount, MovableChan, BitcoinAmount)
 recvSinglePayment (Settled v rpc) fp = recvPayment rpc fp >>=
-    \(a, newRpc) -> Right (a, Settled v newRpc)
+    \(a, newRpc) -> Right (a, Settled v newRpc, channelValueLeft newRpc)
 -- Accept payment 1/2
 recvSinglePayment (Unsettled cp@(ChannelPair _ old new) Nothing) fp@(CFullPayment _ op _ _)
     | S.pcsPrevOut (getChannelState old) == op = oldRecvPay cp fp
@@ -130,31 +130,35 @@ recvSinglePayment (Unsettled _ (Just pp)) fp = receiveSecondPayment pp fp
 oldRecvPay ::
     ChannelPair
     -> FullPayment
-    -> Either PayChanError (BitcoinAmount, MovableChan)
+    -> Either PayChanError (BitcoinAmount, MovableChan, BitcoinAmount)
 oldRecvPay (ChannelPair v old new) fp = recvPayment old fp >>=
     -- Update old state, and leave behind a function that updates the new state
-    \(amt, newOld) -> Right (amt, Unsettled (ChannelPair v newOld new)
-        (Just $ NewNeedsUpdate (ChannelPair v newOld new) amt))
+    \(amt, newOld) -> Right
+            (amt, Unsettled (ChannelPair v newOld new)
+            (Just $ NewNeedsUpdate (ChannelPair v newOld new) amt),
+            channelValueLeft newOld)
 
 newRecvPay ::
     ChannelPair
     -> FullPayment
-    -> Either PayChanError (BitcoinAmount, MovableChan)
+    -> Either PayChanError (BitcoinAmount, MovableChan, BitcoinAmount)
 newRecvPay (ChannelPair v old new) fp = recvPayment new fp >>=
     -- Update new state, and leave behind a function that updates the old state
-     \(amt, newNew) -> Right (amt, Unsettled (ChannelPair v old newNew)
-        (Just $ OldNeedsUpdate (ChannelPair v old newNew) amt))
+     \(amt, newNew) -> Right
+            (amt, Unsettled (ChannelPair v old newNew)
+            (Just $ OldNeedsUpdate (ChannelPair v old newNew) amt),
+            channelValueLeft newNew)
 
 receiveSecondPayment ::
     PartialPayment
     -> FullPayment
-    -> Either PayChanError (BitcoinAmount, MovableChan)
+    -> Either PayChanError (BitcoinAmount, MovableChan, BitcoinAmount)
 receiveSecondPayment (OldNeedsUpdate cp amt) fp =
     checkChangeValueMatch amt fp >>= oldRecvPay cp >>=
-        \(amt, mc) -> Right (amt, mc { finishPay = Nothing })
+        \(amt, mc, vLeft) -> Right (amt, mc { finishPay = Nothing }, vLeft)
 receiveSecondPayment (NewNeedsUpdate cp amt) fp =
     checkChangeValueMatch amt fp >>= newRecvPay cp >>=
-        \(amt, mc) -> Right (amt, mc { finishPay = Nothing })
+        \(amt, mc, vLeft) -> Right (amt, mc { finishPay = Nothing }, vLeft)
 
 -- | We want to make sure that payment 1/2 and 2/2 are of equal value
 checkChangeValueMatch :: BitcoinAmount -> FullPayment -> Either PayChanError FullPayment
