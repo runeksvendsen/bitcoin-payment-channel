@@ -56,11 +56,11 @@ newMovableChan ::
     ChannelParameters
     -> FundingTxInfo
     -> FullPayment
-    -> Either PayChanError (BitcoinAmount, MovableChan)
+    -> Either PayChanError (BitcoinAmount, MovableChan, BitcoinAmount)
 newMovableChan cp fti@(CFundingTxInfo _ _ chanVal)
                fullPayment@(CFullPayment _ _ _ payChgAddr) =
     checkChangeAddr >>= channelFromInitialPayment cp fti desiredChangeAddr >>=
-        \(payAmount, rpc) -> Right (payAmount, Settled chanVal rpc)
+        \(payAmount, rpc) -> Right (payAmount, Settled chanVal rpc, channelValueLeft rpc)
     where desiredChangeAddr = getFundingAddress cp
           checkChangeAddr   =
                 if payChgAddr /= desiredChangeAddr then
