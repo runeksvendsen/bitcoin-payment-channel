@@ -132,11 +132,14 @@ instance Bin.Serialize Payment where
 instance Bin.Serialize FullPayment where
     put (CFullPayment p op script addr) = toHexString (Bin.encode addr) `trace`  -- DEBUG
         Bin.put p >> Bin.put op >> Bin.put script >> Bin.put addr
-    get = CFullPayment <$> Bin.get <*> Bin.get <*> Bin.get <*> Bin.get
+    get = CFullPayment <$> printGet <*> printGet <*> printGet <*> printGet
+        where
+            printGet :: (Bin.Serialize a, Show a) => Bin.Get a
+            printGet = Bin.get >>= (\v -> show v `trace` return v)
 
 instance Bin.Serialize PaymentSignature where
-    put ps = Bin.put (psSig ps) >>
-        Bin.put (psSigHash ps)
+    put (CPaymentSignature sig sigHash) =
+        Bin.put sig >> Bin.put sigHash
     get = CPaymentSignature <$> Bin.get <*> Bin.get
 
 
