@@ -34,13 +34,6 @@ defaultDustLimit,
 where
 
 import Data.Bitcoin.PaymentChannel.Internal.Types
-    (BitcoinAmount(..),
-     PaymentChannelState(..),
-     Payment(..), FullPayment(..),
-     FundingTxInfo(..), ChannelParameters(..),
-     SendPubKey(..), RecvPubKey(..), IsPubKey(..),
-     defaultDustLimit,
-     BitcoinLockTime(..), fromDate, usesBlockHeight)
 import Data.Bitcoin.PaymentChannel.Internal.Serialization
 
 import qualified Data.Bitcoin.PaymentChannel.Internal.State as S
@@ -50,6 +43,7 @@ import qualified  Data.Serialize as Bin
 import            Data.Aeson as JSON -- (FromJSON, ToJSON)
 import qualified  Network.Haskoin.Crypto as HC
 import qualified  Network.Haskoin.Transaction as HT
+-- import qualified  Network.Haskoin.Transaction as HS
 
 
 -- |Get various information about an open payment channel.
@@ -63,6 +57,7 @@ class PaymentChannel a where
     getExpirationDate   :: a -> BitcoinLockTime
     getSenderPubKey     :: a -> SendPubKey
     getNewestPayment    :: a -> Payment
+    getNewestSig        :: a -> HC.Signature
     -- |Return True if channel expires earlier than given expiration date
     expiresBefore       :: BitcoinLockTime -> a -> Bool
     -- |For internal use
@@ -81,6 +76,7 @@ class PaymentChannel a where
     channelIsExhausted = S.channelIsExhausted . getChannelState
     expiresBefore expDate chan = getExpirationDate chan < expDate
     getNewestPayment pcs = S.pcsGetPayment (getChannelState pcs)
+    getNewestSig = psSig . cpSignature . getNewestPayment
 
 -- |State object for the value sender
 data SenderPaymentChannel = CSenderPaymentChannel {
