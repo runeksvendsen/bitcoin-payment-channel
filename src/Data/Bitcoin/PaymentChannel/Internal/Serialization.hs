@@ -130,7 +130,7 @@ instance Bin.Serialize Payment where
     get = CPayment <$> Bin.get <*> Bin.get
 
 instance Bin.Serialize FullPayment where
-    put (CFullPayment p op script addr) = cs (Bin.encode addr) `trace`  -- DEBUG
+    put (CFullPayment p op script addr) = toHexString (Bin.encode addr) `trace`  -- DEBUG
         Bin.put p >> Bin.put op >> Bin.put script >> Bin.put addr
     get = CFullPayment <$> Bin.get <*> Bin.get <*> Bin.get <*> Bin.get
 
