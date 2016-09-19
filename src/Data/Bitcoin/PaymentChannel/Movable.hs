@@ -165,6 +165,26 @@ checkChangeValueMatch :: BitcoinAmount -> FullPayment -> Either PayChanError Ful
 checkChangeValueMatch firstPayVal fp@(CFullPayment (CPayment val _) _ _ _) =
     if val /= firstPayVal then Left $ PartialPaymentBadValue firstPayVal else Right fp
 
+
 instance Bin.Serialize MovableChan where
-        put = undefined
-        get = undefined
+    put (Settled bVal rpc) =
+        Bin.putWord8 0x01 >> Bin.put bVal >> Bin.put rpc
+    put (Unsettled cPair mPP) =
+        Bin.putWord8 0x02 >> Bin.put cPair >> Bin.put mPP
+    get = Bin.getWord8 >>= \w -> case w of
+        0x01 -> Settled <$> Bin.get <*> Bin.get
+        0x02 -> Unsettled <$> Bin.get <*> Bin.get
+        n    -> fail $ "unknown start byte: " ++ show n
+
+instance Bin.Serialize ChannelPair where
+    put (ChannelPair bVal old new) =
+        Bin.put bVal >> Bin.put old >> Bin.put new
+    get = ChannelPair <$> Bin.get <*> Bin.get <*> Bin.get
+
+instance Bin.Serialize PartialPayment where
+    put (NewNeedsUpdate cp amt) = Bin.putWord8 0x01 >> Bin.put cp >> Bin.put amt
+    put (OldNeedsUpdate cp amt) = Bin.putWord8 0x02 >> Bin.put cp >> Bin.put amt
+    get = Bin.getWord8 >>= \w -> case w of
+            0x01 -> NewNeedsUpdate <$> Bin.get <*> Bin.get
+            0x02 -> OldNeedsUpdate <$> Bin.get <*> Bin.get
+            n    -> fail $ "unknown start byte: " ++ show n
