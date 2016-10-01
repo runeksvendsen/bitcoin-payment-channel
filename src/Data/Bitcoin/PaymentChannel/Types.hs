@@ -56,7 +56,8 @@ class PaymentChannel a where
     getChannelFunding   :: a -> HT.OutPoint
     getExpirationDate   :: a -> BitcoinLockTime
     getSenderPubKey     :: a -> SendPubKey
-    fundingAddress   :: a -> HC.Address
+    getFundingAmount    :: a -> BitcoinAmount
+    fundingAddress      :: a -> HC.Address
     getNewestPayment    :: a -> Payment
     getNewestSig        :: a -> HC.Signature
     -- |Return True if channel expires earlier than given expiration date
@@ -72,6 +73,7 @@ class PaymentChannel a where
     getChannelFunding       = S.pcsChannelFundingSource . getChannelState
     getExpirationDate  = S.pcsExpirationDate . getChannelState
     getSenderPubKey    = S.pcsClientPubKey . getChannelState
+    getFundingAmount   = S.pcsChannelTotalValue . getChannelState
     fundingAddress  = Script.getP2SHFundingAddress . pcsParameters . getChannelState
     senderChangeValue  = pcsClientChangeVal . getChannelState
     channelValueLeft   = S.channelValueLeft . getChannelState
