@@ -8,15 +8,16 @@ Stability   : experimental
 Portability : POSIX
 
 In order to set up a payment channel between a sender and a receiver, the two parties must
- first agree on three parameters for the channel:
+ first agree on four parameters for the channel:
 
     (1) sender public key
     (2) receiver public key
     (3) channel expiration date
+    (4) sender change output "dust limit" (see note [1])
 
  These parameters
- are contained in 'ChannelParameters', from which a channel funding
- address can be derived using
+ are contained in 'ChannelParameters', from which the Bitcoin address used to fund
+ the payment channel can be derived using
  'getFundingAddress'. The transaction which pays to this address is the channel funding
  transaction, and information about it is contained in a 'FundingTxInfo'.
  So, the channel funding transaction will contain an output which pays to the address returned by
@@ -67,6 +68,11 @@ A settlement transaction can be produced by the value receiver using 'getSettlem
  signing function passed to 'getSettlementBitcoinTx',
 where @receiverPrivKey@ is the private key from which 'cpReceiverPubKey' is derived.
 
+[1] The minimum amount that the server is willing to accept as the client change value in the
+ payment transaction. Set this to 700 and you'll be fine. It's only relevant if the channel is
+ emptied of value completely, but it is necessary because the server doesn't want to accept
+ payments based on transactions it cannot publish via the Bitcoin P2P network, because they
+ contain an output of minuscule value.
 
 __/IMPORTANT:/__ /Channel setup is risk free because the sender can derive a refund Bitcoin transaction/
  /using 'getRefundBitcoinTx', which returns the bitcoins used to fund the channel back to the sender./
@@ -120,10 +126,10 @@ import qualified  Network.Haskoin.Transaction as HT
 -- Returns a new 'SenderPaymentChannel' state object and the first channel payment.
 channelWithInitialPaymentOf ::
     ChannelParameters               -- ^ Specifies channel sender and receiver, channel expiration date and "dust limit"
-    -> FundingTxInfo                -- ^ Holds information about the transaction used to fund the channel
+    -> FundingTxInfo                -- ^ Holds information about the Bitcoin transaction used to fund the channel
     -> (HC.Hash256 -> HC.Signature) -- ^Used to sign payments from sender. When given a 'HC.Hash256', produces a signature that verifies against sender PubKey.
     -> HC.Address                   -- ^ Value sender/client change address
-    -> BitcoinAmount                -- ^ Value of initial payment. Must be greater than or equal to 'minimumInitialPayment'
+    -> BitcoinAmount                -- ^ Value of initial payment. Can be zero.
     -> (BitcoinAmount, FullPayment, SenderPaymentChannel) -- ^Initial payment amount (may be capped), initial payment, and new sender state object
 channelWithInitialPaymentOf cp fundInf signFunc sendAddr amount =
     let pConf = CPaymentTxConfig sendAddr
@@ -136,8 +142,8 @@ channelWithInitialPaymentOf cp fundInf signFunc sendAddr amount =
 -- |Create new payment of specified value.
 sendPayment ::
     SenderPaymentChannel                -- ^Sender state object
-    -> BitcoinAmount                    -- ^ Amount to send (the actual payment amount is capped so that that, at minimu, the client change value equals the dust limit)
-    -> (BitcoinAmount, FullPayment, SenderPaymentChannel)  -- ^ Actual amount sent, payment, and updated sender state object
+    -> BitcoinAmount                    -- ^ Amount to send (the actual payment amount is capped)
+    -> (BitcoinAmount, FullPayment, SenderPaymentChannel)  -- ^ Actual amount actually sent, payment, and updated sender state object
 sendPayment (CSenderPaymentChannel cs signFunc) amountToSend =
     let
         valSent = pcsClientChangeVal cs - newSenderValue
@@ -170,7 +176,7 @@ getRefundBitcoinTx (CSenderPaymentChannel cs signFunc) txFee =
 -- produced by the sender.
 channelFromInitialPayment ::
     ChannelParameters -- ^ Specifies channel sender and receiver, plus channel expiration date
-    -> FundingTxInfo -- ^ Holds information about the transaction used to fund the channel
+    -> FundingTxInfo -- ^ Holds information about the Bitcoin transaction used to fund the channel
     -> HC.Address   -- ^ Value sender/client change address
     -> FullPayment -- ^Initial channel payment
     -> Either PayChanError (BitcoinAmount, ReceiverPaymentChannel) -- ^Error or: value_received plus state object

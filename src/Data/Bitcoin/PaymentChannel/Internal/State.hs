@@ -23,8 +23,8 @@ pcsClientChangeScriptPubKey = addressToScriptPubKeyBS . pcsClientChangeAddress
 pcsLockTime = cpLockTime . pcsParameters
 pcsPrevOut (CPaymentChannelState _ (CFundingTxInfo h i _) _ _ _) = OutPoint h i
 
-pcsChannelID :: PaymentChannelState -> HT.OutPoint
-pcsChannelID pcs = HT.OutPoint (ftiHash fti) (ftiOutIndex fti)
+pcsChannelFundingSource :: PaymentChannelState -> HT.OutPoint
+pcsChannelFundingSource pcs = HT.OutPoint (ftiHash fti) (ftiOutIndex fti)
     where fti = pcsFundingTxInfo pcs
 
 pcsGetPayment :: PaymentChannelState -> Payment
