@@ -13,7 +13,8 @@ data PayChanError =
     ChangeAddrMismatch Address |
     RedeemScriptMismatch Script |
     DustOutput BitcoinAmount |
-    PartialPaymentBadValue BitcoinAmount
+    PartialPaymentBadValue BitcoinAmount |
+    ClosingPaymentBadValue
         deriving Generic
 
 instance Show PayChanError where
@@ -29,3 +30,5 @@ instance Show PayChanError where
         " was accepted, expecting second payment change value to match that."
     show (DustOutput limit) = "server dust limit of " ++ show limit ++
         " not respected by client change output"
+    show ClosingPaymentBadValue = "payment not of zero value." ++
+        " cannot receive value in closing payment."

@@ -93,6 +93,7 @@ module Data.Bitcoin.PaymentChannel
 
     channelFromInitialPayment,
     recvPayment,
+    recvPaymentForClose,
 
     getSettlementBitcoinTx,
     getRefundBitcoinTx,
@@ -196,18 +197,38 @@ recvPayment ::
     -> FullPayment -- ^Payment to verify and register
     -> Either PayChanError (BitcoinAmount, ReceiverPaymentChannel) -- ^Value received plus new receiver state object
 recvPayment rpc@(CReceiverPaymentChannel oldState) fp@(CFullPayment paymnt _ _ _) =
-    let
-        verifySenderPayment hash pk sig = HC.verifySig hash sig (getPubKey pk)
-    in
-        if verifyPaymentSigFromState oldState verifySenderPayment paymnt then
-            updatePaymentChannelState oldState fp >>=
-            (\newState -> Right (
-                S.channelValueLeft oldState - S.channelValueLeft newState
-                , rpc { rpcState = newState })
-            )
-        else
-            Left SigVerifyFailed
+    updatePaymentChannelState oldState fp >>=
+    verifyPaymentSignature paymnt >>=
+    (\newState -> Right (
+        S.channelValueLeft oldState - S.channelValueLeft newState
+        , rpc { rpcState = newState })
+    )
 
+verifyPaymentSignature ::
+    Payment -- ^Payment whose signature to verify
+    -> PaymentChannelState -- ^State object
+    -> Either PayChanError PaymentChannelState
+verifyPaymentSignature paymnt state =
+    if verifyPaymentSigFromState state verifySenderPayment paymnt then
+        Right state
+    else
+        Left SigVerifyFailed
+    where verifySenderPayment hash pk sig = HC.verifySig hash sig (getPubKey pk)
+
+-- |Same as 'recvPayment' but accept only a payment of zero value
+--  with a new client change address. Used to produce the settlement
+--  transaction that returns unsent funds to the client.
+recvPaymentForClose ::
+    ReceiverPaymentChannel -- ^Receiver state object
+    -> FullPayment -- ^Payment to verify and register
+    -> Either PayChanError ReceiverPaymentChannel -- ^ Receiver state object
+recvPaymentForClose (CReceiverPaymentChannel state) fp =
+    recvPayment newAddressState fp >>=
+        \(amtRecv, newState) -> case amtRecv of
+            0 -> Right newState
+            _ -> Left ClosingPaymentBadValue
+    where newAddressState = CReceiverPaymentChannel $
+            S.setClientChangeAddress state (fpChangeAddr fp)
 
 -- |The value transmitted over the channel is settled when this transaction is in the Blockchain.
 -- The receiver will want to make sure a transaction produced by this function

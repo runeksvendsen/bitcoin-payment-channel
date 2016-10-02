@@ -115,6 +115,17 @@ markAsSettled (Unsettled (ChannelPair v _ newRpc) Nothing) =
     else
         Nothing
 
+recvClosingPayment ::
+    MovableChan
+    -> FullPayment  -- ^Payment with client's desired change address
+    -> Either PayChanError (ReceiverPaymentChannel, BitcoinAmount)
+recvClosingPayment (Settled v rpc) fp =
+    addBeginVal <$> recvPaymentForClose rpc fp
+        where addBeginVal s = (s,v)
+recvClosingPayment (Unsettled (ChannelPair v _ new) _) fp =
+    addBeginVal <$> recvPaymentForClose new fp
+        where addBeginVal s = (s,v)
+
 recvSinglePayment ::
     MovableChan
     -> FullPayment
@@ -136,9 +147,11 @@ oldRecvPay ::
 oldRecvPay (ChannelPair v old new) fp = recvPayment old fp >>=
     -- Update old state, and leave behind a function that updates the new state
     \(amt, newOld) -> Right
-            (amt, Unsettled (ChannelPair v newOld new)
-            (Just $ NewNeedsUpdate (ChannelPair v newOld new) amt),
-            channelValueLeft newOld)
+            ( amt
+            , Unsettled (ChannelPair v newOld new)
+                (Just $ NewNeedsUpdate (ChannelPair v newOld new) amt)
+            , channelValueLeft newOld
+            )
 
 newRecvPay ::
     ChannelPair
@@ -147,9 +160,11 @@ newRecvPay ::
 newRecvPay (ChannelPair v old new) fp = recvPayment new fp >>=
     -- Update new state, and leave behind a function that updates the old state
      \(amt, newNew) -> Right
-            (amt, Unsettled (ChannelPair v old newNew)
-            (Just $ OldNeedsUpdate (ChannelPair v old newNew) amt),
-            channelValueLeft newNew)
+            ( amt
+            , Unsettled (ChannelPair v old newNew)
+                (Just $ OldNeedsUpdate (ChannelPair v old newNew) amt)
+            , channelValueLeft newNew
+            )
 
 receiveSecondPayment ::
     PartialPayment

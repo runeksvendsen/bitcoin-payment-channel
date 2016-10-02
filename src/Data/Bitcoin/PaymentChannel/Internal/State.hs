@@ -65,6 +65,7 @@ newPaymentChannelState channelParameters fundingTxInfo paymentConfig paySig =
         pcsPaymentSignature     = paySig
     }
 
+
 -- |Update state with verified payment.
 updatePaymentChannelState  ::
     PaymentChannelState
