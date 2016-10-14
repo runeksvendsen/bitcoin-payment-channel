@@ -53,13 +53,14 @@ instance PaymentChannel MovableChan where
             where setState s rpc = rpc { rpcState = s }
 
 newMovableChan ::
-    ChannelParameters
+    Config
+    -> ChannelParameters
     -> FundingTxInfo
     -> FullPayment
     -> Either PayChanError (BitcoinAmount, MovableChan, BitcoinAmount)
-newMovableChan cp fti@(CFundingTxInfo _ _ chanVal)
+newMovableChan cfg cp fti@(CFundingTxInfo _ _ chanVal)
                fullPayment@(CFullPayment _ _ _ payChgAddr) =
-    checkChangeAddr >>= channelFromInitialPayment cp fti desiredChangeAddr >>=
+    checkChangeAddr >>= channelFromInitialPayment cfg cp fti >>=
         \(payAmount, rpc) -> Right (payAmount, Settled chanVal rpc, channelValueLeft rpc)
     where desiredChangeAddr = getFundingAddress cp
           checkChangeAddr   =

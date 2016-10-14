@@ -32,7 +32,7 @@ parseBitcoinLocktime i
     | i >=  500000000 = LockTimeDate $ posixSecondsToUTCTime (fromIntegral i)
     | otherwise       = error "GHC bug?"
 
--- | Convert to Bitcoin format ('Word32')
+-- | Convert to Bitcoin format (uint32 UNIX timestamp)
 toWord32 :: BitcoinLockTime -> Word32
 toWord32 (LockTimeBlockHeight i) = i
 toWord32 (LockTimeDate date) =

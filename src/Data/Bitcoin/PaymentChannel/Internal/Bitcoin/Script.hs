@@ -65,7 +65,7 @@ getP2SHFundingAddress :: ChannelParameters -> HC.Address
 getP2SHFundingAddress = scriptToP2SHAddress . getRedeemScript
 
 getRedeemScript :: ChannelParameters -> Script
-getRedeemScript (CChannelParameters senderPK recvrPK lockTime _) =
+getRedeemScript (CChannelParameters senderPK recvrPK lockTime) =
     paymentChannelRedeemScript senderPK recvrPK lockTime
 
 getRedeemScriptBS :: ChannelParameters -> B.ByteString

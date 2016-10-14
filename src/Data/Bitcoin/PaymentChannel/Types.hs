@@ -25,11 +25,10 @@ SendPubKey(..),RecvPubKey(..),IsPubKey(..),
 BitcoinAmount,
 BitcoinLockTime(..), fromDate,
 usesBlockHeight,
+defaultConfig,
 
 -- Util
 b64Encode,
--- Constants
-defaultDustLimit,
 )
 where
 
@@ -44,12 +43,12 @@ import qualified  Data.Serialize as Bin
 import            Data.Aeson as JSON -- (FromJSON, ToJSON)
 import qualified  Network.Haskoin.Crypto as HC
 import qualified  Network.Haskoin.Transaction as HT
--- import qualified  Network.Haskoin.Transaction as HS
+import            Data.Word (Word64)
 
 
 -- |Get various information about an open payment channel.
 class PaymentChannel a where
-    -- |Get value sent to receiver/left for sender
+    -- |Get amount received by receiver/left for sender
     valueToMe           :: a -> BitcoinAmount
     -- |Retrieve internal state object
     getChannelState     :: a -> PaymentChannelState
@@ -57,6 +56,7 @@ class PaymentChannel a where
     getExpirationDate   :: a -> BitcoinLockTime
     getSenderPubKey     :: a -> SendPubKey
     getFundingAmount    :: a -> BitcoinAmount
+    getPaymentCount     :: a -> Word64
     fundingAddress      :: a -> HC.Address
     getNewestPayment    :: a -> Payment
     getNewestSig        :: a -> HC.Signature
@@ -74,6 +74,7 @@ class PaymentChannel a where
     getExpirationDate  = S.pcsExpirationDate . getChannelState
     getSenderPubKey    = S.pcsClientPubKey . getChannelState
     getFundingAmount   = S.pcsChannelTotalValue . getChannelState
+    getPaymentCount    = pcsPaymentCount . getChannelState
     fundingAddress  = Script.getP2SHFundingAddress . pcsParameters . getChannelState
     senderChangeValue  = pcsClientChangeVal . getChannelState
     channelValueLeft   = S.channelValueLeft . getChannelState

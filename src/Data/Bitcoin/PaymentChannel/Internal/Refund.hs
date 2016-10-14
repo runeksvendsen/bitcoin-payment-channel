@@ -11,7 +11,7 @@ import qualified Network.Haskoin.Crypto as HC
 import qualified Network.Haskoin.Script as HS
 
 getUnsignedRefundTx :: PaymentChannelState -> BitcoinAmount -> HT.Tx
-getUnsignedRefundTx st txFee = -- @CPaymentChannelState =
+getUnsignedRefundTx st txFee =
     let
         baseTx = toUnsignedBitcoinTx $ fromState st --create empty payment tx, which redeems funding tx
         refundOut = HT.TxOut
@@ -34,7 +34,7 @@ getRefundTxHashForSigning ::
     PaymentChannelState
     -> BitcoinAmount -- ^Bitcoin transaction fee
     -> HC.Hash256
-getRefundTxHashForSigning pcs@(CPaymentChannelState cp _ _ _ _) newValueLeft =
+getRefundTxHashForSigning pcs@(CPaymentChannelState _ cp _ _ _ _ _) newValueLeft =
         HS.txSigHash tx (getRedeemScript cp) 0 (HS.SigAll False)
             where tx = getUnsignedRefundTx pcs newValueLeft
 
@@ -43,7 +43,7 @@ refundTxAddSignature ::
     -> BitcoinAmount      -- ^Bitcoin tx fee
     -> HC.Signature     -- ^Signature over 'getUnsignedRefundTx' which verifies against clientPubKey
     -> FinalTx
-refundTxAddSignature pcs@(CPaymentChannelState cp _ _ _ _) txFee clientRawSig =
+refundTxAddSignature pcs@(CPaymentChannelState _ cp _ _ _ _ _) txFee clientRawSig =
         let
             inputScript = getP2SHInputScript cp $ refundTxScriptSig clientRawSig
         in

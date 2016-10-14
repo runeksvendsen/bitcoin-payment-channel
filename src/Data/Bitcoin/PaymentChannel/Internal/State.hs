@@ -10,32 +10,36 @@ import Data.Bitcoin.PaymentChannel.Internal.Bitcoin.Script
 import qualified Network.Haskoin.Transaction as HT
 import qualified Network.Haskoin.Crypto as HC
 import qualified Network.Haskoin.Script as HS
+import           Data.Time.Clock.POSIX
+
+import           System.IO.Unsafe (unsafePerformIO)
+
 
 pcsChannelTotalValue = ftiOutValue . pcsFundingTxInfo
 pcsValueTransferred cs = pcsChannelTotalValue cs - pcsClientChangeVal cs
 pcsChannelValueLeft = pcsClientChangeVal
 pcsClientPubKey = cpSenderPubKey . pcsParameters
 pcsServerPubKey = cpReceiverPubKey . pcsParameters
-pcsDustLimit = cpDustLimit . pcsParameters
+pcsDustLimit = cDustLimit . pcsConfig
 pcsExpirationDate = cpLockTime . pcsParameters
 pcsClientChangeAddress = ptcSenderChangeAddress . pcsPaymentConfig
 pcsClientChangeScriptPubKey = addressToScriptPubKeyBS . pcsClientChangeAddress
 pcsLockTime = cpLockTime . pcsParameters
-pcsPrevOut (CPaymentChannelState _ (CFundingTxInfo h i _) _ _ _) = OutPoint h i
+pcsPrevOut (CPaymentChannelState _ _ (CFundingTxInfo h i _) _ _ _ _) = OutPoint h i
 
 pcsChannelFundingSource :: PaymentChannelState -> HT.OutPoint
 pcsChannelFundingSource pcs = HT.OutPoint (ftiHash fti) (ftiOutIndex fti)
     where fti = pcsFundingTxInfo pcs
 
 pcsGetPayment :: PaymentChannelState -> Payment
-pcsGetPayment (CPaymentChannelState _ _ _ val sig) = CPayment val sig
+pcsGetPayment (CPaymentChannelState _ _ _ _ _ val sig) = CPayment val sig
 
 -- |Set new client/sender change address.
 -- Use this function if the client wishes to change its change address.
 -- First set the new change address using this function, then accept the payment which
 -- uses this new change address.
 setClientChangeAddress :: PaymentChannelState -> HC.Address -> PaymentChannelState
-setClientChangeAddress pcs@(CPaymentChannelState _ _ pConf _ _) addr =
+setClientChangeAddress pcs@(CPaymentChannelState _ _ _ pConf _ _ _) addr =
     pcs { pcsPaymentConfig = newPayConf }
         where newPayConf = pConf { ptcSenderChangeAddress = addr }
 
@@ -47,7 +51,7 @@ setFundingSource pcs fti =
 --  This avoids creating a Bitcoin transaction that won't circulate
 --  in the Bitcoin P2P network.
 channelValueLeft :: PaymentChannelState -> BitcoinAmount
-channelValueLeft pcs@(CPaymentChannelState (CChannelParameters _ _ _ dustLimit) _ _ _ _)   =
+channelValueLeft pcs@(CPaymentChannelState (Config dustLimit _) _ _ _ _ _ _)   =
     pcsClientChangeVal pcs - dustLimit
 
 -- |Returns 'True' if all available channel value has been transferred, 'False' otherwise
@@ -56,12 +60,14 @@ channelIsExhausted pcs =
     psSigHash (pcsPaymentSignature pcs) == HS.SigNone True ||
         channelValueLeft pcs == 0
 
-newPaymentChannelState channelParameters fundingTxInfo paymentConfig paySig =
+newPaymentChannelState cfg channelParameters fundingTxInfo paymentConfig paySig =
     CPaymentChannelState {
+        pcsConfig               = cfg,
         pcsParameters           = channelParameters,
         pcsFundingTxInfo        = fundingTxInfo,
         pcsPaymentConfig        = paymentConfig,
-        pcsClientChangeVal            = ftiOutValue fundingTxInfo,
+        pcsPaymentCount         = 0,
+        pcsClientChangeVal      = ftiOutValue fundingTxInfo,
         pcsPaymentSignature     = paySig
     }
 
@@ -71,8 +77,8 @@ updatePaymentChannelState  ::
     PaymentChannelState
     -> FullPayment
     -> Either PayChanError PaymentChannelState
-updatePaymentChannelState (CPaymentChannelState cp fun@(CFundingTxInfo h i _)
-                          pconf@(CPaymentTxConfig addr) oldSenderVal _)
+updatePaymentChannelState (CPaymentChannelState cfg cp fun@(CFundingTxInfo h i _)
+                          pconf@(CPaymentTxConfig addr) payCount oldSenderVal _)
     (CFullPayment payment@(CPayment newSenderVal _) payOP payScript payChgAddr)
         | (HT.outPointHash payOP /= h) || (HT.outPointIndex payOP /= i) =
             Left $ OutPointMismatch $ OutPoint h i
@@ -80,13 +86,27 @@ updatePaymentChannelState (CPaymentChannelState cp fun@(CFundingTxInfo h i _)
             Left $ ChangeAddrMismatch addr
         | payScript /= getRedeemScript cp =
             Left $ RedeemScriptMismatch $ getRedeemScript cp
-        | newSenderVal <= oldSenderVal =
-            CPaymentChannelState cp fun pconf newSenderVal . cpSignature <$>
-                checkDustLimit cp payment
-        | otherwise = Left $ BadPaymentValue (newSenderVal - oldSenderVal)
+        | newSenderVal > oldSenderVal =
+            Left $ BadPaymentValue (newSenderVal - oldSenderVal)
+        | isPastLockTimeDate cfg cp =
+            Left   ChannelExpired
+        | otherwise =
+            CPaymentChannelState cfg cp fun pconf (payCount+1) newSenderVal . cpSignature <$>
+                checkDustLimit cfg payment
 
-checkDustLimit :: ChannelParameters -> Payment -> Either PayChanError Payment
-checkDustLimit (CChannelParameters _ _ _ dustLimit) payment@(CPayment senderChangeVal _)
+checkDustLimit :: Config -> Payment -> Either PayChanError Payment
+checkDustLimit (Config dustLimit _) payment@(CPayment senderChangeVal _)
     | senderChangeVal < dustLimit =
         Left $ DustOutput dustLimit
     | otherwise = Right payment
+
+isPastLockTimeDate :: Config -> ChannelParameters -> Bool
+isPastLockTimeDate (Config _ settlePeriod) (CChannelParameters _ _ ltd@(LockTimeDate _)) =
+    currentPOSIXTime > expirationPOSIXTime - toSeconds settlePeriod
+        where expirationPOSIXTime = fromIntegral $ toWord32 ltd
+isPastLockTimeDate _ (CChannelParameters _ _ (LockTimeBlockHeight _)) =
+    False
+
+{-# NOINLINE currentPOSIXTime #-}
+currentPOSIXTime :: Integer
+currentPOSIXTime = fromIntegral . round $ unsafePerformIO getPOSIXTime

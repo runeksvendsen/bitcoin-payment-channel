@@ -69,10 +69,10 @@ mkChanParams = do
     ArbitraryPubKey sendPriv sendPK <- arbitrary
     -- receiver key pair
     ArbitraryPubKey recvPriv recvPK <- arbitrary
-    -- expiration date
-    lockTime <- arbitrary
+    -- We use an expiration date far off into the future
+    let lockTime = parseBitcoinLocktime 2524651200
     return (CChannelParameters
-                (MkSendPubKey sendPK) (MkRecvPubKey recvPK) lockTime dUST_LIMIT,
+                (MkSendPubKey sendPK) (MkRecvPubKey recvPK) lockTime,
            (sendPriv, recvPriv))
 
 mkChanPair :: Gen (ArbChannelPair, FullPayment)
@@ -80,12 +80,11 @@ mkChanPair = do
         (cp, (sendPriv, recvPriv)) <- mkChanParams
         fti <- arbitrary
         -- value of first payment
-        initPayAmount <- arbitrary -- fromIntegral <$> choose (0, chanAmount)
+        initPayAmount <- arbitrary
         -- create states
-        let (initPayActualAmount,paymnt,sendChan) = channelWithInitialPaymentOf
+        let (initPayActualAmount,paymnt,sendChan) = channelWithInitialPaymentOf defaultConfig
                 cp fti (flip HC.signMsg sendPriv) (getFundingAddress cp) initPayAmount
-        let eitherRecvChan = channelFromInitialPayment
-                cp fti (getFundingAddress cp) paymnt
+        let eitherRecvChan = channelFromInitialPayment defaultConfig cp fti paymnt
         case eitherRecvChan of
             Left e -> error (show e)
             Right (initRecvAmount,recvChan) -> return
@@ -93,9 +92,6 @@ mkChanPair = do
                         sendChan recvChan [initPayActualAmount] [initRecvAmount]
                         (flip HC.signMsg recvPriv),
                     paymnt)
-
-instance Arbitrary BitcoinLockTime where
-    arbitrary = fmap parseBitcoinLocktime arbitrary
 
 instance Arbitrary FundingTxInfo where
     arbitrary = do

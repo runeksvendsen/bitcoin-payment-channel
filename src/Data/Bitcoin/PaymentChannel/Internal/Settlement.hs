@@ -14,7 +14,7 @@ import qualified  Network.Haskoin.Script as HS
 serverSigHash = HS.SigAll False
 
 csFromState :: PaymentChannelState -> ClientSignedPayment
-csFromState cs@(CPaymentChannelState _ _ _ _ clientSig) =
+csFromState cs@(CPaymentChannelState _ _ _ _ _ _ clientSig) =
     ClientSignedPayment (fromState cs) clientSig
 
 toUnsignedSettlementTx :: ClientSignedPayment -> HC.Address -> BitcoinAmount -> HT.Tx
@@ -48,7 +48,7 @@ settlementSigningTxHashFromState ::
     -> HC.Address    -- ^Receiver destination address
     -> BitcoinAmount -- ^Bitcoin transaction fee
     -> HC.Hash256
-settlementSigningTxHashFromState cs@(CPaymentChannelState cp _ _ _ _) =
+settlementSigningTxHashFromState cs@(CPaymentChannelState _ cp _ _ _ _ _) =
     getSettlementTxHashForSigning (csFromState cs) cp
 
 getSignedSettlementTx ::
@@ -73,6 +73,6 @@ signedSettlementTxFromState ::
     -> HC.Address       -- ^Receiver/server funds destination address
     -> BitcoinAmount    -- ^Bitcoin tx fee
     -> HT.Tx
-signedSettlementTxFromState cs@(CPaymentChannelState cp _ _ _ _) signFunc recvAddr txFee =
+signedSettlementTxFromState cs@(CPaymentChannelState _ cp _ _ _ _ _) signFunc recvAddr txFee =
     getSignedSettlementTx (csFromState cs) cp recvAddr txFee serverSig
         where serverSig = signFunc (settlementSigningTxHashFromState cs recvAddr txFee)

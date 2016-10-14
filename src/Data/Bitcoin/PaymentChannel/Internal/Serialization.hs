@@ -22,7 +22,7 @@ import qualified Data.Text as T
 import           Data.Word (Word64)
 import           Data.EitherR (fmapL)
 import           Data.Typeable
-import           Debug.Trace
+import qualified Data.Tagged as Tag
 
 -- Generic PayChanError instance
 instance Bin.Serialize PayChanError
@@ -113,16 +113,16 @@ deriving instance Bin.Serialize SendPubKey
 deriving instance Bin.Serialize RecvPubKey
 
 instance Bin.Serialize PaymentChannelState where
-    put (CPaymentChannelState par fti payConf valLeft sig) =
-        Bin.put par >> Bin.put fti >> Bin.put payConf >>
+    put (CPaymentChannelState cfg par fti payConf payCount valLeft sig) =
+        Bin.put cfg >> Bin.put par >> Bin.put fti >> Bin.put payConf >> Bin.put payCount >>
         Bin.put valLeft >> Bin.put sig
     get = CPaymentChannelState <$> Bin.get <*> Bin.get <*>
-        Bin.get <*> Bin.get <*> Bin.get
+        Bin.get <*> Bin.get <*> Bin.get <*> Bin.get <*> Bin.get
 
 instance Bin.Serialize ChannelParameters where
-    put (CChannelParameters pks pkr lt dustLimit) =
-        Bin.put pks >> Bin.put pkr >> Bin.put lt >> Bin.put dustLimit
-    get = CChannelParameters <$> Bin.get <*> Bin.get <*> Bin.get <*> Bin.get
+    put (CChannelParameters pks pkr lt) =
+        Bin.put pks >> Bin.put pkr >> Bin.put lt
+    get = CChannelParameters <$> Bin.get <*> Bin.get <*> Bin.get
 
 instance Bin.Serialize FundingTxInfo where
     put (CFundingTxInfo h idx val) =
@@ -133,6 +133,11 @@ instance Bin.Serialize PaymentTxConfig where
     put (CPaymentTxConfig sendAddr) =
         Bin.put sendAddr
     get = CPaymentTxConfig <$> Bin.get
+
+instance Bin.Serialize Config where
+    put (Config dl sp) =
+        Bin.put dl >> Bin.put (Tag.unTagged sp)
+    get = Config <$> Bin.get <*> fmap Tag.Tagged Bin.get
 
 instance Bin.Serialize Payment where
     put (CPayment val sig) =

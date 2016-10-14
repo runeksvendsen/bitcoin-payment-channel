@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveGeneric, DataKinds #-}
 
 module Data.Bitcoin.PaymentChannel.Internal.Types
 (
@@ -24,21 +24,27 @@ import qualified Network.Haskoin.Crypto as HC
 import qualified Network.Haskoin.Script as HS
 import           Data.Typeable
 import           Data.Word
-import           GHC.Generics
+import qualified Data.Tagged as Tag
+
+
+defaultConfig = Config defaultDustLimit defaultSettlementPeriod
 
 defaultDustLimit = 700 :: BitcoinAmount
-defaultMinChanSize = defaultDustLimit * 2
+defaultSettlementPeriod = 10 :: Hour
 
 newtype UnsignedPaymentTx = CUnsignedPaymentTx { unsignedTx :: HT.Tx } deriving Show
 type FinalTx = HT.Tx
 
 -- |Shared state object used by both value sender and value receiver.
 data PaymentChannelState = CPaymentChannelState {
+    -- |Holds various optional configuration options
+    pcsConfig               ::  Config,
     -- |Defined by the sender and receiver
     pcsParameters           ::  ChannelParameters,
     -- |Retrieved by looking at the in-blockchain funding transaction
     pcsFundingTxInfo        ::  FundingTxInfo,
     pcsPaymentConfig        ::  PaymentTxConfig,
+    pcsPaymentCount         ::  Word64,
     -- |Client change value
     pcsClientChangeVal      ::  BitcoinAmount,
     -- |Signature over payment transaction of value 'pcsValueLeft'
@@ -50,13 +56,7 @@ data ChannelParameters = CChannelParameters {
     cpSenderPubKey      ::  SendPubKey,
     cpReceiverPubKey    ::  RecvPubKey,
     -- |Channel expiration date/time
-    cpLockTime          ::  BitcoinLockTime,
-    -- |Use a per-channel dust limit, such that when the remaining channel value
-    --  hits this limit (rather than zero), we say the channel is exhausted.
-    --  This avoids the relatively complex SigSingle/SigNone logic, and reduces
-    --  a payment to just a ANYONECANPAY|SigSingle signature with a corresponding
-    --  change output, which is set to the channel funding address.
-    cpDustLimit         ::  BitcoinAmount
+    cpLockTime          ::  BitcoinLockTime
 } deriving (Eq, Show, Typeable)
 
 -- |Holds information about the Bitcoin transaction used to fund
@@ -73,7 +73,15 @@ data PaymentTxConfig = CPaymentTxConfig {
     ptcSenderChangeAddress  ::  HC.Address
 } deriving (Eq, Show, Typeable)
 
--- |Used to transfer value from sender to receiver.
+-- |Miscellaneous configuration options
+data Config = Config {
+    -- | Refuse to accept/produce payments with a client change value less than this amount.
+    cDustLimit          :: BitcoinAmount
+    -- | This many hours before the channel expiration date, consider the channel closed (gives server time to publish the settlement transaction before the refund transaction becomes valid)
+  , cSettlementPeriod   :: Hour
+} deriving (Eq, Show, Typeable)
+
+-- |Contains the bare minimum of information to transfer value from sender to receiver.
 data Payment = CPayment {
     -- |Channel value remaining ('pcsValueLeft' of the state from which this payment was made)
     cpClientChange :: BitcoinAmount
@@ -94,18 +102,14 @@ data FullPayment = CFullPayment {
 -- |Contains payment signature plus sig hash flag byte
 data PaymentSignature = CPaymentSignature {
     psSig       ::  HC.Signature
-    -- |SigHash flag. Denotes whether the sender still wants its change output
-    --  included in the settling transaction. In case of (SigNone True), the
-    --  value sender has given up the rest of the channel value, leaving
-    --  everything to the receiver. This is necessary so that no settling
-    --  transaction containing an output below the "dust limit" is produced.
+    -- |SigHash flag. Always "SigSingle True".
     ,psSigHash  ::  HS.SigHash
 } deriving (Eq, Show, Typeable)
 
 -- |Wraps a Network.Haskoin.Script.Script
 newtype ChanScript = ChanScript { getScript :: HS.Script } deriving (Eq, Show)
 
--- Never confuse sender/receiver pubkey again: let compiler check
+-- Never confuse sender/receiver pubkey
 newtype SendPubKey = MkSendPubKey {
     getSenderPK        ::  HC.PubKey
 } deriving (Eq, Show)
@@ -121,3 +125,7 @@ instance IsPubKey SendPubKey where
     getPubKey = getSenderPK
 instance IsPubKey RecvPubKey where
     getPubKey = getReceiverPK
+
+type Hour = Tag.Tagged "Hour" Word32
+toSeconds :: Hour -> Integer
+toSeconds = fromIntegral . (* 3600) . Tag.unTagged

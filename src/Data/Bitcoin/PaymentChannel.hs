@@ -103,7 +103,7 @@ module Data.Bitcoin.PaymentChannel
 where
 
 import Data.Bitcoin.PaymentChannel.Internal.Types
-    (PaymentTxConfig(..), Payment(..), FullPayment(..), pcsClientChangeVal)
+    (PaymentTxConfig(..), Payment(..), FullPayment(..), Config, pcsClientChangeVal)
 import Data.Bitcoin.PaymentChannel.Internal.State
     (newPaymentChannelState, updatePaymentChannelState)
 import qualified Data.Bitcoin.PaymentChannel.Internal.State as S
@@ -126,19 +126,20 @@ import qualified  Network.Haskoin.Transaction as HT
 -- the channel and the funding transaction, as well as the value of the first payment.
 -- Returns a new 'SenderPaymentChannel' state object and the first channel payment.
 channelWithInitialPaymentOf ::
-    ChannelParameters               -- ^ Specifies channel sender and receiver, channel expiration date and "dust limit"
+       Config                       -- ^ Various configuration options. 'defaultConfig' contains sensible defaults.
+    -> ChannelParameters            -- ^ Specifies channel sender and receiver, channel expiration date and "dust limit"
     -> FundingTxInfo                -- ^ Holds information about the Bitcoin transaction used to fund the channel
-    -> (HC.Hash256 -> HC.Signature) -- ^Used to sign payments from sender. When given a 'HC.Hash256', produces a signature that verifies against sender PubKey.
+    -> (HC.Hash256 -> HC.Signature) -- ^ Used to sign payments from sender. When given a 'HC.Hash256', produces a signature that verifies against sender PubKey.
     -> HC.Address                   -- ^ Value sender/client change address
     -> BitcoinAmount                -- ^ Value of initial payment. Can be zero.
     -> (BitcoinAmount, FullPayment, SenderPaymentChannel) -- ^Initial payment amount (may be capped), initial payment, and new sender state object
-channelWithInitialPaymentOf cp fundInf signFunc sendAddr amount =
+channelWithInitialPaymentOf cfg cp fundInf signFunc sendAddr amount =
     let pConf = CPaymentTxConfig sendAddr
         (CFullPayment (CPayment _ tmpSig) _ _ _) =
             createPayment cp fundInf sendAddr amount signFunc
     in
         flip sendPayment amount $ CSenderPaymentChannel
-            (newPaymentChannelState cp fundInf pConf tmpSig) signFunc
+            (newPaymentChannelState cfg cp fundInf pConf tmpSig) signFunc
 
 -- |Create new payment of specified value.
 sendPayment ::
@@ -176,18 +177,18 @@ getRefundBitcoinTx (CSenderPaymentChannel cs signFunc) txFee =
 -- about the payment channel, as well as the first channel payment
 -- produced by the sender.
 channelFromInitialPayment ::
-    ChannelParameters -- ^ Specifies channel sender and receiver, plus channel expiration date
-    -> FundingTxInfo -- ^ Holds information about the Bitcoin transaction used to fund the channel
-    -> HC.Address   -- ^ Value sender/client change address
-    -> FullPayment -- ^Initial channel payment
+    Config                  -- ^ Various configuration options. 'defaultConfig' contains sensible defaults.
+    -> ChannelParameters    -- ^ Specifies channel sender and receiver, plus channel expiration date
+    -> FundingTxInfo        -- ^ Holds information about the Bitcoin transaction used to fund the channel
+    -> FullPayment          -- ^ Initial channel payment
     -> Either PayChanError (BitcoinAmount, ReceiverPaymentChannel) -- ^Error or: value_received plus state object
-channelFromInitialPayment cp fundInf sendAddr fp@(CFullPayment (CPayment _ sig) _ _ _) =
+channelFromInitialPayment cfg cp fundInf fp@(CFullPayment (CPayment _ sig) _ _ sendAddr) =
         let
             pConf = CPaymentTxConfig sendAddr
         in
             flip recvPayment fp $ CReceiverPaymentChannel
                 -- Create a new state with the unverified signature; then verify the same signature in 'recvPayment'
-                (newPaymentChannelState cp fundInf pConf sig)
+                (newPaymentChannelState cfg cp fundInf pConf sig)
 
 -- |Register, on the receiving side, a payment made by 'sendPayment' on the sending side.
 -- Returns error if either the signature or payment amount is invalid, and otherwise

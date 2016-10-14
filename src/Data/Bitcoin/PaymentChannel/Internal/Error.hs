@@ -14,7 +14,8 @@ data PayChanError =
     RedeemScriptMismatch Script |
     DustOutput BitcoinAmount |
     PartialPaymentBadValue BitcoinAmount |
-    ClosingPaymentBadValue
+    ClosingPaymentBadValue |
+    ChannelExpired
         deriving Generic
 
 instance Show PayChanError where
@@ -32,3 +33,4 @@ instance Show PayChanError where
         " not respected by client change output"
     show ClosingPaymentBadValue = "payment not of zero value." ++
         " cannot receive value in closing payment."
+    show ChannelExpired = "channel too close to expiration date"
