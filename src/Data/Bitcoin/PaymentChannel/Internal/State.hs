@@ -10,7 +10,7 @@ import Data.Bitcoin.PaymentChannel.Internal.Bitcoin.Script
 import qualified Network.Haskoin.Transaction as HT
 import qualified Network.Haskoin.Crypto as HC
 import qualified Network.Haskoin.Script as HS
-import           Data.Time.Clock.POSIX
+import           Data.Time.Clock
 
 
 pcsChannelTotalValue = ftiOutValue . pcsFundingTxInfo
@@ -96,10 +96,12 @@ checkDustLimit (Config dustLimit _) payment@(CPayment senderChangeVal _)
         Left $ DustOutput dustLimit
     | otherwise = Right payment
 
-isPastLockTimeDate :: POSIXTime -> Config -> ChannelParameters -> Bool
-isPastLockTimeDate currentPOSIXTime (Config _ settlePeriod) (CChannelParameters _ _ ltd@(LockTimeDate _)) =
-    currentPOSIXTime' > expirationPOSIXTime - toSeconds settlePeriod
-        where expirationPOSIXTime = fromIntegral $ toWord32 ltd
-              currentPOSIXTime' = fromIntegral . round $ currentPOSIXTime
+isPastLockTimeDate :: UTCTime -> Config -> ChannelParameters -> Bool
+isPastLockTimeDate currentTime (Config _ settlePeriodHrs) (CChannelParameters _ _ (LockTimeDate expTime)) =
+    currentTime > (settlePeriod `addUTCTime` expTime)
+        where settlePeriod = -1 * fromIntegral (toSeconds settlePeriodHrs) :: NominalDiffTime
 isPastLockTimeDate _ _ (CChannelParameters _ _ (LockTimeBlockHeight _)) =
-    False
+    True
+    -- We don't have the current Bitcoin block so we regard the channel as expired,
+    -- in order to make we don't accept block count-based locktimes for now.
+

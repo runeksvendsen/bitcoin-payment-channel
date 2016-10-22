@@ -103,9 +103,10 @@ module Data.Bitcoin.PaymentChannel
 where
 
 import Data.Bitcoin.PaymentChannel.Internal.Types
-    (PaymentTxConfig(..), Payment(..), FullPayment(..), Config, pcsClientChangeVal)
+    (PaymentTxConfig(..), Payment(..), FullPayment(..), Config,
+    pcsConfig, pcsClientChangeVal, pcsParameters)
 import Data.Bitcoin.PaymentChannel.Internal.State
-    (newPaymentChannelState, updatePaymentChannelState)
+    (newPaymentChannelState, updatePaymentChannelState, isPastLockTimeDate)
 import qualified Data.Bitcoin.PaymentChannel.Internal.State as S
 import Data.Bitcoin.PaymentChannel.Internal.Payment
     (createPayment, paymentFromState, verifyPaymentSigFromState)
@@ -117,8 +118,10 @@ import Data.Bitcoin.PaymentChannel.Internal.Refund
 import Data.Bitcoin.PaymentChannel.Util (getFundingAddress)
 import Data.Bitcoin.PaymentChannel.Types
 
-import qualified  Network.Haskoin.Crypto as HC
-import qualified  Network.Haskoin.Transaction as HT
+import qualified  Network.Haskoin.Crypto        as HC
+import qualified  Network.Haskoin.Transaction   as HT
+import            Data.Time.Clock                 (UTCTime(..))
+import            Data.Time.Calendar              (Day(..))
 
 
 -- |Create a new 'SenderPaymentChannel'.
@@ -143,7 +146,7 @@ channelWithInitialPaymentOf cfg cp fundInf signFunc sendAddr amount =
 
 -- |Create new payment of specified value.
 sendPayment ::
-    SenderPaymentChannel                -- ^Sender state object
+    SenderPaymentChannel                -- ^ Sender state object
     -> BitcoinAmount                    -- ^ Amount to send (the actual payment amount is capped)
     -> (BitcoinAmount, FullPayment, SenderPaymentChannel)  -- ^ Actual amount actually sent, payment, and updated sender state object
 sendPayment (CSenderPaymentChannel cs signFunc) amountToSend =
@@ -177,16 +180,17 @@ getRefundBitcoinTx (CSenderPaymentChannel cs signFunc) txFee =
 -- about the payment channel, as well as the first channel payment
 -- produced by the sender.
 channelFromInitialPayment ::
-    Config                  -- ^ Various configuration options. 'defaultConfig' contains sensible defaults.
+       UTCTime              -- ^ Current time. Needed for payment verification.
+    -> Config               -- ^ Various configuration options. 'defaultConfig' contains sensible defaults.
     -> ChannelParameters    -- ^ Specifies channel sender and receiver, plus channel expiration date
     -> FundingTxInfo        -- ^ Holds information about the Bitcoin transaction used to fund the channel
     -> FullPayment          -- ^ Initial channel payment
     -> Either PayChanError (BitcoinAmount, ReceiverPaymentChannel) -- ^Error or: value_received plus state object
-channelFromInitialPayment cfg cp fundInf fp@(CFullPayment (CPayment _ sig) _ _ sendAddr) =
+channelFromInitialPayment now cfg cp fundInf fp@(CFullPayment (CPayment _ sig) _ _ sendAddr) =
         let
             pConf = CPaymentTxConfig sendAddr
         in
-            flip recvPayment fp $ CReceiverPaymentChannel
+            flip (recvPayment now) fp $ CReceiverPaymentChannel
                 -- Create a new state with the unverified signature; then verify the same signature in 'recvPayment'
                 (newPaymentChannelState cfg cp fundInf pConf sig)
 
@@ -194,20 +198,27 @@ channelFromInitialPayment cfg cp fundInf fp@(CFullPayment (CPayment _ sig) _ _ s
 -- Returns error if either the signature or payment amount is invalid, and otherwise
 -- the amount received with this 'Payment' and a new state object.
 recvPayment ::
-    ReceiverPaymentChannel -- ^Receiver state object
-    -> FullPayment -- ^Payment to verify and register
+       UTCTime                  -- ^Current time. Needed for payment verification.
+    -> ReceiverPaymentChannel   -- ^Receiver state object
+    -> FullPayment              -- ^Payment to verify and register
     -> Either PayChanError (BitcoinAmount, ReceiverPaymentChannel) -- ^Value received plus new receiver state object
-recvPayment rpc@(CReceiverPaymentChannel oldState) fp@(CFullPayment paymnt _ _ _) =
+recvPayment currentTime rpc@(CReceiverPaymentChannel oldState) fp@(CFullPayment paymnt _ _ _)  =
     updatePaymentChannelState oldState fp >>=
+    checkExpiration >>=
     verifyPaymentSignature paymnt >>=
     (\newState -> Right (
         S.channelValueLeft oldState - S.channelValueLeft newState
         , rpc { rpcState = newState })
     )
+    where checkExpiration s =
+            if isPastLockTimeDate currentTime (pcsConfig oldState) (pcsParameters oldState) then
+                Left ChannelExpired
+            else
+                Right s
 
 verifyPaymentSignature ::
-    Payment -- ^Payment whose signature to verify
-    -> PaymentChannelState -- ^State object
+    Payment                 -- ^Payment whose signature to verify
+    -> PaymentChannelState  -- ^State object
     -> Either PayChanError PaymentChannelState
 verifyPaymentSignature paymnt state =
     if verifyPaymentSigFromState state verifySenderPayment paymnt then
@@ -220,16 +231,21 @@ verifyPaymentSignature paymnt state =
 --  with a new client change address. Used to produce the settlement
 --  transaction that returns unsent funds to the client.
 recvPaymentForClose ::
-    ReceiverPaymentChannel -- ^Receiver state object
-    -> FullPayment -- ^Payment to verify and register
+    ReceiverPaymentChannel  -- ^Receiver state object
+    -> FullPayment          -- ^Payment to verify and register
     -> Either PayChanError ReceiverPaymentChannel -- ^ Receiver state object
 recvPaymentForClose (CReceiverPaymentChannel state) fp =
-    recvPayment newAddressState fp >>=
+    recvPayment futureTimeStamp newAddressState fp >>=
         \(amtRecv, newState) -> case amtRecv of
             0 -> Right newState
             _ -> Left ClosingPaymentBadValue
     where newAddressState = CReceiverPaymentChannel $
             S.setClientChangeAddress state (fpChangeAddr fp)
+          -- When receiving a payment of zero value, which only modifies the
+          -- client change address, we don't care about verifying that the channel
+          -- hasn't expired yet (which it may well have, since the client wants its
+          -- money back)
+          futureTimeStamp = UTCTime (ModifiedJulianDay 94183) 0     -- 100 years into the future from now
 
 -- |The value transmitted over the channel is settled when this transaction is in the Blockchain.
 -- The receiver will want to make sure a transaction produced by this function
