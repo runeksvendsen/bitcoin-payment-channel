@@ -17,10 +17,16 @@ import qualified Data.Aeson         as JSON
 import qualified Data.Serialize     as Bin
 import           Data.Typeable
 
+import           Data.Time.Clock                 (UTCTime(..))
+import           Data.Time.Calendar              (Day(..))
+
 import Test.QuickCheck
 import Test.Framework (Test, testGroup, defaultMain)
 import Test.Framework.Providers.QuickCheck2 (testProperty)
 
+-- |We don't bother testing timestamps for now
+nowishTimestamp :: UTCTime
+nowishTimestamp = UTCTime (ModifiedJulianDay 57683) 0     -- 2016-10-22
 
 mIN_CHANNEL_SIZE :: BitcoinAmount
 mIN_CHANNEL_SIZE = cDustLimit defaultConfig * 2
@@ -137,7 +143,7 @@ doPayment :: ArbChannelPair -> BitcoinAmount -> ArbChannelPair
 doPayment (ArbChannelPair spc rpc sendList recvList f) amount =
     let
         (amountSent, pmn, newSpc) = sendPayment spc amount
-        eitherRpc = recvPayment rpc pmn
+        eitherRpc = recvPayment nowishTimestamp rpc pmn
     in
         case eitherRpc of
             Left e -> error (show e)
@@ -182,7 +188,7 @@ mkChanPair = do
         -- create states
         let (initPayActualAmount,paymnt,sendChan) = channelWithInitialPaymentOf defaultConfig
                 cp fti (flip HC.signMsg sendPriv) (getFundingAddress cp) initPayAmount
-        let eitherRecvChan = channelFromInitialPayment defaultConfig cp fti paymnt
+        let eitherRecvChan = channelFromInitialPayment nowishTimestamp defaultConfig cp fti paymnt
         case eitherRecvChan of
             Left e -> error (show e)
             Right (initRecvAmount,recvChan) -> return

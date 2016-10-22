@@ -34,7 +34,6 @@ library
   exposed-modules:      Data.Bitcoin.PaymentChannel
                         Data.Bitcoin.PaymentChannel.Types
                         Data.Bitcoin.PaymentChannel.Util
-                        Data.Bitcoin.PaymentChannel.Movable
                         -- Exposed for testing purposes
                         Data.Bitcoin.PaymentChannel.Internal.State
 
