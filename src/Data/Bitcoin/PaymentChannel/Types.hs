@@ -12,28 +12,25 @@ Types used with the interface provided by "Data.Bitcoin.PaymentChannel".
 
 module Data.Bitcoin.PaymentChannel.Types
 (
-PaymentChannel(..),
-SenderPaymentChannel(..),
-ReceiverPaymentChannel(..),
-Payment,cpSignature,
-FullPayment(..),
-FundingTxInfo(..),
-ChannelParameters(..),
-PayChanError(..),
-PaymentChannelState,
-SendPubKey(..),RecvPubKey(..),IsPubKey(..),
-BitcoinAmount,
-BitcoinLockTime(..), fromDate,
-usesBlockHeight,
-defaultConfig,
-
--- Util
-b64Encode,
+    PaymentChannel(..),
+    SenderPaymentChannel(..),
+    ReceiverPaymentChannel(..),
+    Config(..),defaultConfig,
+    Payment,cpSignature,
+    FullPayment(..),
+    FundingTxInfo(..),
+    ChannelParameters(..),
+    PayChanError(..),
+    PaymentChannelState,
+    SendPubKey(..),RecvPubKey(..),IsPubKey(..),
+    BitcoinAmount,
+    BitcoinLockTime(..), fromDate,
+    usesBlockHeight
 )
 where
 
 import Data.Bitcoin.PaymentChannel.Internal.Types
-import Data.Bitcoin.PaymentChannel.Internal.Serialization
+import Data.Bitcoin.PaymentChannel.Internal.Serialization ()
 
 import qualified Data.Bitcoin.PaymentChannel.Internal.State as S
 import qualified Data.Bitcoin.PaymentChannel.Internal.Bitcoin.Script as Script

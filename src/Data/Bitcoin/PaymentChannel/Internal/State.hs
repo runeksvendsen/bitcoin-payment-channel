@@ -12,8 +12,6 @@ import qualified Network.Haskoin.Crypto as HC
 import qualified Network.Haskoin.Script as HS
 import           Data.Time.Clock.POSIX
 
-import           System.IO.Unsafe (unsafePerformIO)
-
 
 pcsChannelTotalValue = ftiOutValue . pcsFundingTxInfo
 pcsValueTransferred cs = pcsChannelTotalValue cs - pcsClientChangeVal cs
@@ -88,8 +86,6 @@ updatePaymentChannelState (CPaymentChannelState cfg cp fun@(CFundingTxInfo h i _
             Left $ RedeemScriptMismatch $ getRedeemScript cp
         | newSenderVal > oldSenderVal =
             Left $ BadPaymentValue (newSenderVal - oldSenderVal)
-        | isPastLockTimeDate cfg cp =
-            Left   ChannelExpired
         | otherwise =
             CPaymentChannelState cfg cp fun pconf (payCount+1) newSenderVal . cpSignature <$>
                 checkDustLimit cfg payment
@@ -100,13 +96,10 @@ checkDustLimit (Config dustLimit _) payment@(CPayment senderChangeVal _)
         Left $ DustOutput dustLimit
     | otherwise = Right payment
 
-isPastLockTimeDate :: Config -> ChannelParameters -> Bool
-isPastLockTimeDate (Config _ settlePeriod) (CChannelParameters _ _ ltd@(LockTimeDate _)) =
-    currentPOSIXTime > expirationPOSIXTime - toSeconds settlePeriod
+isPastLockTimeDate :: POSIXTime -> Config -> ChannelParameters -> Bool
+isPastLockTimeDate currentPOSIXTime (Config _ settlePeriod) (CChannelParameters _ _ ltd@(LockTimeDate _)) =
+    currentPOSIXTime' > expirationPOSIXTime - toSeconds settlePeriod
         where expirationPOSIXTime = fromIntegral $ toWord32 ltd
-isPastLockTimeDate _ (CChannelParameters _ _ (LockTimeBlockHeight _)) =
+              currentPOSIXTime' = fromIntegral . round $ currentPOSIXTime
+isPastLockTimeDate _ _ (CChannelParameters _ _ (LockTimeBlockHeight _)) =
     False
-
-{-# NOINLINE currentPOSIXTime #-}
-currentPOSIXTime :: Integer
-currentPOSIXTime = fromIntegral . round $ unsafePerformIO getPOSIXTime

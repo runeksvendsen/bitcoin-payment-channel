@@ -77,7 +77,9 @@ data PaymentTxConfig = CPaymentTxConfig {
 data Config = Config {
     -- | Refuse to accept/produce payments with a client change value less than this amount.
     cDustLimit          :: BitcoinAmount
-    -- | This many hours before the channel expiration date, consider the channel closed (gives server time to publish the settlement transaction before the refund transaction becomes valid)
+    -- | This many hours before the channel expiration date, consider the channel closed.
+    --  This gives the receiver time to publish the settlement transaction, before the
+    --  refund transaction becomes valid.
   , cSettlementPeriod   :: Hour
 } deriving (Eq, Show, Typeable)
 
