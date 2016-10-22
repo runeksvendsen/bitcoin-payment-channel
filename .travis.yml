@@ -1,21 +1,5 @@
-#deploy:
-#  on:
-#    branch: master
-#  provider: s3
-#  bucket: spockdocs
-#  skip_cleanup: true
-#  acl: public_read
-#  region: eu-central-1
-#  local_dir: .stack-work/install/x86_64-linux/lts-6.13/7.10.3/doc/
-#  access_key_id:
-#    secure: ....
-#  secret_access_key:
-#    secure: ....
-
 language: c
 
-#sudo: false
-# use Trusty image
 sudo: required
 dist: trusty
 
@@ -27,18 +11,13 @@ cache:
 
 matrix:
   include:
-    ## -STACK
     - env: BUILD=stack GHCVER=7.10.3 STACK_YAML=stack.yaml
       compiler: ": #stack 7.10.3"
-      addons: {apt: {packages: [cabal-install-head,ghc-7.10.3,libssl-dev], sources: [hvr-ghc]}}
+      addons: {apt: {packages: [cabal-install-head,ghc-7.10.3], sources: [hvr-ghc]}}
 
-    #- env: BUILD=stack STACK_YAML=stack.yaml
-    #  compiler: ": #stack 7.10.3 osx"
-    #  os: osx
-
-#  allow_failures:
-#    - env: BUILD=cabal CABALVER=head GHCVER=head
-
+    - env: BUILD=stack GHCVER=8.0.1 STACK_YAML=stack.yaml
+      compiler: ": #stack 8.0.1"
+      addons: {apt: {packages: [cabal-install-head,ghc-8.0.1], sources: [hvr-ghc]}}
 
 before_install:
  - unset CC
