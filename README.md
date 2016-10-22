@@ -1,5 +1,5 @@
 # Bitcoin payment channel library
-
+[![Build Status](https://travis-ci.org/runeksvendsen/bitcoin-payment-channel.svg?branch=master)](https://travis-ci.org/runeksvendsen/bitcoin-payment-channel)
 ## Description
 
 A Bitcoin payment channel allows secure and instant transfer of bitcoins from one party to another. Payments are created and verified in less than a millisecond (plus network latency), and cannot be double spent, as the receiver of funds is defined during channel setup.
