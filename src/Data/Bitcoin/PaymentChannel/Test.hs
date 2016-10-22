@@ -53,13 +53,15 @@ doPayment (ArbChannelPair spc rpc sendList recvList f) amount =
                     (recvAmount : recvList)
                     f
 
-
 instance Arbitrary ArbChannelPair where
     arbitrary = fmap fst mkChanPair
 
+instance Arbitrary PaymentChannelState where
+    arbitrary = fmap getPCS mkChanPair
+        where getPCS (ArbChannelPair _ rpc _ _ _ , _) = rpcState rpc
+
 instance Arbitrary ChanScript where
     arbitrary = ChanScript . getRedeemScript <$> arbitrary
-
 
 instance Arbitrary FullPayment where
     arbitrary = fmap snd mkChanPair

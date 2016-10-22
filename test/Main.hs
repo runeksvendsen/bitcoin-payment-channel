@@ -36,10 +36,19 @@ tests =
             testPaymentSession checkRecvSendAmount
         ]
     , testGroup "Serialization"
-        [ testProperty "FullPayment JSON"     (jsonSerDeser :: FullPayment -> Bool)
-        , testProperty "FullPayment Binary"   (binSerDeser  :: FullPayment -> Bool)
-        -- Fails: https://github.com/haskoin/haskoin/issues/287
-        -- , testProperty "ChanScript ser/deser" (binSerDeser  :: ChanScript -> Bool)
+        [ testGroup "JSON"
+            [ testProperty "FullPayment"
+                (jsonSerDeser :: FullPayment -> Bool)
+            ]
+        , testGroup "Binary"
+            [ testProperty "FullPayment"
+                (binSerDeser  :: FullPayment -> Bool)
+            , testProperty "PaymentChannelState"
+                (binSerDeser  :: PaymentChannelState -> Bool)
+            -- Fails: https://github.com/haskoin/haskoin/issues/287
+            -- , testProperty "ChanScript"
+            --    (binSerDeser  :: ChanScript -> Bool)
+            ]
         ]
     ]
 
