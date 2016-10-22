@@ -37,7 +37,6 @@ import qualified Data.Bitcoin.PaymentChannel.Internal.Bitcoin.Script as Script
 import Data.Bitcoin.PaymentChannel.Internal.Error (PayChanError(..))
 
 import qualified  Data.Serialize as Bin
-import            Data.Aeson as JSON -- (FromJSON, ToJSON)
 import qualified  Network.Haskoin.Crypto as HC
 import qualified  Network.Haskoin.Transaction as HT
 import            Data.Word (Word64)
@@ -91,7 +90,7 @@ data SenderPaymentChannel = CSenderPaymentChannel {
 newtype ReceiverPaymentChannel = CReceiverPaymentChannel {
     -- |Internal state object
     rpcState        ::  PaymentChannelState
-} deriving (Eq, Bin.Serialize, FromJSON, ToJSON)
+} deriving (Eq, Bin.Serialize)
 
 instance PaymentChannel SenderPaymentChannel where
     valueToMe = channelValueLeft

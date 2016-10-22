@@ -11,17 +11,12 @@ import qualified Network.Haskoin.Transaction as HT
 import           Data.Aeson
 import           Data.Aeson.Types (Parser, Pair)
 import           Data.Scientific (Scientific, scientific, toBoundedInteger)
-import           Data.Text.Encoding       (decodeUtf8, encodeUtf8)
 import qualified Data.Serialize     as Bin
 import qualified Data.Serialize.Put as BinPut
 import qualified Data.Serialize.Get as BinGet
 
-import qualified Data.ByteString.Base64.URL as B64
 import qualified Data.ByteString as B
-import qualified Data.Text as T
 import           Data.Word (Word64)
-import           Data.EitherR (fmapL)
-import           Data.Typeable
 import qualified Data.Tagged as Tag
 
 -- Generic PayChanError instance
@@ -90,12 +85,6 @@ instance ToJSON BitcoinAmount where
 instance FromJSON BitcoinAmount where
     parseJSON = withScientific "BitcoinAmount" $
         fmap fromIntegral . parseJSONInt
-
-instance ToJSON PaymentChannelState where
-    toJSON = toJSON . txtB64Encode
-
-instance FromJSON PaymentChannelState where
-    parseJSON = withText "PaychanState" txtB64Decode
 
 
 --- Binary
@@ -171,24 +160,6 @@ instance Bounded BitcoinAmount where
     maxBound = BitcoinAmount $ round $ 21e6 * 1e8
 
 
---- Util
-b64Encode :: Bin.Serialize a => a -> B.ByteString
-b64Encode = B64.encode . Bin.encode
-
-b64Decode :: (Typeable a, Bin.Serialize a) => B.ByteString -> Either String a
-b64Decode b64 =
-    concatErr "failed to deserialize parsed base64 data: " . deserEither =<<
-    (concatErr "failed to parse base64 data: ") (b64Decode b64)
-        where
-            b64Decode = B64.decode . padToMod4
-            concatErr e = fmapL (e ++)
-
-txtB64Encode :: Bin.Serialize a => a -> T.Text
-txtB64Encode = decodeUtf8 . b64Encode
-
-txtB64Decode :: (Typeable a, Bin.Serialize a) => T.Text -> Parser a
-txtB64Decode = either fail return . b64Decode . encodeUtf8
-
 parseJSONInt :: Scientific -> Parser Integer
 parseJSONInt s =
     case toBoundedInteger s of
@@ -200,12 +171,3 @@ parseJSONWord s =
     case toBoundedInteger s of
         Just w -> return w
         Nothing -> fail $ "failed to decode JSON number to Word64. data: " ++ show s
-
-padToMod4 :: B.ByteString -> B.ByteString
-padToMod4 bs =
-    let
-        lastGroupSize = B.length bs `mod` 4
-        numPadChars = if lastGroupSize > 0 then 4 - lastGroupSize else 0
-        equalASCIIChar = 61
-    in
-        B.concat [bs, B.replicate numPadChars equalASCIIChar]

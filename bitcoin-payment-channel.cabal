@@ -55,7 +55,6 @@ library
   build-depends:        base                >= 4.7    && < 5,
                         haskoin-core        >= 0.4.0  && < 0.5.0,
                         base16-bytestring   >= 0.1.0  && < 0.2.0,
-                        base64-bytestring   >= 1.0.0  && < 1.1.0,
                         bytestring          >= 0.10.0 && < 0.11.0,
                         cereal              >= 0.5.0  && < 0.6.0,
                         errors              >= 2.0.0  && < 2.2.0,
