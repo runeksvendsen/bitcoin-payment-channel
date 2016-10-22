@@ -1,5 +1,5 @@
 name:                 bitcoin-payment-channel
-version:              0.5.0.0
+version:              0.5.0.1
 synopsis:             Library for working with Bitcoin payment channels
 description:
     A Bitcoin payment channel allows secure and instant transfer of bitcoins from one
@@ -34,10 +34,10 @@ library
   exposed-modules:      Data.Bitcoin.PaymentChannel
                         Data.Bitcoin.PaymentChannel.Types
                         Data.Bitcoin.PaymentChannel.Util
-                        -- Exposed for testing purposes
-                        Data.Bitcoin.PaymentChannel.Internal.State
+                        Data.Bitcoin.PaymentChannel.Test
 
-  other-modules:        Data.Bitcoin.PaymentChannel.Internal.Error
+  other-modules:        Data.Bitcoin.PaymentChannel.Internal.State
+                        Data.Bitcoin.PaymentChannel.Internal.Error
                         Data.Bitcoin.PaymentChannel.Internal.Payment
                         Data.Bitcoin.PaymentChannel.Internal.Refund
                         Data.Bitcoin.PaymentChannel.Internal.Bitcoin.Amount
@@ -64,7 +64,8 @@ library
                         aeson               >= 0.11.0 && < 0.12.0,
                         scientific          >= 0.3.0  && < 0.4.0,
                         string-conversions  >= 0.4    && < 0.5,
-                        tagged              >= 0.8    && < 1.0
+                        tagged              >= 0.8    && < 1.0,
+                        QuickCheck          >= 2.8    && < 2.9
 
   hs-source-dirs:       src
 
@@ -74,10 +75,12 @@ test-suite test-bitcoin-payment-channel
   main-is: Main.hs
   default-language:     Haskell2010
   hs-source-dirs: test
-  ghc-options:    -W
+  ghc-options:    -Wall
 
-  build-depends:        base         >= 4.7   && < 5,
-                        haskoin-core >= 0.4.0 && < 1.0.0,
+  build-depends:        base                >= 4.7   && < 5,
+                        haskoin-core        >= 0.4.0 && < 1.0.0,
+                        QuickCheck          >= 2.8    && < 2.9,
+
                         bytestring,
                         base16-bytestring, base64-bytestring,
                         hexstring, text,
@@ -85,5 +88,5 @@ test-suite test-bitcoin-payment-channel
                         time,
                         cereal, aeson,
 
-                        QuickCheck, test-framework, test-framework-quickcheck2,
+                        test-framework, test-framework-quickcheck2,
                         bitcoin-payment-channel
