@@ -1,5 +1,5 @@
 name:                 bitcoin-payment-channel
-version:              0.5.1.0
+version:              0.5.2.0
 synopsis:             Library for working with Bitcoin payment channels
 description:
     A Bitcoin payment channel allows secure and instant transfer of bitcoins from one
@@ -44,6 +44,7 @@ library
                         Data.Bitcoin.PaymentChannel.Internal.Bitcoin.Script
                         Data.Bitcoin.PaymentChannel.Internal.Bitcoin.Util
                         Data.Bitcoin.PaymentChannel.Internal.Bitcoin.LockTime
+                        Data.Bitcoin.PaymentChannel.Internal.Crypto.PubKey
                         Data.Bitcoin.PaymentChannel.Internal.Settlement
                         Data.Bitcoin.PaymentChannel.Internal.Types
                         Data.Bitcoin.PaymentChannel.Internal.Serialization

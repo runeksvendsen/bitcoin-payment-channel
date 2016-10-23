@@ -42,7 +42,7 @@ refundTxAddSignature ::
     PaymentChannelState
     -> BitcoinAmount      -- ^Bitcoin tx fee
     -> HC.Signature     -- ^Signature over 'getUnsignedRefundTx' which verifies against clientPubKey
-    -> FinalTx
+    -> HT.Tx
 refundTxAddSignature pcs@(CPaymentChannelState _ cp _ _ _ _ _) txFee clientRawSig =
         let
             inputScript = getP2SHInputScript cp $ refundTxScriptSig clientRawSig

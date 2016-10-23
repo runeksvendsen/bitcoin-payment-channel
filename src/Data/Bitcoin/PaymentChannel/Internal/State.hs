@@ -90,13 +90,25 @@ updatePaymentChannelState (CPaymentChannelState cfg cp fun@(CFundingTxInfo h i _
             CPaymentChannelState cfg cp fun pconf (payCount+1) newSenderVal . cpSignature <$>
                 checkDustLimit cfg payment
 
+-- |Create a 'ReceiverPaymentChannelX', which has an associated XPubKey, from a
+--  'ReceiverPaymentChannel'
+mkExtendedKeyRPC :: ReceiverPaymentChannel -> HC.XPubKey -> Maybe ReceiverPaymentChannelX
+mkExtendedKeyRPC (CReceiverPaymentChannel pcs _) xpk =
+    if xPubKey xpk == getPubKey (pcsServerPubKey pcs) then
+            Just $ CReceiverPaymentChannel pcs xpk
+        else
+            Nothing
+
 checkDustLimit :: Config -> Payment -> Either PayChanError Payment
 checkDustLimit (Config dustLimit _) payment@(CPayment senderChangeVal _)
     | senderChangeVal < dustLimit =
         Left $ DustOutput dustLimit
     | otherwise = Right payment
 
-isPastLockTimeDate :: UTCTime -> Config -> ChannelParameters -> Bool
+isPastLockTimeDate :: UTCTime
+                   -> Config
+                   -> ChannelParameters
+                   -> Bool
 isPastLockTimeDate currentTime (Config _ settlePeriodHrs) (CChannelParameters _ _ (LockTimeDate expTime)) =
     currentTime > (settlePeriod `addUTCTime` expTime)
         where settlePeriod = -1 * fromIntegral (toSeconds settlePeriodHrs) :: NominalDiffTime

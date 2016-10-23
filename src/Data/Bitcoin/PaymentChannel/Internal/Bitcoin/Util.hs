@@ -52,7 +52,7 @@ appendOutput tx txOut =
     HT.createTx (HT.txVersion tx) (HT.txIn tx) ( oldOuts ++ [txOut] ) (HT.txLockTime tx)
         where oldOuts = HT.txOut tx
 
-bitcoinPayPK :: HC.PubKey -> HS.Script
+bitcoinPayPK :: HC.PubKeyC -> HS.Script
 bitcoinPayPK pk = HS.encodeOutput $ HS.PayPKHash $ HC.pubKeyAddr pk
 bitcoinPayPKBS = serialize . bitcoinPayPK
     where serialize = Ser.encode

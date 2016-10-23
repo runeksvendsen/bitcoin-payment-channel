@@ -5,16 +5,16 @@ module Data.Bitcoin.PaymentChannel.Internal.Types
     module Data.Bitcoin.PaymentChannel.Internal.Types
   , module Data.Bitcoin.PaymentChannel.Internal.Bitcoin.Amount
   , module Data.Bitcoin.PaymentChannel.Internal.Bitcoin.LockTime
+  , module Data.Bitcoin.PaymentChannel.Internal.Crypto.PubKey
   , module Network.Haskoin.Transaction
   , module Network.Haskoin.Crypto
   , module Network.Haskoin.Script
-)
-
-where
+) where
 
 import Data.Bitcoin.PaymentChannel.Internal.Util
 import Data.Bitcoin.PaymentChannel.Internal.Bitcoin.Amount
 import Data.Bitcoin.PaymentChannel.Internal.Bitcoin.LockTime
+import Data.Bitcoin.PaymentChannel.Internal.Crypto.PubKey
 
 import           Network.Haskoin.Transaction
 import           Network.Haskoin.Crypto
@@ -26,14 +26,6 @@ import           Data.Typeable
 import           Data.Word
 import qualified Data.Tagged as Tag
 
-
-defaultConfig = Config defaultDustLimit defaultSettlementPeriod
-
-defaultDustLimit = 700 :: BitcoinAmount
-defaultSettlementPeriod = 10 :: Hour
-
-newtype UnsignedPaymentTx = CUnsignedPaymentTx { unsignedTx :: HT.Tx } deriving Show
-type FinalTx = HT.Tx
 
 -- |Shared state object used by both value sender and value receiver.
 data PaymentChannelState = CPaymentChannelState {
@@ -111,23 +103,31 @@ data PaymentSignature = CPaymentSignature {
 -- |Wraps a Network.Haskoin.Script.Script
 newtype ChanScript = ChanScript { getScript :: HS.Script } deriving (Eq, Show)
 
--- Never confuse sender/receiver pubkey
-newtype SendPubKey = MkSendPubKey {
-    getSenderPK        ::  HC.PubKey
-} deriving (Eq, Show)
+type PayChanState  = PaymentChannelState
+type ChanParams = ChannelParameters
 
-newtype RecvPubKey = MkRecvPubKey {
-    getReceiverPK        ::  HC.PubKey
-} deriving (Eq, Show)
+-- |ReceiverPaymentChannel without public key metadata
+type ReceiverPaymentChannel = ReceiverPaymentChannelI ()
+-- |ReceiverPaymentChannel with BIP32 , "extended" public key metadata
+type ReceiverPaymentChannelX = ReceiverPaymentChannelI HC.XPubKey
 
-class IsPubKey a where
-    getPubKey :: a -> HC.PubKey
+-- |State object for the value receiver. pkInfo holds optional, extra
+--  data associated with the receiver public key
+data ReceiverPaymentChannelI pkInfo = CReceiverPaymentChannel {
+    -- |Internal state object
+    rpcState        :: PaymentChannelState
+  , rpcPubKeyInfo   :: pkInfo
+} deriving (Eq, Typeable)
 
-instance IsPubKey SendPubKey where
-    getPubKey = getSenderPK
-instance IsPubKey RecvPubKey where
-    getPubKey = getReceiverPK
+rpcGetXPub = rpcPubKeyInfo
 
 type Hour = Tag.Tagged "Hour" Word32
 toSeconds :: Hour -> Integer
 toSeconds = fromIntegral . (* 3600) . Tag.unTagged
+
+
+-- Defaults
+defaultConfig = Config defaultDustLimit defaultSettlementPeriod
+
+defaultDustLimit = 700 :: BitcoinAmount
+defaultSettlementPeriod = 10 :: Hour

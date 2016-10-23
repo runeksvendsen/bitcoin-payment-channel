@@ -82,12 +82,12 @@ instance Arbitrary BitcoinAmount where
     arbitrary = fromIntegral <$> choose (0, round $ 21e6 * 1e8 :: Integer)
 
 
-mkChanParams :: Gen (ChannelParameters, (HC.PrvKey, HC.PrvKey))
+mkChanParams :: Gen (ChannelParameters, (HC.PrvKeyC, HC.PrvKeyC))
 mkChanParams = do
     -- sender key pair
-    ArbitraryPubKey sendPriv sendPK <- arbitrary
+    ArbitraryPubKeyC sendPriv sendPK <- arbitrary
     -- receiver key pair
-    ArbitraryPubKey recvPriv recvPK <- arbitrary
+    ArbitraryPubKeyC recvPriv recvPK <- arbitrary
     -- TODO: We use an expiration date far off into the future for now
     let lockTime = parseBitcoinLocktime 2524651200
     return (CChannelParameters

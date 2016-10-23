@@ -23,7 +23,7 @@ unsafeUpdateRecvState
 where
 
 import Data.Bitcoin.PaymentChannel.Internal.Types
-    (PaymentChannelState(..),
+    (PaymentChannelState(..), ReceiverPaymentChannelI(..),
     Payment(..), PaymentSignature(..))
 import Data.Bitcoin.PaymentChannel.Internal.Bitcoin.Script
     (getP2SHFundingAddress, getRedeemScript)
@@ -55,9 +55,9 @@ setSenderChangeAddress pch addr =
 -- |Update internal state without signature verification.
 -- Useful for database-type services where a logic layer has already
 --  verified the signature, and it just needs to be stored.
-unsafeUpdateRecvState :: ReceiverPaymentChannel -> Payment -> ReceiverPaymentChannel
-unsafeUpdateRecvState (CReceiverPaymentChannel s) (CPayment val sig) =
-    CReceiverPaymentChannel $ s { pcsClientChangeVal = val, pcsPaymentSignature = sig}
+unsafeUpdateRecvState :: ReceiverPaymentChannelI a -> Payment -> ReceiverPaymentChannelI a
+unsafeUpdateRecvState (CReceiverPaymentChannel s pki) (CPayment val sig) =
+    CReceiverPaymentChannel ( s { pcsClientChangeVal = val, pcsPaymentSignature = sig} ) pki
 
 fpGetSig :: FullPayment -> HC.Signature
 fpGetSig = psSig . cpSignature . fpPayment

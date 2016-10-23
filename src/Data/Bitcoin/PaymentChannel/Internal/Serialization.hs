@@ -1,6 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving, StandaloneDeriving, TypeSynonymInstances, FlexibleInstances #-}
 
 module Data.Bitcoin.PaymentChannel.Internal.Serialization where
 
@@ -97,9 +96,6 @@ instance Bin.Serialize ChanScript where
     get = either error ChanScript . Bin.decode <$>
             (BinGet.getWord16be >>=
              BinGet.getByteString . fromIntegral)
-
-deriving instance Bin.Serialize SendPubKey
-deriving instance Bin.Serialize RecvPubKey
 
 instance Bin.Serialize PaymentChannelState where
     put (CPaymentChannelState cfg par fti payConf payCount valLeft sig) =

@@ -104,6 +104,7 @@ where
 
 import Data.Bitcoin.PaymentChannel.Internal.Types
     (PaymentTxConfig(..), Payment(..), FullPayment(..), Config,
+     ReceiverPaymentChannelI(..),
     pcsConfig, pcsClientChangeVal, pcsParameters)
 import Data.Bitcoin.PaymentChannel.Internal.State
     (newPaymentChannelState, updatePaymentChannelState, isPastLockTimeDate)
@@ -132,7 +133,7 @@ channelWithInitialPaymentOf ::
        Config                       -- ^ Various configuration options. 'defaultConfig' contains sensible defaults.
     -> ChannelParameters            -- ^ Specifies channel sender and receiver, channel expiration date and "dust limit"
     -> FundingTxInfo                -- ^ Holds information about the Bitcoin transaction used to fund the channel
-    -> (HC.Hash256 -> HC.Signature) -- ^ Used to sign payments from sender. When given a 'HC.Hash256', produces a signature that verifies against sender PubKey.
+    -> (HC.Hash256 -> HC.Signature) -- ^ Used to sign payments from sender. When given a 'HC.Hash256', produces a signature that verifies against sender pubkey.
     -> HC.Address                   -- ^ Value sender/client change address
     -> BitcoinAmount                -- ^ Value of initial payment. Can be zero.
     -> (BitcoinAmount, FullPayment, SenderPaymentChannel) -- ^Initial payment amount (may be capped), initial payment, and new sender state object
@@ -192,17 +193,17 @@ channelFromInitialPayment now cfg cp fundInf fp@(CFullPayment (CPayment _ sig) _
         in
             flip (recvPayment now) fp $ CReceiverPaymentChannel
                 -- Create a new state with the unverified signature; then verify the same signature in 'recvPayment'
-                (newPaymentChannelState cfg cp fundInf pConf sig)
+                (newPaymentChannelState cfg cp fundInf pConf sig) ()
 
 -- |Register, on the receiving side, a payment made by 'sendPayment' on the sending side.
 -- Returns error if either the signature or payment amount is invalid, and otherwise
 -- the amount received with this 'Payment' and a new state object.
 recvPayment ::
        UTCTime                  -- ^Current time. Needed for payment verification.
-    -> ReceiverPaymentChannel   -- ^Receiver state object
+    -> (ReceiverPaymentChannelI a)   -- ^Receiver state object
     -> FullPayment              -- ^Payment to verify and register
-    -> Either PayChanError (BitcoinAmount, ReceiverPaymentChannel) -- ^Value received plus new receiver state object
-recvPayment currentTime rpc@(CReceiverPaymentChannel oldState) fp@(CFullPayment paymnt _ _ _)  =
+    -> Either PayChanError (BitcoinAmount, (ReceiverPaymentChannelI a)) -- ^Value received plus new receiver state object
+recvPayment currentTime rpc@(CReceiverPaymentChannel oldState _) fp@(CFullPayment paymnt _ _ _)  =
     updatePaymentChannelState oldState fp >>=
     checkExpiration >>=
     verifyPaymentSignature paymnt >>=
@@ -231,16 +232,19 @@ verifyPaymentSignature paymnt state =
 --  with a new client change address. Used to produce the settlement
 --  transaction that returns unsent funds to the client.
 recvPaymentForClose ::
-    ReceiverPaymentChannel  -- ^Receiver state object
-    -> FullPayment          -- ^Payment to verify and register
-    -> Either PayChanError ReceiverPaymentChannel -- ^ Receiver state object
-recvPaymentForClose (CReceiverPaymentChannel state) fp =
+    ReceiverPaymentChannelI a    -- ^Receiver state object
+    -> FullPayment              -- ^Payment to verify and register
+    -> Either PayChanError (ReceiverPaymentChannelI a) -- ^ Receiver state object
+recvPaymentForClose (CReceiverPaymentChannel state pki) fp =
     recvPayment futureTimeStamp newAddressState fp >>=
         \(amtRecv, newState) -> case amtRecv of
             0 -> Right newState
             _ -> Left ClosingPaymentBadValue
-    where newAddressState = CReceiverPaymentChannel $
-            S.setClientChangeAddress state (fpChangeAddr fp)
+    where newAddressState = CReceiverPaymentChannel
+            { rpcState = S.setClientChangeAddress state (fpChangeAddr fp)
+            , rpcPubKeyInfo = pki
+            }
+
           -- When receiving a payment of zero value, which only modifies the
           -- client change address, we don't care about verifying that the channel
           -- hasn't expired yet (which it may well have, since the client wants its
@@ -253,12 +257,12 @@ recvPaymentForClose (CReceiverPaymentChannel state) fp =
 -- The sender can only close the channel before expiration by requesting this transaction
 -- from the receiver and publishing it to the Bitcoin network.
 getSettlementBitcoinTx ::
-    ReceiverPaymentChannel          -- ^ Receiver state object
+    ReceiverPaymentChannelI a       -- ^ Receiver state object
     -> (HC.Hash256 -> HC.Signature) -- ^ Function which produces a signature which verifies against 'cpReceiverPubKey'
     -> HC.Address                   -- ^ Receiver destination address. Funds sent over the channel will be sent to this address, the rest back to the client change address (an argument to 'channelWithInitialPaymentOf').
     -> BitcoinAmount                -- ^ Bitcoin transaction fee
     -> HT.Tx                        -- ^ Settling Bitcoin transaction
-getSettlementBitcoinTx (CReceiverPaymentChannel cs) =
+getSettlementBitcoinTx (CReceiverPaymentChannel cs _) =
     signedSettlementTxFromState cs
 
 

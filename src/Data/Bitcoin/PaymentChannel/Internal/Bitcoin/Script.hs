@@ -16,7 +16,10 @@ valReceiverSigHash = SigAll True
 -- |Generates OP_CHECKLOCKTIMEVERIFY redeemScript, which can be redeemed in two ways:
 --  1) by providing a signature from both server and client
 --  2) after the date specified by lockTime: by providing only a client signature
-paymentChannelRedeemScript :: SendPubKey -> RecvPubKey -> BitcoinLockTime -> Script
+paymentChannelRedeemScript :: SendPubKey
+                           -> RecvPubKey
+                           -> BitcoinLockTime
+                           -> Script
 paymentChannelRedeemScript clientPK serverPK lockTime =
     let
         -- Note: HI.encodeInt encodes values up to and including 2^31-1 as 4 bytes
@@ -33,7 +36,7 @@ paymentChannelRedeemScript clientPK serverPK lockTime =
              [OP_IF,
                  opPushData $ serialize serverPubKey, OP_CHECKSIGVERIFY,
              OP_ELSE,
-                  encodeScriptInt $ lockTime, op_CHECKLOCKTIMEVERIFY, OP_DROP,
+                  encodeScriptInt lockTime, op_CHECKLOCKTIMEVERIFY, OP_DROP,
              OP_ENDIF,
              opPushData $ serialize clientPubKey, OP_CHECKSIG]
 
@@ -51,7 +54,8 @@ paymentTxScriptSig clientSig serverSig = Script
 refundTxScriptSig :: HC.Signature -> Script
 refundTxScriptSig clientSig = Script
     [opPushData (B.append (serialize clientSig) hashTypeByte),
-    OP_0]   -- Signal that we want to provide only one PubKey
+    OP_0]   -- Signal that we want to provide only one pubkey/sig pair (sender's),
+            -- after it is checked that the lockTime has expired in the script
         where hashTypeByte = serialize (SigAll False)
 
 -----Util-----
