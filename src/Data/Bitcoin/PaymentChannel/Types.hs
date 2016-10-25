@@ -26,7 +26,8 @@ module Data.Bitcoin.PaymentChannel.Types
     SendPubKey(..),RecvPubKey(..),IsPubKey(..),
     BitcoinAmount,
     BitcoinLockTime(..), fromDate,
-    usesBlockHeight
+    usesBlockHeight,
+    module Data.Bitcoin.PaymentChannel.Internal.Bitcoin.Fee
 )
 where
 
@@ -36,6 +37,7 @@ import Data.Bitcoin.PaymentChannel.Internal.Serialization ()
 import qualified Data.Bitcoin.PaymentChannel.Internal.State as S
 import qualified Data.Bitcoin.PaymentChannel.Internal.Bitcoin.Script as Script
 import Data.Bitcoin.PaymentChannel.Internal.Error (PayChanError(..))
+import Data.Bitcoin.PaymentChannel.Internal.Bitcoin.Fee
 
 import qualified  Data.Serialize as Bin
 import qualified  Network.Haskoin.Crypto as HC

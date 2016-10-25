@@ -113,8 +113,7 @@ import Data.Bitcoin.PaymentChannel.Internal.Payment
     (createPayment, paymentFromState, verifyPaymentSigFromState)
 import Data.Bitcoin.PaymentChannel.Internal.Settlement
     (signedSettlementTxFromState)
-import Data.Bitcoin.PaymentChannel.Internal.Refund
-    (refundTxAddSignature, getRefundTxHashForSigning)
+import Data.Bitcoin.PaymentChannel.Internal.Refund (mkRefundTx)
 
 import Data.Bitcoin.PaymentChannel.Util (getFundingAddress)
 import Data.Bitcoin.PaymentChannel.Types
@@ -168,12 +167,13 @@ sendPayment (CSenderPaymentChannel cs signFunc) amountToSend =
 -- Will not be accepted by the Bitcoin network until the expiration time specified in
 -- 'ChannelParameters'. Receiver beware of Bitcoin network time drift and the
 -- unpreditable nature of finding new blocks.
-getRefundBitcoinTx ::
-    SenderPaymentChannel -- ^Sender state object
-    -> BitcoinAmount -- ^Refund transaction fee
-    -> HT.Tx -- ^Refund Bitcoin transaction
+getRefundBitcoinTx
+    :: HasFee fee
+    => SenderPaymentChannel -- ^Sender state object
+    -> fee                  -- ^Refund transaction fee
+    -> HT.Tx                -- ^Refund Bitcoin transaction
 getRefundBitcoinTx (CSenderPaymentChannel cs signFunc) txFee =
-    refundTxAddSignature cs txFee $ signFunc $ getRefundTxHashForSigning cs txFee
+    mkRefundTx cs txFee signFunc
 
 
 -- |Create new 'ReceiverPaymentChannel'.
@@ -256,11 +256,12 @@ recvPaymentForClose (CReceiverPaymentChannel state pki) fp =
 -- is included in a Bitcoin block before the refund transaction becomes valid (see 'getRefundBitcoinTx').
 -- The sender can only close the channel before expiration by requesting this transaction
 -- from the receiver and publishing it to the Bitcoin network.
-getSettlementBitcoinTx ::
-    ReceiverPaymentChannelI a       -- ^ Receiver state object
-    -> (HC.Hash256 -> HC.Signature) -- ^ Function which produces a signature which verifies against 'cpReceiverPubKey'
+getSettlementBitcoinTx
+    :: HasFee fee
+    => ReceiverPaymentChannelI a       -- ^ Receiver state object
     -> HC.Address                   -- ^ Receiver destination address. Funds sent over the channel will be sent to this address, the rest back to the client change address (an argument to 'channelWithInitialPaymentOf').
-    -> BitcoinAmount                -- ^ Bitcoin transaction fee
+    -> (HC.Hash256 -> HC.Signature) -- ^ Function which produces a signature which verifies against 'cpReceiverPubKey'
+    -> fee                          -- ^ Bitcoin transaction fee
     -> HT.Tx                        -- ^ Settling Bitcoin transaction
 getSettlementBitcoinTx (CReceiverPaymentChannel cs _) =
     signedSettlementTxFromState cs

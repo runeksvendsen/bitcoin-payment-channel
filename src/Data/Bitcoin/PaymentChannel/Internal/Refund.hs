@@ -5,10 +5,12 @@ import Data.Bitcoin.PaymentChannel.Internal.State
 import Data.Bitcoin.PaymentChannel.Internal.Bitcoin.Script
 import Data.Bitcoin.PaymentChannel.Internal.Payment
 import Data.Bitcoin.PaymentChannel.Internal.Util
+import Data.Bitcoin.PaymentChannel.Internal.Bitcoin.Fee
 
 import qualified Network.Haskoin.Transaction as HT
 import qualified Network.Haskoin.Crypto as HC
 import qualified Network.Haskoin.Script as HS
+
 
 getUnsignedRefundTx :: PaymentChannelState -> BitcoinAmount -> HT.Tx
 getUnsignedRefundTx st txFee =
@@ -30,22 +32,31 @@ getUnsignedRefundTx st txFee =
             (toWord32 $ pcsLockTime st)
 
 
-getRefundTxHashForSigning ::
-    PaymentChannelState
+getRefundTxHashForSigning
+    :: PaymentChannelState
     -> BitcoinAmount -- ^Bitcoin transaction fee
     -> HC.Hash256
-getRefundTxHashForSigning pcs@(CPaymentChannelState _ cp _ _ _ _ _) newValueLeft =
+getRefundTxHashForSigning pcs@(CPaymentChannelState _ cp _ _ _ _ _) txFee =
         HS.txSigHash tx (getRedeemScript cp) 0 (HS.SigAll False)
-            where tx = getUnsignedRefundTx pcs newValueLeft
+            where tx = getUnsignedRefundTx pcs txFee
 
-refundTxAddSignature ::
+refundTxCreate ::
     PaymentChannelState
-    -> BitcoinAmount      -- ^Bitcoin tx fee
-    -> HC.Signature     -- ^Signature over 'getUnsignedRefundTx' which verifies against clientPubKey
+    -> BitcoinAmount                -- ^Bitcoin tx fee
+    -> (HC.Hash256 -> HC.Signature) -- ^Produces a signature that verifies against clientPubKey
     -> HT.Tx
-refundTxAddSignature pcs@(CPaymentChannelState _ cp _ _ _ _ _) txFee clientRawSig =
+refundTxCreate pcs@(CPaymentChannelState _ cp _ _ _ _ _) txFee signFunc =
         let
-            inputScript = getP2SHInputScript cp $ refundTxScriptSig clientRawSig
+            inputScript = getP2SHInputScript cp $ refundTxScriptSig sig
+            sig = signFunc $ getRefundTxHashForSigning pcs txFee
         in
             replaceScriptInput 0 (serialize inputScript) $ getUnsignedRefundTx pcs txFee
+
+
+mkRefundTx :: HasFee fee => PaymentChannelState -> fee -> (HC.Hash256 -> HC.Signature) -> HT.Tx
+mkRefundTx pcs txFee signFunc =
+    refundTxCreate pcs (absoluteFee (calcTxSize zeroFeeTx) txFee) signFunc
+    where
+        zeroFeeTx = refundTxCreate pcs (0 :: BitcoinAmount) signFunc
+
 

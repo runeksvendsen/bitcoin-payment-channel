@@ -24,9 +24,13 @@ import qualified Data.ByteString.Char8 as C
 import qualified Data.Text as T
 import qualified Data.Aeson.Types as JSON
 import qualified Network.Haskoin.Crypto as HC
+import qualified  Network.Haskoin.Transaction as HT
 import           Data.String.Conversions (cs)
 import           Data.Text.Encoding       (decodeUtf8, encodeUtf8)
 
+
+calcTxSize :: HT.Tx -> Word
+calcTxSize = fromIntegral . B.length . Bin.encode
 
 mapLeft f  = either (Left . f) Right
 mapRight f = either Left (Right . f)

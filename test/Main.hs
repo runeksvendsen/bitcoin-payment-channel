@@ -45,9 +45,8 @@ tests =
                 (binSerDeser  :: FullPayment -> Bool)
             , testProperty "PaymentChannelState"
                 (binSerDeser  :: PaymentChannelState -> Bool)
-            -- Fails: https://github.com/haskoin/haskoin/issues/287
-            -- , testProperty "ChanScript"
-            --    (binSerDeser  :: ChanScript -> Bool)
+            , testProperty "ChanScript"
+               (binSerDeser  :: ChanScript -> Bool)
             ]
         ]
     ]
@@ -55,7 +54,7 @@ tests =
 
 checkSenderValue :: (ArbChannelPair, [BitcoinAmount]) -> Bool
 checkSenderValue (ArbChannelPair _ recvChan amountSent _ recvSignFunc, _) = do
-    let settleTx = getSettlementBitcoinTx recvChan recvSignFunc testAddrLivenet 0
+    let settleTx = getSettlementBitcoinTx recvChan testAddrLivenet recvSignFunc (0 :: BitcoinAmount)
     let clientChangeAmount = HT.outValue . head . HT.txOut $ settleTx
     -- Check that the client change amount in the settlement transaction equals the
     --  channel funding amount minus the sum of all payment amounts.
@@ -65,7 +64,7 @@ checkSenderValue (ArbChannelPair _ recvChan amountSent _ recvSignFunc, _) = do
 
 checkReceiverValue :: (ArbChannelPair, [BitcoinAmount]) -> Bool
 checkReceiverValue (ArbChannelPair _ recvChan amountSent _ recvSignFunc, _) = do
-    let settleTx = getSettlementBitcoinTx recvChan recvSignFunc testAddrLivenet 0
+    let settleTx = getSettlementBitcoinTx recvChan testAddrLivenet recvSignFunc (0 :: BitcoinAmount)
     let receiverAmount = HT.outValue (HT.txOut settleTx !! 1)
     -- Check receiver amount in settlement transaction with zero fee equals sum
     -- of all payments.
