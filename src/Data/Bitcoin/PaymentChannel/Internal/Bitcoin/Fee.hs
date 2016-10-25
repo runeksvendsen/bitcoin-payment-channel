@@ -20,8 +20,9 @@ instance HasFee Constant where
 
 type TxByteSize = Word
 -- |Specify a fee as satoshis per byte
-newtype SatoshisPerByte = SatoshisPerByte BitcoinAmount
-    deriving (Eq, Show, Bin.Serialize, Ord, Num, Enum, Real, Integral)   -- ^Fee in satoshis per byte
+newtype SatoshisPerByte = SatoshisPerByte BitcoinAmount -- ^Fee in satoshis per byte
+    deriving (Eq, Show, Bin.Serialize, Ord, Num, Enum, Real, Integral)
 instance HasFee SatoshisPerByte where
     absoluteFee txByteSize (SatoshisPerByte satoshisPerByte) =
         fromIntegral txByteSize * satoshisPerByte
+
