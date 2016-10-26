@@ -8,12 +8,11 @@ Stability   : experimental
 Portability : POSIX
 
 In order to set up a payment channel between a sender and a receiver, the two parties must
- first agree on four parameters for the channel:
+ first agree on three [1] parameters for the channel:
 
     (1) sender public key
     (2) receiver public key
     (3) channel expiration date
-    (4) sender change output "dust limit" (see note [1])
 
  These parameters
  are contained in 'ChannelParameters', from which the Bitcoin address used to fund
@@ -68,11 +67,21 @@ A settlement transaction can be produced by the value receiver using 'getSettlem
  signing function passed to 'getSettlementBitcoinTx',
 where @receiverPrivKey@ is the private key from which 'cpReceiverPubKey' is derived.
 
-[1] The minimum amount that the server is willing to accept as the client change value in the
- payment transaction. Set this to 700 and you'll be fine. It's only relevant if the channel is
+[1] In addition to this, two configuration options must also be agreed upon: a "dust limit",
+ and a "settlement period" (measured in hours), which is subtracted from the channel expiration
+ date in order to arrive at the effective (earlier) expiration date. This is necessary to give the
+ server/receiver time to publish the settlement transaction before the refund transaction becomes
+ valid. The dust limit is the minimum amount that the server is willing to accept
+ as the client change value in the
+ payment transaction. It's only relevant if the channel is
  emptied of value completely, but it is necessary because the server doesn't want to accept
  payments based on transactions it cannot publish via the Bitcoin P2P network, because they
- contain an output of minuscule value.
+ contain an output of minuscule value. Sensible values are contained in 'defaultConfig', but
+ client/sender and server/receiver need to agree on these parameter as well, although they are
+ only relevant 1) (in the case of the dust limit) if the channel is compleltely exchausted and
+ 2) (in case of the "settlemend period") if the client tries to make payments close to expiration
+ (and, in case the client does, it will just receive an error in response, saying the channel
+ is now closed).
 
 __/IMPORTANT:/__ /Channel setup is risk free because the sender can derive a refund Bitcoin transaction/
  /using 'getRefundBitcoinTx', which returns the bitcoins used to fund the channel back to the sender./
@@ -88,23 +97,29 @@ __/IMPORTANT:/__ /Channel setup is risk free because the sender can derive a ref
 
 module Data.Bitcoin.PaymentChannel
 (
+    -- *Initialization
+
+    -- **Funding
+    getFundingAddress,
+
+    -- **State creation
     channelWithInitialPaymentOf,
-    sendPayment,
-
     channelFromInitialPayment,
+
+    -- *Payment
+    sendPayment,
     recvPayment,
+
+    -- *Settlement
     recvPaymentForClose,
-
     getSettlementBitcoinTx,
-    getRefundBitcoinTx,
-
-    getFundingAddress
+    getRefundBitcoinTx
 )
 where
 
 import Data.Bitcoin.PaymentChannel.Internal.Types
     (PaymentTxConfig(..), Payment(..), FullPayment(..), Config,
-     ReceiverPaymentChannelI(..),
+     ReceiverPaymentChannelI(..), PaymentChannelState,
     pcsConfig, pcsClientChangeVal, pcsParameters)
 import Data.Bitcoin.PaymentChannel.Internal.State
     (newPaymentChannelState, updatePaymentChannelState, isPastLockTimeDate)
@@ -130,7 +145,7 @@ import            Data.Time.Calendar              (Day(..))
 -- Returns a new 'SenderPaymentChannel' state object and the first channel payment.
 channelWithInitialPaymentOf ::
        Config                       -- ^ Various configuration options. 'defaultConfig' contains sensible defaults.
-    -> ChannelParameters            -- ^ Specifies channel sender and receiver, channel expiration date and "dust limit"
+    -> ChannelParameters            -- ^ Specifies channel sender and receiver, channel expiration date
     -> FundingTxInfo                -- ^ Holds information about the Bitcoin transaction used to fund the channel
     -> (HC.Hash256 -> HC.Signature) -- ^ Used to sign payments from sender. When given a 'HC.Hash256', produces a signature that verifies against sender pubkey.
     -> HC.Address                   -- ^ Value sender/client change address
@@ -199,10 +214,10 @@ channelFromInitialPayment now cfg cp fundInf fp@(CFullPayment (CPayment _ sig) _
 -- Returns error if either the signature or payment amount is invalid, and otherwise
 -- the amount received with this 'Payment' and a new state object.
 recvPayment ::
-       UTCTime                  -- ^Current time. Needed for payment verification.
-    -> (ReceiverPaymentChannelI a)   -- ^Receiver state object
-    -> FullPayment              -- ^Payment to verify and register
-    -> Either PayChanError (BitcoinAmount, (ReceiverPaymentChannelI a)) -- ^Value received plus new receiver state object
+       UTCTime                      -- ^Current time. Needed for payment verification.
+    -> ReceiverPaymentChannelI a    -- ^Receiver state object
+    -> FullPayment                  -- ^Payment to verify and register
+    -> Either PayChanError (BitcoinAmount, ReceiverPaymentChannelI a) -- ^Value received plus new receiver state object
 recvPayment currentTime rpc@(CReceiverPaymentChannel oldState _) fp@(CFullPayment paymnt _ _ _)  =
     updatePaymentChannelState oldState fp >>=
     checkExpiration >>=

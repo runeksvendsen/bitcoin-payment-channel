@@ -1,5 +1,5 @@
 {-# LANGUAGE DeriveGeneric, DataKinds #-}
-
+{-# LANGUAGE GeneralizedNewtypeDeriving, TypeSynonymInstances, FlexibleInstances #-}
 module Data.Bitcoin.PaymentChannel.Internal.Types
 (
     module Data.Bitcoin.PaymentChannel.Internal.Types
@@ -55,8 +55,8 @@ data ChannelParameters = CChannelParameters {
 -- the channel
 data FundingTxInfo = CFundingTxInfo {
     ftiHash         ::  HT.TxHash,      -- ^ Hash of funding transaction.
-    ftiOutIndex     ::  Word32,         -- ^ Index/"vout" of funding output
-    ftiOutValue     ::  BitcoinAmount   -- ^ Value of funding output (channel max value)
+    ftiOutIndex     ::  Word32,         -- ^ Index/"vout" of funding output (zero-based index of funding output within list of transaction outputs)
+    ftiOutValue     ::  BitcoinAmount   -- ^ Value of funding output (channel max value).
 } deriving (Eq, Show, Typeable)
 
 -- |Holds information about how to construct the payment transaction
@@ -79,7 +79,7 @@ data Config = Config {
 data Payment = CPayment {
     -- |Channel value remaining ('pcsValueLeft' of the state from which this payment was made)
     cpClientChange :: BitcoinAmount
-    -- |Payment signature
+    -- |Get payment signature from payment
   , cpSignature    :: PaymentSignature
 } deriving (Eq, Typeable)
 
@@ -88,8 +88,9 @@ data FullPayment = CFullPayment {
     fpPayment      :: Payment
     -- |The payment transaction redeems this outpoint
   , fpOutPoint     :: HT.OutPoint
+    -- |Using this redeemScript
   , fpRedeemScript :: HS.Script
-    -- |Client change output address in the payment tx
+    -- |Paying this amount to the client/sender change output
   , fpChangeAddr   :: HC.Address
 } deriving (Eq, Typeable)
 
@@ -118,6 +119,16 @@ data ReceiverPaymentChannelI pkInfo = CReceiverPaymentChannel {
     rpcState        :: PaymentChannelState
   , rpcPubKeyInfo   :: pkInfo
 } deriving (Eq, Typeable)
+
+
+instance Show ReceiverPaymentChannel where
+    show (CReceiverPaymentChannel s _) =
+        "<ReceiverPaymentChannel:\n\t" ++ show s ++ ">"
+
+instance Show ReceiverPaymentChannelX where
+    show (CReceiverPaymentChannel s _) =
+        "<ReceiverPaymentChannelX:\n\t" ++ show s ++ ">"
+
 
 rpcGetXPub = rpcPubKeyInfo
 

@@ -12,22 +12,37 @@ Types used with the interface provided by "Data.Bitcoin.PaymentChannel".
 
 module Data.Bitcoin.PaymentChannel.Types
 (
+    -- *Interface
     PaymentChannel(..), PayChan,
+
+    -- *State
     SenderPaymentChannel(..), SendPayChan,
     ReceiverPaymentChannel, ReceiverPaymentChannelI, RecvPayChan,
-    ReceiverPaymentChannelX, RecvPayChanX, S.mkExtendedKeyRPC, rpcGetXPub,
+    ReceiverPaymentChannelX, RecvPayChanX,
+
+    -- *Config
     Config(..),defaultConfig,
+    FundingTxInfo(..),
+    ChannelParameters(..), ChanParams,
+
+    -- *Payment
     Payment,cpSignature,
     FullPayment(..),
-    FundingTxInfo(..),
-    ChannelParameters, ChanParams,
-    PayChanError(..),
-    PaymentChannelState,
-    SendPubKey(..),RecvPubKey(..),IsPubKey(..),
-    BitcoinAmount,
-    BitcoinLockTime(..), fromDate,
-    usesBlockHeight,
-    module Data.Bitcoin.PaymentChannel.Internal.Bitcoin.Fee
+    -- **Error
+    PayChanError(..)
+
+    -- *Bitcoin
+,   BitcoinAmount
+,   BitcoinLockTime(..)
+,   module Data.Bitcoin.PaymentChannel.Internal.Bitcoin.Fee
+
+    -- *Crypto
+,   SendPubKey(..),RecvPubKey(..),IsPubKey(..),
+
+    -- *Util
+    S.mkExtendedKeyRPC, rpcGetXPub, fromDate, usesBlockHeight
+
+--     PaymentChannelState,
 )
 where
 
@@ -43,6 +58,7 @@ import qualified  Data.Serialize as Bin
 import qualified  Network.Haskoin.Crypto as HC
 import qualified  Network.Haskoin.Transaction as HT
 import            Data.Word (Word64)
+
 
 -- |Get various information about an open payment channel.
 class PaymentChannel a where
@@ -100,32 +116,17 @@ instance PaymentChannel ReceiverPaymentChannel where
     getChannelState = rpcState
     _setChannelState rpc s = rpc { rpcState = s }
 
-instance Bin.Serialize ReceiverPaymentChannel where
-    put (CReceiverPaymentChannel rpc _ ) =
-        Bin.put rpc >> Bin.putWord8 0x01
-    get = CReceiverPaymentChannel <$> Bin.get <*> return ()
-
-instance Bin.Serialize ReceiverPaymentChannelX where
-    put (CReceiverPaymentChannel rpc pki ) =
-        Bin.put rpc >> Bin.putWord8 0x02 >> Bin.put pki
-    get = CReceiverPaymentChannel <$> Bin.get <*> Bin.get
-
 instance Show SenderPaymentChannel where
     show (CSenderPaymentChannel s _) =
         "<SenderPaymentChannel:\n\t" ++ show s ++ ">"
 
-instance Show ReceiverPaymentChannel where
-    show (CReceiverPaymentChannel s _) =
-        "<ReceiverPaymentChannel:\n\t" ++ show s ++ ">"
 
-instance Show ReceiverPaymentChannelX where
-    show (CReceiverPaymentChannel s _) =
-        "<ReceiverPaymentChannelX:\n\t" ++ show s ++ ">"
-
-
--- Short-hands
+-- |Short-hand
 type SendPayChan = SenderPaymentChannel
+-- |Short-hand
 type RecvPayChan = ReceiverPaymentChannel
+-- |Short-hand
 type RecvPayChanX = ReceiverPaymentChannelX
+-- |Short-hand
 class PaymentChannel a => PayChan a
 

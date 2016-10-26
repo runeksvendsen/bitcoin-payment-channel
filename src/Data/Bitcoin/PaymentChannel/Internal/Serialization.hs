@@ -150,12 +150,6 @@ instance Show FullPayment where
         "<FullPayment: payment = " ++ show p ++ " " ++
         show (op, script, addr) ++ ">"
 
--- Needed to convert from Scientific
-instance Bounded BitcoinAmount where
-    minBound = BitcoinAmount 0
-    maxBound = BitcoinAmount $ round $ 21e6 * 1e8
-
-
 parseJSONInt :: Scientific -> Parser Integer
 parseJSONInt s =
     case toBoundedInteger s of
@@ -167,3 +161,14 @@ parseJSONWord s =
     case toBoundedInteger s of
         Just w -> return w
         Nothing -> fail $ "failed to decode JSON number to Word64. data: " ++ show s
+
+
+instance Bin.Serialize ReceiverPaymentChannel where
+    put (CReceiverPaymentChannel rpc _ ) =
+        Bin.put rpc >> Bin.putWord8 0x01
+    get = CReceiverPaymentChannel <$> Bin.get <*> return ()
+
+instance Bin.Serialize ReceiverPaymentChannelX where
+    put (CReceiverPaymentChannel rpc pki ) =
+        Bin.put rpc >> Bin.putWord8 0x02 >> Bin.put pki
+    get = CReceiverPaymentChannel <$> Bin.get <*> Bin.get
