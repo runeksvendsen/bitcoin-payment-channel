@@ -94,8 +94,9 @@ updatePaymentChannelState (CPaymentChannelState cfg cp fun@(CFundingTxInfo h i _
 --  'ReceiverPaymentChannel'
 mkExtendedKeyRPC :: ReceiverPaymentChannel -> HC.XPubKey -> Maybe ReceiverPaymentChannelX
 mkExtendedKeyRPC (CReceiverPaymentChannel pcs _) xpk =
+    -- Check that it's the right pubkey first
     if xPubKey xpk == getPubKey (pcsServerPubKey pcs) then
-            Just $ CReceiverPaymentChannel pcs xpk
+            Just $ CReceiverPaymentChannel pcs (HC.xPubIndex xpk)
         else
             Nothing
 

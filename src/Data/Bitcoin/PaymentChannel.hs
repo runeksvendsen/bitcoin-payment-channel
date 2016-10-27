@@ -90,7 +90,7 @@ __/IMPORTANT:/__ /Channel setup is risk free because the sender can derive a ref
  /before the refund transaction becomes valid. Due to the fact that Bitcoin network time is allowed/
  /to drift up to two hours from actual time, and the fact that finding new Bitcoin blocks does not occur/
  /according to any schedule, it would be wise for the receiver to publish a settlement transaction at least/
- /4 hours before the specified channel expiration time, and possibly earlier, if the receiver wants to/
+ /6 hours before the specified channel expiration time, and possibly earlier, if the receiver wants to/
  /be cautious./
 
 -}
@@ -256,8 +256,8 @@ recvPaymentForClose (CReceiverPaymentChannel state pki) fp =
             0 -> Right newState
             _ -> Left ClosingPaymentBadValue
     where newAddressState = CReceiverPaymentChannel
-            { rpcState = S.setClientChangeAddress state (fpChangeAddr fp)
-            , rpcPubKeyInfo = pki
+            { rpcState    = S.setClientChangeAddress state (fpChangeAddr fp)
+            , rpcMetadata = pki
             }
 
           -- When receiving a payment of zero value, which only modifies the

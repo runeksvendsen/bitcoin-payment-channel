@@ -7,7 +7,7 @@ module Data.Bitcoin.PaymentChannel.Internal.Types
   , module Data.Bitcoin.PaymentChannel.Internal.Bitcoin.LockTime
   , module Data.Bitcoin.PaymentChannel.Internal.Crypto.PubKey
   , module Network.Haskoin.Transaction
-  , module Network.Haskoin.Crypto
+  , module Crypto
   , module Network.Haskoin.Script
 ) where
 
@@ -17,7 +17,7 @@ import Data.Bitcoin.PaymentChannel.Internal.Bitcoin.LockTime
 import Data.Bitcoin.PaymentChannel.Internal.Crypto.PubKey
 
 import           Network.Haskoin.Transaction
-import           Network.Haskoin.Crypto
+import           Network.Haskoin.Crypto as Crypto
 import           Network.Haskoin.Script
 import qualified Network.Haskoin.Transaction as HT
 import qualified Network.Haskoin.Crypto as HC
@@ -107,17 +107,17 @@ newtype ChanScript = ChanScript { getScript :: HS.Script } deriving (Eq, Show)
 type PayChanState  = PaymentChannelState
 type ChanParams = ChannelParameters
 
--- |ReceiverPaymentChannel without public key metadata
+-- |ReceiverPaymentChannel without metadata
 type ReceiverPaymentChannel = ReceiverPaymentChannelI ()
--- |ReceiverPaymentChannel with BIP32 , "extended" public key metadata
-type ReceiverPaymentChannelX = ReceiverPaymentChannelI HC.XPubKey
+-- |ReceiverPaymentChannel with BIP32, "extended key" index as metadata
+type ReceiverPaymentChannelX = ReceiverPaymentChannelI KeyDeriveIndex
 
--- |State object for the value receiver. pkInfo holds optional, extra
---  data associated with the receiver public key
-data ReceiverPaymentChannelI pkInfo = CReceiverPaymentChannel {
+-- |State object for the value receiver. "meta" is the metadata type,
+--  which is '()' in the case of 'ReceiverPaymentChannel'
+data ReceiverPaymentChannelI meta = CReceiverPaymentChannel {
     -- |Internal state object
-    rpcState        :: PaymentChannelState
-  , rpcPubKeyInfo   :: pkInfo
+    rpcState    :: PaymentChannelState
+  , rpcMetadata :: meta
 } deriving (Eq, Typeable)
 
 
@@ -130,12 +130,14 @@ instance Show ReceiverPaymentChannelX where
         "<ReceiverPaymentChannelX:\n\t" ++ show s ++ ">"
 
 
-rpcGetXPub = rpcPubKeyInfo
+rpcGetXPub = rpcMetadata
 
 type Hour = Tag.Tagged "Hour" Word32
 toSeconds :: Hour -> Integer
 toSeconds = fromIntegral . (* 3600) . Tag.unTagged
 
+-- |Key index for a BIP32 key
+type KeyDeriveIndex = Word32
 
 -- Defaults
 defaultConfig = Config defaultDustLimit defaultSettlementPeriod
