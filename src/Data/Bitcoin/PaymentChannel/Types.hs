@@ -68,6 +68,7 @@ class PaymentChannel a where
     getChannelFunding   :: a -> HT.OutPoint
     getExpirationDate   :: a -> BitcoinLockTime
     getSenderPubKey     :: a -> SendPubKey
+    getReceiverPubKey     :: a -> RecvPubKey
     getFundingAmount    :: a -> BitcoinAmount
     getPaymentCount     :: a -> Word64
     fundingAddress      :: a -> HC.Address
@@ -86,6 +87,7 @@ class PaymentChannel a where
     getChannelFunding       = S.pcsChannelFundingSource . getChannelState
     getExpirationDate  = S.pcsExpirationDate . getChannelState
     getSenderPubKey    = S.pcsClientPubKey . getChannelState
+    getReceiverPubKey  = S.pcsServerPubKey . getChannelState
     getFundingAmount   = S.pcsChannelTotalValue . getChannelState
     getPaymentCount    = pcsPaymentCount . getChannelState
     fundingAddress  = Script.getP2SHFundingAddress . pcsParameters . getChannelState
