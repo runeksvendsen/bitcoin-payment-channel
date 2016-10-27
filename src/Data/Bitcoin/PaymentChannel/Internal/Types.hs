@@ -130,8 +130,6 @@ instance Show ReceiverPaymentChannelX where
         "<ReceiverPaymentChannelX:\n\t" ++ show s ++ ">"
 
 
-rpcGetXPub = rpcMetadata
-
 type Hour = Tag.Tagged "Hour" Word32
 toSeconds :: Hour -> Integer
 toSeconds = fromIntegral . (* 3600) . Tag.unTagged

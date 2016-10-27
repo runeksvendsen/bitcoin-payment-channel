@@ -40,9 +40,8 @@ module Data.Bitcoin.PaymentChannel.Types
 ,   SendPubKey(..),RecvPubKey(..),IsPubKey(..),
 
     -- *Util
-    S.mkExtendedKeyRPC, rpcGetXPub, fromDate, usesBlockHeight
+    S.mkExtendedKeyRPC, fromDate, usesBlockHeight
 
---     PaymentChannelState,
 )
 where
 
@@ -110,7 +109,7 @@ instance PaymentChannel SenderPaymentChannel where
     getChannelState = spcState
     _setChannelState spc s = spc { spcState = s }
 
-instance PaymentChannel ReceiverPaymentChannel where
+instance PaymentChannel (ReceiverPaymentChannelI s) where
     valueToMe rpc@(CReceiverPaymentChannel s _) =
         S.pcsChannelTotalValue s - channelValueLeft rpc
     getChannelState = rpcState
