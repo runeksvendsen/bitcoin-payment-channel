@@ -98,6 +98,12 @@ instance Arbitrary FundingTxInfo where
 instance Arbitrary BitcoinAmount where
     arbitrary = fromIntegral <$> choose (0, round $ 21e6 * 1e8 :: Integer)
 
+newtype NonZeroBitcoinAmount = NonZeroBitcoinAmount { getAmount :: BitcoinAmount }
+
+instance Arbitrary NonZeroBitcoinAmount where
+    arbitrary = (NonZeroBitcoinAmount . fromIntegral) <$>
+        choose (1, round $ 21e6 * 1e8 :: Integer)
+
 
 mkChanParams :: Gen (ChannelParameters, (HC.PrvKeyC, HC.PrvKeyC))
 mkChanParams = do
