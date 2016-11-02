@@ -38,16 +38,16 @@ data ArbChannelPair = ArbChannelPair
     , paySendList   :: [BitcoinAmount]
     , payRecvList   :: [BitcoinAmount]
     , sendSignFunc  :: HC.Hash256 -> HC.Signature
+    , _payLst       :: [FullPayment]
     }
 
-
 instance Show ArbChannelPair where
-    show (ArbChannelPair spc rpc _ _ _) =
+    show (ArbChannelPair spc rpc _ _ _ _) =
         "SendState: " ++ show spc ++ "\n" ++
         "RecvState: " ++ show rpc
 
 doPayment :: ArbChannelPair -> BitcoinAmount -> ArbChannelPair
-doPayment (ArbChannelPair spc rpc sendList recvList f) amount =
+doPayment (ArbChannelPair spc rpc sendList recvList f payLst) amount =
     let
         (amountSent, pmn, newSpc) = sendPayment spc amount
         eitherRpc = recvPayment nowishTimestamp rpc pmn
@@ -59,6 +59,7 @@ doPayment (ArbChannelPair spc rpc sendList recvList f) amount =
                     (amountSent : sendList)
                     (recvAmount : recvList)
                     f
+                    (pmn : payLst)
 
 instance Arbitrary ArbChannelPair where
     arbitrary = fmap fst mkChanPair
@@ -70,8 +71,7 @@ instance Arbitrary ReceiverPaymentChannel where
     arbitrary = fmap (recvChan . fst) mkChanPair
 
 instance Arbitrary PaymentChannelState where
-    arbitrary = fmap getPCS mkChanPair
-        where getPCS (ArbChannelPair _ rpc _ _ _ , _) = rpcState rpc
+    arbitrary = fmap rpcState (arbitrary :: Gen ReceiverPaymentChannel)
 
 instance Arbitrary ChanScript where
     arbitrary = ChanScript . getRedeemScript <$> arbitrary
@@ -114,13 +114,15 @@ mkChanPair = do
         -- value of first payment
         initPayAmount <- arbitrary
         -- create states
-        let (initPayActualAmount,paymnt,sendChan) = channelWithInitialPaymentOf defaultConfig
+        let (initPayActualAmount,initPayment,sendChan) = channelWithInitialPaymentOf defaultConfig
                 cp fti (flip HC.signMsg sendPriv) (getFundingAddress cp) initPayAmount
-        let eitherRecvChan = channelFromInitialPayment nowishTimestamp defaultConfig cp fti paymnt
+        let eitherRecvChan = channelFromInitialPayment
+                nowishTimestamp defaultConfig cp fti initPayment
         case eitherRecvChan of
             Left e -> error (show e)
             Right (initRecvAmount,recvChan) -> return
                     (ArbChannelPair
                         sendChan recvChan [initPayActualAmount] [initRecvAmount]
-                        (flip HC.signMsg recvPriv),
-                    paymnt)
+                        (flip HC.signMsg recvPriv)
+                        [initPayment],
+                    initPayment)
