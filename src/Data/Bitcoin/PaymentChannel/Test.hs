@@ -1,3 +1,4 @@
+{-# LANGUAGE TypeSynonymInstances, FlexibleInstances #-}
 module Data.Bitcoin.PaymentChannel.Test
 (
     module Data.Bitcoin.PaymentChannel.Test
@@ -32,7 +33,13 @@ mIN_CHANNEL_SIZE = cDustLimit defaultConfig * 2
 
 
 data ArbChannelPair = ArbChannelPair
-    SenderPaymentChannel ReceiverPaymentChannel [BitcoinAmount] [BitcoinAmount] (HC.Hash256 -> HC.Signature)
+    { sendChan      :: SenderPaymentChannel
+    , recvChan      :: ReceiverPaymentChannel
+    , paySendList   :: [BitcoinAmount]
+    , payRecvList   :: [BitcoinAmount]
+    , sendSignFunc  :: HC.Hash256 -> HC.Signature
+    }
+
 
 instance Show ArbChannelPair where
     show (ArbChannelPair spc rpc _ _ _) =
@@ -55,6 +62,12 @@ doPayment (ArbChannelPair spc rpc sendList recvList f) amount =
 
 instance Arbitrary ArbChannelPair where
     arbitrary = fmap fst mkChanPair
+
+instance Arbitrary SenderPaymentChannel where
+    arbitrary = fmap (sendChan . fst) mkChanPair
+
+instance Arbitrary ReceiverPaymentChannel where
+    arbitrary = fmap (recvChan . fst) mkChanPair
 
 instance Arbitrary PaymentChannelState where
     arbitrary = fmap getPCS mkChanPair
