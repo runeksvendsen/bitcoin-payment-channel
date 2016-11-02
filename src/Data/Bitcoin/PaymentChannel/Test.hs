@@ -61,6 +61,10 @@ doPayment (ArbChannelPair spc rpc sendList recvList f payLst) amount =
                     f
                     (pmn : payLst)
 
+runChanPair :: ArbChannelPair -> [BitcoinAmount] -> (ArbChannelPair, [BitcoinAmount])
+runChanPair chanPair paymentAmountList =
+    (foldl doPayment chanPair paymentAmountList, paymentAmountList)
+
 instance Arbitrary ArbChannelPair where
     arbitrary = fmap fst mkChanPair
 

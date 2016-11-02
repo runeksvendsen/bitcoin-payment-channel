@@ -88,10 +88,6 @@ testPaymentSession ::
 testPaymentSession testFunc arbChanPair paymentAmountList =
     testFunc (runChanPair arbChanPair paymentAmountList)
 
-runChanPair :: ArbChannelPair -> [BitcoinAmount] -> (ArbChannelPair, [BitcoinAmount])
-runChanPair chanPair paymentAmountList =
-    (foldl doPayment chanPair paymentAmountList, paymentAmountList)
-
 jsonSerDeser :: (Show a, Eq a, JSON.FromJSON a, JSON.ToJSON a) => a -> Bool
 jsonSerDeser fp =
     maybe False checkEquals decodedObj
