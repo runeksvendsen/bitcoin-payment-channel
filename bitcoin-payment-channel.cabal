@@ -49,6 +49,9 @@ library
                         Data.Bitcoin.PaymentChannel.Internal.Settlement
                         Data.Bitcoin.PaymentChannel.Internal.Types
                         Data.Bitcoin.PaymentChannel.Internal.Serialization
+                        Data.Bitcoin.PaymentChannel.Internal.Serialization.Binary
+                        Data.Bitcoin.PaymentChannel.Internal.Serialization.JSON
+                        Data.Bitcoin.PaymentChannel.Internal.Serialization.Show
                         Data.Bitcoin.PaymentChannel.Internal.Util
 
 
