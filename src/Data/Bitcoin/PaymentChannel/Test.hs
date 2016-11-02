@@ -33,21 +33,35 @@ mIN_CHANNEL_SIZE = cDustLimit defaultConfig * 2
 
 
 data ArbChannelPair = ArbChannelPair
-    { sendChan      :: SenderPaymentChannel
-    , recvChan      :: ReceiverPaymentChannel
-    , paySendList   :: [BitcoinAmount]
-    , payRecvList   :: [BitcoinAmount]
-    , sendSignFunc  :: HC.Hash256 -> HC.Signature
-    , _payLst       :: [FullPayment]
+    { sendChan          :: SenderPaymentChannel
+    , recvChan          :: ReceiverPaymentChannel
+    , initPayAmount     :: BitcoinAmount
+    , initRecvAmount    :: BitcoinAmount
+    , initPayment       :: FullPayment
+    , recvSignFunc      :: HC.Hash256 -> HC.Signature
     }
+
+data ChannelPairResult = ChannelPairResult
+    { resInitPair   :: ArbChannelPair
+    , resSendChan   :: SenderPaymentChannel
+    , resRecvChan   :: ReceiverPaymentChannel
+    , resSendAmount :: [BitcoinAmount]
+    , resRecvAmount :: [BitcoinAmount]
+    , resPayList    :: [FullPayment]
+    }
+
+toInitResult :: ArbChannelPair -> ChannelPairResult
+toInitResult initPair@(ArbChannelPair spc rpc amt rcv pay _) =
+    ChannelPairResult initPair spc rpc [amt] [rcv] [pay]
 
 instance Show ArbChannelPair where
     show (ArbChannelPair spc rpc _ _ _ _) =
         "SendState: " ++ show spc ++ "\n" ++
         "RecvState: " ++ show rpc
 
-doPayment :: ArbChannelPair -> BitcoinAmount -> ArbChannelPair
-doPayment (ArbChannelPair spc rpc sendList recvList f payLst) amount =
+-- |Fold a payment of specified value into a 'ChannelPairResult'
+doPayment :: ChannelPairResult -> BitcoinAmount -> ChannelPairResult
+doPayment (ChannelPairResult initPair spc rpc sendList recvList payLst) amount =
     let
         (amountSent, pmn, newSpc) = sendPayment spc amount
         eitherRpc = recvPayment nowishTimestamp rpc pmn
@@ -55,18 +69,21 @@ doPayment (ArbChannelPair spc rpc sendList recvList f payLst) amount =
         case eitherRpc of
             Left e -> error (show e)
             Right (recvAmount, newRpc) ->
-                ArbChannelPair newSpc newRpc
+                ChannelPairResult initPair newSpc newRpc
                     (amountSent : sendList)
                     (recvAmount : recvList)
-                    f
                     (pmn : payLst)
 
-runChanPair :: ArbChannelPair -> [BitcoinAmount] -> (ArbChannelPair, [BitcoinAmount])
+runChanPair :: ArbChannelPair -> [BitcoinAmount] -> (ChannelPairResult, [BitcoinAmount])
 runChanPair chanPair paymentAmountList =
-    (foldl doPayment chanPair paymentAmountList, paymentAmountList)
+    (foldl doPayment (toInitResult chanPair) paymentAmountList, paymentAmountList)
 
 instance Arbitrary ArbChannelPair where
     arbitrary = fmap fst mkChanPair
+
+instance Arbitrary ChannelPairResult where
+    arbitrary =
+        fst <$> (runChanPair <$> arbitrary <*> arbitrary)
 
 instance Arbitrary SenderPaymentChannel where
     arbitrary = fmap (sendChan . fst) mkChanPair
@@ -132,7 +149,6 @@ mkChanPair = do
             Left e -> error (show e)
             Right (initRecvAmount,recvChan) -> return
                     (ArbChannelPair
-                        sendChan recvChan [initPayActualAmount] [initRecvAmount]
-                        (flip HC.signMsg recvPriv)
-                        [initPayment],
+                        sendChan recvChan initPayActualAmount initRecvAmount initPayment
+                        (flip HC.signMsg recvPriv),
                     initPayment)

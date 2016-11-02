@@ -1,4 +1,4 @@
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE OverloadedStrings, RecordWildCards #-}
 module Main where
 
 import           Data.Bitcoin.PaymentChannel.Test
@@ -54,34 +54,36 @@ tests =
     ]
 
 
-checkSenderValue :: (ArbChannelPair, [BitcoinAmount]) -> Bool
-checkSenderValue (ArbChannelPair _ recvChan amountSent _ recvSignFunc _, _) = do
-    let settleTx = getSettlementBitcoinTx recvChan testAddrLivenet recvSignFunc (0 :: BitcoinAmount)
+checkSenderValue :: (ChannelPairResult, [BitcoinAmount]) -> Bool
+checkSenderValue (ChannelPairResult{..}, _) = do
+    let settleTx = getSettlementBitcoinTx resRecvChan testAddrLivenet
+            (recvSignFunc resInitPair) (0 :: BitcoinAmount)
     let clientChangeAmount = HT.outValue . head . HT.txOut $ settleTx
     -- Check that the client change amount in the settlement transaction equals the
     --  channel funding amount minus the sum of all payment amounts.
-    let fundAmountMinusPaySum = pcsChannelTotalValue (getChannelState recvChan) -
-            fromIntegral (sum amountSent)
+    let fundAmountMinusPaySum = pcsChannelTotalValue (getChannelState resRecvChan) -
+            fromIntegral (sum resSendAmount)
     fromIntegral clientChangeAmount == fundAmountMinusPaySum
 
-checkReceiverValue :: (ArbChannelPair, [BitcoinAmount]) -> Bool
-checkReceiverValue (ArbChannelPair _ recvChan amountSent _ recvSignFunc _, _) = do
-    let settleTx = getSettlementBitcoinTx recvChan testAddrLivenet recvSignFunc (0 :: BitcoinAmount)
+checkReceiverValue :: (ChannelPairResult, [BitcoinAmount]) -> Bool
+checkReceiverValue (ChannelPairResult{..}, _) = do
+    let settleTx = getSettlementBitcoinTx resRecvChan testAddrLivenet
+            (recvSignFunc resInitPair) (0 :: BitcoinAmount)
     let receiverAmount = HT.outValue (HT.txOut settleTx !! 1)
     -- Check receiver amount in settlement transaction with zero fee equals sum
     -- of all payments.
-    (fromIntegral receiverAmount :: BitcoinAmount) == fromIntegral (sum amountSent)
+    (fromIntegral receiverAmount :: BitcoinAmount) == fromIntegral (sum resRecvAmount)
 
-checkSendRecvStateMatch :: (ArbChannelPair, [BitcoinAmount]) -> Bool
-checkSendRecvStateMatch (ArbChannelPair sendChan recvChan _ _ _ _, _) =
-    getChannelState sendChan == getChannelState recvChan
+checkSendRecvStateMatch :: (ChannelPairResult, [BitcoinAmount]) -> Bool
+checkSendRecvStateMatch (ChannelPairResult{..}, _) =
+    getChannelState resSendChan == getChannelState resRecvChan
 
-checkRecvSendAmount :: (ArbChannelPair, [BitcoinAmount]) -> Bool
-checkRecvSendAmount (ArbChannelPair _ _ amountSent amountRecvd _ _, _) =
-    amountSent == amountRecvd
+checkRecvSendAmount :: (ChannelPairResult, [BitcoinAmount]) -> Bool
+checkRecvSendAmount (ChannelPairResult{..},_) =
+    sum resSendAmount == sum resRecvAmount
 
 testPaymentSession ::
-    ((ArbChannelPair, [BitcoinAmount]) -> Bool)
+    ((ChannelPairResult, [BitcoinAmount]) -> Bool)
     -> ArbChannelPair
     -> [BitcoinAmount]
     -> Bool
