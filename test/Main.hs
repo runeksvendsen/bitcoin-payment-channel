@@ -39,6 +39,8 @@ tests =
         [ testGroup "JSON"
             [ testProperty "FullPayment"
                 (jsonSerDeser :: FullPayment -> Bool)
+            , testProperty "ReceiverPaymentChannel"
+                (jsonSerDeser :: ReceiverPaymentChannel -> Bool)
             ]
         , testGroup "Binary"
             [ testProperty "FullPayment"
@@ -46,7 +48,7 @@ tests =
             , testProperty "PaymentChannelState"
                 (binSerDeser  :: PaymentChannelState -> Bool)
             , testProperty "ChanScript"
-               (binSerDeser  :: ChanScript -> Bool)
+                (binSerDeser  :: ChanScript -> Bool)
             ]
         ]
     ]

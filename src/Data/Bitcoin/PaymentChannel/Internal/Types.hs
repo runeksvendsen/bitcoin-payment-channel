@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE DeriveGeneric, DataKinds #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving, TypeSynonymInstances, FlexibleInstances #-}
 module Data.Bitcoin.PaymentChannel.Internal.Types
@@ -22,10 +23,11 @@ import           Network.Haskoin.Script
 import qualified Network.Haskoin.Transaction as HT
 import qualified Network.Haskoin.Crypto as HC
 import qualified Network.Haskoin.Script as HS
+import           Data.Aeson
 import           Data.Typeable
 import           Data.Word
 import qualified Data.Tagged as Tag
-
+import           GHC.Generics (Generic)
 
 -- |Shared state object used by both value sender and value receiver.
 data PaymentChannelState = CPaymentChannelState {
@@ -41,7 +43,7 @@ data PaymentChannelState = CPaymentChannelState {
     pcsClientChangeVal      ::  BitcoinAmount,
     -- |Signature over payment transaction of value 'pcsValueLeft'
     pcsPaymentSignature     ::  PaymentSignature
-} deriving (Eq, Show, Typeable)
+} deriving (Eq, Show, Typeable, Generic)
 
 -- |Defines channel: sender, receiver, and expiration date
 data ChannelParameters = CChannelParameters {
@@ -49,7 +51,7 @@ data ChannelParameters = CChannelParameters {
     cpReceiverPubKey    ::  RecvPubKey,
     -- |Channel expiration date/time
     cpLockTime          ::  BitcoinLockTime
-} deriving (Eq, Show, Typeable)
+} deriving (Eq, Show, Typeable, Generic)
 
 -- |Holds information about the Bitcoin transaction used to fund
 -- the channel
@@ -57,13 +59,13 @@ data FundingTxInfo = CFundingTxInfo {
     ftiHash         ::  HT.TxHash,      -- ^ Hash of funding transaction.
     ftiOutIndex     ::  Word32,         -- ^ Index/"vout" of funding output (zero-based index of funding output within list of transaction outputs)
     ftiOutValue     ::  BitcoinAmount   -- ^ Value of funding output (channel max value).
-} deriving (Eq, Show, Typeable)
+} deriving (Eq, Show, Typeable, Generic)
 
 -- |Holds information about how to construct the payment transaction
 data PaymentTxConfig = CPaymentTxConfig {
     -- |Value sender change address
     ptcSenderChangeAddress  ::  HC.Address
-} deriving (Eq, Show, Typeable)
+} deriving (Eq, Show, Typeable, Generic)
 
 -- |Miscellaneous configuration options
 data Config = Config {
@@ -73,7 +75,7 @@ data Config = Config {
     --  This gives the receiver time to publish the settlement transaction, before the
     --  refund transaction becomes valid.
   , cSettlementPeriod   :: Hour
-} deriving (Eq, Show, Typeable)
+} deriving (Eq, Show, Typeable, Generic)
 
 -- |Contains the bare minimum of information to transfer value from sender to receiver.
 data Payment = CPayment {
@@ -119,7 +121,6 @@ data ReceiverPaymentChannelI meta = CReceiverPaymentChannel {
     rpcState    :: PaymentChannelState
   , rpcMetadata :: meta
 } deriving (Eq, Typeable)
-
 
 instance Show ReceiverPaymentChannel where
     show (CReceiverPaymentChannel s _) =

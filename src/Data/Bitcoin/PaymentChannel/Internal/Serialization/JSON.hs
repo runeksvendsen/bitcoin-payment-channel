@@ -1,4 +1,4 @@
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE OverloadedStrings, RecordWildCards #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving, StandaloneDeriving, TypeSynonymInstances, FlexibleInstances #-}
 module Data.Bitcoin.PaymentChannel.Internal.Serialization.JSON where
 
@@ -16,6 +16,32 @@ deriving instance FromJSON SendPubKey
 deriving instance ToJSON RecvPubKey
 deriving instance FromJSON RecvPubKey
 
+
+-- Generic
+instance ToJSON PaymentChannelState
+instance FromJSON PaymentChannelState
+instance ToJSON PaymentTxConfig
+instance FromJSON PaymentTxConfig
+instance ToJSON FundingTxInfo
+instance FromJSON FundingTxInfo
+instance ToJSON Config
+instance FromJSON Config
+instance ToJSON ChannelParameters
+instance FromJSON ChannelParameters
+
+
+instance ToJSON d => ToJSON (ReceiverPaymentChannelI d) where
+    toJSON rpc = object
+        [ "state"       .= rpcState rpc
+        , "metadata"    .= rpcMetadata rpc
+        ]
+
+instance FromJSON d => FromJSON (ReceiverPaymentChannelI d) where
+    parseJSON = withObject "ReceiverPaymentChannelI" $ \o ->
+        CReceiverPaymentChannel <$>
+            o .: "state" <*>
+            o .: "metadata"
+
 instance ToJSON BitcoinLockTime where
     toJSON blt = Number $ scientific
         (fromIntegral $ toWord32 blt) 0
@@ -25,17 +51,32 @@ instance FromJSON BitcoinLockTime where
         fmap (parseBitcoinLocktime . fromIntegral) . parseJSONInt
 
 instance ToJSON Payment where
-    toJSON = object . toJSONObject
+    toJSON = object . paymentJSONLst
 
-toJSONObject :: Payment -> [Pair]
-toJSONObject (CPayment changeVal (CPaymentSignature sig flag)) =
-    [   "change_value"      .= changeVal
-    ,   "signature_data"    .= String (serHex sig)
-    ,   "sighash_flag"      .= String (serHex flag)
+instance ToJSON PaymentSignature where
+    toJSON = object . paySigJSONLst
+
+instance FromJSON PaymentSignature where
+    parseJSON = withObject "PaymentSignature" $ \o ->
+        CPaymentSignature <$>
+            (o .: "signature_data" >>= withText "SigDataHex" deserHex) <*>
+            (o .: "sighash_flag"   >>= withText "SigHashFlagHex" deserHex)
+
+
+paySigJSONLst :: PaymentSignature -> [Pair]
+paySigJSONLst  (CPaymentSignature sig flag) =
+    [ "signature_data"  .= String (serHex sig)
+    , "sighash_flag"  .= String (serHex flag)
     ]
 
-parseJSONObject :: Object -> Parser Payment
-parseJSONObject o = CPayment
+paymentJSONLst :: Payment -> [Pair]
+paymentJSONLst (CPayment changeVal paySig) =
+    ("change_value"      .= changeVal) :
+        paySigJSONLst paySig
+
+
+parseJSONPayment :: Object -> Parser Payment
+parseJSONPayment o = CPayment
        <$>      o .: "change_value"
        <*>     (CPaymentSignature <$>
                    (o .: "signature_data" >>= withText "SigDataHex" deserHex) <*>
@@ -47,7 +88,7 @@ instance ToJSON FullPayment where
         fpOutPoint      = (HT.OutPoint txid vout), fpRedeemScript = script,
         fpChangeAddr    = addr } =
             object $
-                toJSONObject payment ++
+                paymentJSONLst payment ++
                 [   "funding_txid"     .= txid
                 ,   "funding_vout"     .= vout
                 ,   "redeem_script"    .= String (serHex script)
@@ -59,7 +100,7 @@ instance FromJSON FullPayment where
 
 parseFullPayment :: Object -> Parser FullPayment
 parseFullPayment o = CFullPayment
-    <$>     parseJSONObject o
+    <$>     parseJSONPayment o
     <*>     (HT.OutPoint <$>
                  o .: "funding_txid" <*>
                  o .: "funding_vout")
