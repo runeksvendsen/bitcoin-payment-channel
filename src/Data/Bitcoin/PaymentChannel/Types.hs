@@ -68,7 +68,7 @@ class PaymentChannel a where
     getChannelFunding   :: a -> HT.OutPoint
     getExpirationDate   :: a -> BitcoinLockTime
     getSenderPubKey     :: a -> SendPubKey
-    getReceiverPubKey     :: a -> RecvPubKey
+    getReceiverPubKey   :: a -> RecvPubKey
     getFundingAmount    :: a -> BitcoinAmount
     getPaymentCount     :: a -> Word64
     fundingAddress      :: a -> HC.Address

@@ -87,8 +87,10 @@ updatePaymentChannelState (CPaymentChannelState cfg cp fun@(CFundingTxInfo h i _
         | newSenderVal > oldSenderVal =
             Left $ BadPaymentValue (newSenderVal - oldSenderVal)
         | otherwise =
-            CPaymentChannelState cfg cp fun pconf (payCount+1) newSenderVal . cpSignature <$>
+            CPaymentChannelState cfg cp fun pconf newPayCount newSenderVal . cpSignature <$>
                 checkDustLimit cfg payment
+      where
+        newPayCount = if newSenderVal == oldSenderVal then payCount else payCount+1
 
 -- |Create a 'ReceiverPaymentChannelX', which has an associated XPubKey, from a
 --  'ReceiverPaymentChannel'
