@@ -82,8 +82,7 @@ instance Arbitrary ArbChannelPair where
     arbitrary = fmap fst mkChanPair
 
 instance Arbitrary ChannelPairResult where
-    arbitrary =
-        fst <$> (runChanPair <$> arbitrary <*> arbitrary)
+    arbitrary = fst <$> (runChanPair <$> arbitrary <*> arbitrary)
 
 instance Arbitrary SenderPaymentChannel where
     arbitrary = fmap (sendChan . fst) mkChanPair
@@ -135,20 +134,21 @@ mkChanParams = do
            (sendPriv, recvPriv))
 
 mkChanPair :: Gen (ArbChannelPair, FullPayment)
-mkChanPair = do
-        (cp, (sendPriv, recvPriv)) <- mkChanParams
-        fti <- arbitrary
-        -- value of first payment
-        initPayAmount <- arbitrary
-        -- create states
-        let (initPayActualAmount,initPayment,sendChan) = channelWithInitialPaymentOf defaultConfig
-                cp fti (flip HC.signMsg sendPriv) (getFundingAddress cp) initPayAmount
-        let eitherRecvChan = channelFromInitialPayment
-                nowishTimestamp defaultConfig cp fti initPayment
-        case eitherRecvChan of
-            Left e -> error (show e)
-            Right (initRecvAmount,recvChan) -> return
-                    (ArbChannelPair
-                        sendChan recvChan initPayActualAmount initRecvAmount initPayment
-                        (flip HC.signMsg recvPriv),
-                    initPayment)
+mkChanPair = arbitrary >>= mkChanPairInitAmount
+
+mkChanPairInitAmount :: BitcoinAmount -> Gen (ArbChannelPair, FullPayment)
+mkChanPairInitAmount initPayAmount = do
+    (cp, (sendPriv, recvPriv)) <- mkChanParams
+    fti <- arbitrary
+    -- create states
+    let (initPayActualAmount,initPayment,sendChan) = channelWithInitialPaymentOf defaultConfig
+         cp fti (flip HC.signMsg sendPriv) (getFundingAddress cp) initPayAmount
+    let eitherRecvChan = channelFromInitialPayment
+         nowishTimestamp defaultConfig cp fti initPayment
+    case eitherRecvChan of
+     Left e -> error (show e)
+     Right (initRecvAmount,recvChan) -> return
+             (ArbChannelPair
+                 sendChan recvChan initPayActualAmount initRecvAmount initPayment
+                 (flip HC.signMsg recvPriv),
+             initPayment)
