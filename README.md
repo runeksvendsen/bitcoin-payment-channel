@@ -10,91 +10,133 @@ This library implements a type of payment channel where channel setup is safe fr
 
 ## Documentation/usage
 
-In order to set up a payment channel between a sender and a receiver, the two parties must
- first agree on three [1] parameters for the channel:
+In order to set up a payment channel between a sender and a receiver,
+the two parties must first agree on three \[1\] parameters for the
+channel:
 
-    (1) sender public key
-    (2) receiver public key
-    (3) channel expiration date
+1.  sender public key
 
- These parameters
- are contained in 'ChannelParameters', from which the Bitcoin address used to fund
- the payment channel can be derived using
- 'getFundingAddress'. The transaction which pays to this address is the channel funding
- transaction, and information about it is contained in a 'FundingTxInfo'.
- So, the channel funding transaction will contain an output which pays to the address returned by
- 'getFundingAddress', and once this transaction is created and in
- the blockchain, a 'SenderPaymentChannel' and
- 'ReceiverPaymentChannel' instance can be created, after first creating the 'FundingTxInfo' instance.
- 'FundingTxInfo' contains three pieces of information about the funding transaction:
+2.  receiver public key
 
-    (1) hash/transaction ID
-    (2) index/vout of the funding output (paying to 'getFundingAddress' address),
-    (3) value of the funding output (paying to 'getFundingAddress' address)
+3.  channel expiration date
 
-With 'ChannelParameters' and 'FundingTxInfo',
- the sender can create a new 'SenderPaymentChannel', plus
- the first channel payment, using 'channelWithInitialPaymentOf'. 'channelWithInitialPaymentOf'
- takes two additional arguments:
+These parameters are contained in `ChannelParameters`{.haskell
+.identifier}, from which the Bitcoin address used to fund the payment
+channel can be derived using `getFundingAddress`{.haskell .identifier}.
+The transaction which pays to this address is the channel funding
+transaction, and information about it is contained in a
+`FundingTxInfo`{.haskell .identifier}. So, the channel funding
+transaction will contain an output which pays to the address returned by
+`getFundingAddress`{.haskell .identifier}, and once this transaction is
+created and in the blockchain, a `SenderPaymentChannel`{.haskell
+.identifier} and `ReceiverPaymentChannel`{.haskell .identifier} instance
+can be created, after first creating the `FundingTxInfo`{.haskell
+.identifier} instance. `FundingTxInfo`{.haskell .identifier} contains
+three pieces of information about the funding transaction:
 
-    (1) a signing function which, given a hash, produces a signature that verifies against
-        'cpSenderPubKey' in 'ChannelParameters'
-    (2) the value of the first channel payment
+1.  hash/transaction ID
 
- The sender will want to use @flip 'Network.Haskoin.Crypto.signMsg' senderPrivKey@ as the signing
- function, where @senderPrivKey@ is the private key from which 'cpSenderPubKey' is derived.
- 'channelWithInitialPaymentOf' will return the first channel 'Payment' as well as
- the new 'SenderPaymentChannel' state. The new state is stored, and the 'Payment'
- transferred to the receiver.
+2.  index/vout of the funding output (paying to
+    `getFundingAddress`{.haskell .identifier} address),
 
-The receiver will now create its own channel state object, 'ReceiverPaymentChannel', using
- 'channelFromInitialPayment'.
- 'channelFromInitialPayment' takes the same 'ChannelParameters' and 'FundingTxInfo'
- as was provided by the sender, and, in addition, the first channel 'Payment', received from the sender.
+3.  value of the funding output (paying to `getFundingAddress`{.haskell
+    .identifier} address)
 
-Now the payment channel is open and ready for transmitting value. A new 'Payment' is created by
- the sender with 'sendPayment', which yields a new payment, that increases the total value transmitted
- to the receiver by the specified amount, and an updated 'Data.Bitcoin.PaymentChannel.Types.SenderPaymentChannel' state.
- The receiver will verify and register this 'Payment' on its side using 'recvPayment', which, on success,
- returns the value received with this payment plus the updated
- 'ReceiverPaymentChannel' state object.
+With `ChannelParameters`{.haskell .identifier} and
+`FundingTxInfo`{.haskell .identifier}, the sender can create a new
+`SenderPaymentChannel`{.haskell .identifier}, plus the first channel
+payment, using `channelWithInitialPaymentOf`{.haskell .identifier}.
+`channelWithInitialPaymentOf`{.haskell .identifier} takes two additional
+arguments:
 
-Payments can flow from the sender to receiver until either the channel is exhausted, or getting
- close to expiration (see important note below). In either case the receiver will use 'getSettlementBitcoinTx' to create the settlement
- Bitcoin transaction, and publish this transaction to the Bitcoin network. The settlement Bitcoin
- transaction pays the total value transmitted over the channel to the receiver and the rest back
- to the sender.
+1.  a signing function which, given a hash, produces a signature that
+    verifies against `cpSenderPubKey`{.haskell .identifier} in
+    `ChannelParameters`{.haskell .identifier}
 
-A settlement transaction can be produced by the value receiver using 'getSettlementBitcoinTx'.
- The receiver will want to use @flip 'Network.Haskoin.Crypto.signMsg' receiverPrivKey@ as the
- signing function passed to 'getSettlementBitcoinTx',
-where @receiverPrivKey@ is the private key from which 'cpReceiverPubKey' is derived.
+2.  the value of the first channel payment
 
-[1] In addition to this, two configuration options must also be agreed upon: a "dust limit",
- and a "settlement period" (measured in hours), which is subtracted from the channel expiration
- date in order to arrive at the effective (earlier) expiration date. This is necessary to give the
- server/receiver time to publish the settlement transaction before the refund transaction becomes
- valid. The dust limit is the minimum amount that the server is willing to accept
- as the client change value in the
- payment transaction. It's only relevant if the channel is
- emptied of value completely, but it is necessary because the server doesn't want to accept
- payments based on transactions it cannot publish via the Bitcoin P2P network, because they
- contain an output of minuscule value. Sensible values are contained in 'defaultConfig', but
- client/sender and server/receiver need to agree on these parameter as well, although they are
- only relevant 1) (in the case of the dust limit) if the channel is compleltely exchausted and
- 2) (in case of the "settlemend period") if the client tries to make payments close to expiration
- (and, in case the client does, it will just receive an error in response, saying the channel
- is now closed).
+The sender will want to use
+`flip ``Network.Haskoin.Crypto.signMsg`{.haskell
+.identifier}` senderPrivKey` as the signing function, where
+`senderPrivKey` is the private key from which `cpSenderPubKey`{.haskell
+.identifier} is derived. `channelWithInitialPaymentOf`{.haskell
+.identifier} will return the first channel `Payment`{.haskell
+.identifier} as well as the new `SenderPaymentChannel`{.haskell
+.identifier} state. The new state is stored, and the `Payment`{.haskell
+.identifier} transferred to the receiver.
 
-__/IMPORTANT:/__ /Channel setup is risk free because the sender can derive a refund Bitcoin transaction/
- /using 'getRefundBitcoinTx', which returns the bitcoins used to fund the channel back to the sender./
- /This refund transaction, however, is not valid until the expiration date specified in 'ChannelParameters',/
- /but it is paramount that the value receiver get a settlement transaction included in a block/
- /before the refund transaction becomes valid. Due to the fact that Bitcoin network time is allowed/
- /to drift up to two hours from actual time, and the fact that finding new Bitcoin blocks does not occur/
- /according to any schedule, it would be wise for the receiver to publish a settlement transaction at least/
- /6 hours before the specified channel expiration time, and possibly earlier, if the receiver wants to/
- /be cautious./
+The receiver will now create its own channel state object,
+`ReceiverPaymentChannel`{.haskell .identifier}, using
+`channelFromInitialPayment`{.haskell .identifier}.
+`channelFromInitialPayment`{.haskell .identifier} takes the same
+`ChannelParameters`{.haskell .identifier} and `FundingTxInfo`{.haskell
+.identifier} as was provided by the sender, and, in addition, the first
+channel `Payment`{.haskell .identifier}, received from the sender.
+
+Now the payment channel is open and ready for transmitting value. A new
+`Payment`{.haskell .identifier} is created by the sender with
+`sendPayment`{.haskell .identifier}, which yields a new payment, that
+increases the total value transmitted to the receiver by the specified
+amount, and an updated
+`Data.Bitcoin.PaymentChannel.Types.SenderPaymentChannel`{.haskell
+.identifier} state. The receiver will verify and register this
+`Payment`{.haskell .identifier} on its side using `recvPayment`{.haskell
+.identifier}, which, on success, returns the value received with this
+payment plus the updated `ReceiverPaymentChannel`{.haskell .identifier}
+state object.
+
+Payments can flow from the sender to receiver until either the channel
+is exhausted, or getting close to expiration (see important note below).
+In either case the receiver will use `getSettlementBitcoinTx`{.haskell
+.identifier} to create the settlement Bitcoin transaction, and publish
+this transaction to the Bitcoin network. The settlement Bitcoin
+transaction pays the total value transmitted over the channel to the
+receiver and the rest back to the sender.
+
+A settlement transaction can be produced by the value receiver using
+`getSettlementBitcoinTx`{.haskell .identifier}. The receiver will want
+to use `flip ``Network.Haskoin.Crypto.signMsg`{.haskell
+.identifier}` receiverPrivKey` as the signing function passed to
+`getSettlementBitcoinTx`{.haskell .identifier}, where `receiverPrivKey`
+is the private key from which `cpReceiverPubKey`{.haskell .identifier}
+is derived.
+
+1
+
+:   In addition to this, two configuration options must also be agreed
+    upon: a "dust limit", and a "settlement period" (measured in hours),
+    which is subtracted from the channel expiration date in order to
+    arrive at the effective (earlier) expiration date. This is necessary
+    to give the server/receiver time to publish the settlement
+    transaction before the refund transaction becomes valid. The dust
+    limit is the minimum amount that the server is willing to accept as
+    the client change value in the payment transaction. It's only
+    relevant if the channel is emptied of value completely, but it is
+    necessary because the server doesn't want to accept payments based
+    on transactions it cannot publish via the Bitcoin P2P network,
+    because they contain an output of minuscule value. Sensible values
+    are contained in `defaultConfig`{.haskell .identifier}, but
+    client*sender and server*receiver need to agree on these parameter
+    as well, although they are only relevant 1) (in the case of the
+    dust limit) if the channel is compleltely exchausted and 2) (in case
+    of the "settlemend period") if the client tries to make payments
+    close to expiration (and, in case the client does, it will just
+    receive an error in response, saying the channel is now closed).
+
+***IMPORTANT:*** *Channel setup is risk free because the sender can
+derive a refund Bitcoin transaction* *using
+`getRefundBitcoinTx`{.haskell .identifier}, which returns the bitcoins
+used to fund the channel back to the sender.* *This refund transaction,
+however, is not valid until the expiration date specified in
+`ChannelParameters`{.haskell .identifier},* *but it is paramount that
+the value receiver get a settlement transaction included in a block*
+*before the refund transaction becomes valid. Due to the fact that
+Bitcoin network time is allowed* *to drift up to two hours from actual
+time, and the fact that finding new Bitcoin blocks does not occur*
+*according to any schedule, it would be wise for the receiver to publish
+a settlement transaction at least* *6 hours before the specified channel
+expiration time, and possibly earlier, if the receiver wants to* *be
+cautious.*
 
 
 ## Contact/questions/bugs
