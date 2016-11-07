@@ -23,11 +23,11 @@ import           Network.Haskoin.Script
 import qualified Network.Haskoin.Transaction as HT
 import qualified Network.Haskoin.Crypto as HC
 import qualified Network.Haskoin.Script as HS
-import           Data.Aeson
 import           Data.Typeable
 import           Data.Word
 import qualified Data.Tagged as Tag
 import           GHC.Generics (Generic)
+
 
 -- |Shared state object used by both value sender and value receiver.
 data PaymentChannelState = CPaymentChannelState {
@@ -45,6 +45,9 @@ data PaymentChannelState = CPaymentChannelState {
     pcsPaymentSignature     ::  PaymentSignature
 } deriving (Eq, Show, Typeable, Generic)
 
+instance HasSendPubKey PaymentChannelState where
+    getSendPubKey = cpSenderPubKey . pcsParameters
+
 -- |Defines channel: sender, receiver, and expiration date
 data ChannelParameters = CChannelParameters {
     cpSenderPubKey      ::  SendPubKey,
@@ -52,6 +55,9 @@ data ChannelParameters = CChannelParameters {
     -- |Channel expiration date/time
     cpLockTime          ::  BitcoinLockTime
 } deriving (Eq, Show, Typeable, Generic)
+
+instance HasSendPubKey ChannelParameters where
+    getSendPubKey = cpSenderPubKey
 
 -- |Holds information about the Bitcoin transaction used to fund
 -- the channel
@@ -80,21 +86,24 @@ data Config = Config {
 -- |Contains the bare minimum of information to transfer value from sender to receiver.
 data Payment = CPayment {
     -- |Channel value remaining ('pcsValueLeft' of the state from which this payment was made)
-    cpClientChange :: BitcoinAmount
+    payClientChange :: BitcoinAmount
     -- |Get payment signature from payment
-  , cpSignature    :: PaymentSignature
+  , paySignature    :: PaymentSignature
 } deriving (Eq, Typeable)
 
 -- |Contains all information required to construct the payment transaction
 data FullPayment = CFullPayment {
-    fpPayment      :: Payment
+    fpPayment       :: Payment
     -- |The payment transaction redeems this outpoint
-  , fpOutPoint     :: HT.OutPoint
-    -- |Using this redeemScript
-  , fpRedeemScript :: HS.Script
+  , fpOutPoint      :: HT.OutPoint
+    -- |Using the redeemScript produced by getRedeemScript from these 'ChannelParameters'
+  , fpChanParams    :: ChannelParameters
     -- |Paying this amount to the client/sender change output
-  , fpChangeAddr   :: HC.Address
+  , fpChangeAddr    :: HC.Address
 } deriving (Eq, Typeable)
+
+instance HasSendPubKey FullPayment where
+    getSendPubKey = cpSenderPubKey . fpChanParams
 
 -- |Contains payment signature plus sig hash flag byte
 data PaymentSignature = CPaymentSignature {
@@ -122,14 +131,8 @@ data ReceiverPaymentChannelI meta = CReceiverPaymentChannel {
   , rpcMetadata :: meta
 } deriving (Eq, Typeable)
 
-instance Show ReceiverPaymentChannel where
-    show (CReceiverPaymentChannel s _) =
-        "<ReceiverPaymentChannel:\n\t" ++ show s ++ ">"
-
-instance Show ReceiverPaymentChannelX where
-    show (CReceiverPaymentChannel s _) =
-        "<ReceiverPaymentChannelX:\n\t" ++ show s ++ ">"
-
+instance HasSendPubKey (ReceiverPaymentChannelI a) where
+    getSendPubKey = getSendPubKey . rpcState
 
 type Hour = Tag.Tagged "Hour" Word32
 toSeconds :: Hour -> Integer
@@ -143,3 +146,7 @@ defaultConfig = Config defaultDustLimit defaultSettlementPeriod
 
 defaultDustLimit = 700 :: BitcoinAmount
 defaultSettlementPeriod = 10 :: Hour
+
+
+
+

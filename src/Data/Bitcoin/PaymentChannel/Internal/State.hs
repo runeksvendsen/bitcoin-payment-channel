@@ -1,9 +1,10 @@
--- {-# OPTIONS_GHC -fwarn-incomplete-patterns -Werror #-}
+{-# LANGUAGE RecordWildCards #-}
 
 module Data.Bitcoin.PaymentChannel.Internal.State where
 
 import Data.Bitcoin.PaymentChannel.Internal.Types
 import Data.Bitcoin.PaymentChannel.Internal.Error
+import Data.Bitcoin.PaymentChannel.Internal.Payment
 import Data.Bitcoin.PaymentChannel.Internal.Util  (addressToScriptPubKeyBS)
 import Data.Bitcoin.PaymentChannel.Internal.Bitcoin.Script
 
@@ -12,6 +13,100 @@ import qualified Network.Haskoin.Crypto as HC
 import qualified Network.Haskoin.Script as HS
 import           Data.Time.Clock
 
+
+newPaymentChannelState cfg channelParameters fundingTxInfo paymentConfig paySig =
+    CPaymentChannelState {
+        pcsConfig               = cfg,
+        pcsParameters           = channelParameters,
+        pcsFundingTxInfo        = fundingTxInfo,
+        pcsPaymentConfig        = paymentConfig,
+        pcsPaymentCount         = 0,
+        pcsClientChangeVal      = ftiOutValue fundingTxInfo,
+        pcsPaymentSignature     = paySig
+    }
+
+-- |Update state with payment containing a valid signature.
+updatePaymentChannelState
+    :: PaymentChannelState
+    -> FullPayment
+    -> UTCTime
+    -> Either PayChanError PaymentChannelState
+updatePaymentChannelState pcs paym now =
+    checkFundingSource paym pcs >>=
+    checkChangeAddr paym >>=
+    checkRedeemScript paym >>=
+    checkDustOutput paym >>=
+    checkExpirationTime now >>=
+    updatePayCount paym >>=
+    updateValue paym >>=
+    updateSignature paym
+
+updateSignature :: FullPayment -> PayChanState -> Either PayChanError PayChanState
+updateSignature CFullPayment{..} pcs
+    | not $ verifyPaymentSigFromState pcs checkSigFunc fpPayment = Left SigVerifyFailed
+    | otherwise = Right pcs
+        { pcsPaymentSignature = paySignature fpPayment }
+    where checkSigFunc hash pk sig = HC.verifySig hash sig (getPubKey pk)
+
+updateValue :: FullPayment -> PayChanState -> Either PayChanError PayChanState
+updateValue CFullPayment{..} pcs@CPaymentChannelState{..}
+    | CPayment newSenderVal _ <- fpPayment =
+        if newSenderVal > pcsClientChangeVal then
+            Left $ BadPaymentValue (newSenderVal - pcsClientChangeVal)
+        else
+            Right pcs { pcsClientChangeVal = newSenderVal }
+
+checkFundingSource :: FullPayment -> PayChanState -> Either PayChanError PayChanState
+checkFundingSource CFullPayment{..} pcs@CPaymentChannelState{..}
+    | HT.OutPoint payHash payIdx <- fpOutPoint
+    , CFundingTxInfo h i _       <- pcsFundingTxInfo
+    , payHash /= h || payIdx /= i =
+        Left $ OutPointMismatch $ OutPoint h i
+    | otherwise = Right pcs
+
+checkChangeAddr :: FullPayment -> PayChanState -> Either PayChanError PayChanState
+checkChangeAddr CFullPayment{..} pcs@CPaymentChannelState{..}
+    | fpChangeAddr /= pcsClientChangeAddress pcs =
+        Left $ ChangeAddrMismatch $ pcsClientChangeAddress pcs
+    | otherwise = Right pcs
+
+checkRedeemScript :: FullPayment -> PayChanState -> Either PayChanError PayChanState
+checkRedeemScript CFullPayment{..} pcs@CPaymentChannelState{..}
+    | fpChanParams /= pcsParameters =
+        Left $ RedeemScriptMismatch $ getRedeemScript pcsParameters
+    | otherwise = Right pcs
+
+checkDustOutput :: FullPayment -> PayChanState -> Either PayChanError PayChanState
+checkDustOutput CFullPayment{..} pcs@CPaymentChannelState{..}
+    | Config dustLimit _ <- pcsConfig
+    , payClientChange fpPayment < dustLimit =
+        Left $ DustOutput dustLimit
+    | otherwise = Right pcs
+
+checkExpirationTime :: UTCTime -> PayChanState -> Either PayChanError PayChanState
+checkExpirationTime now pcs@CPaymentChannelState{..}
+    | isPastLockTimeDate now pcsConfig pcsParameters =
+        Left ChannelExpired
+    | otherwise =
+        Right pcs
+
+isPastLockTimeDate :: UTCTime
+                   -> Config
+                   -> ChannelParameters
+                   -> Bool
+isPastLockTimeDate currentTime (Config _ settlePeriodHrs) (CChannelParameters _ _ (LockTimeDate expTime)) =
+    currentTime > (settlePeriod `addUTCTime` expTime)
+        where settlePeriod = -1 * fromIntegral (toSeconds settlePeriodHrs) :: NominalDiffTime
+isPastLockTimeDate _ _ (CChannelParameters _ _ (LockTimeBlockHeight _)) =
+    True
+    -- We don't have the current Bitcoin block so we regard the channel as expired,
+    -- in order to make sure we don't accept block count-based locktimes for now.
+
+updatePayCount :: FullPayment -> PayChanState -> Either PayChanError PayChanState
+updatePayCount CFullPayment{..} pcs@CPaymentChannelState{..}
+    | payClientChange fpPayment == pcsClientChangeVal =
+        Right pcs
+    | otherwise = Right pcs { pcsPaymentCount = pcsPaymentCount+1 }
 
 pcsChannelTotalValue = ftiOutValue . pcsFundingTxInfo
 pcsValueTransferred cs = pcsChannelTotalValue cs - pcsClientChangeVal cs
@@ -58,40 +153,6 @@ channelIsExhausted pcs =
     psSigHash (pcsPaymentSignature pcs) == HS.SigNone True ||
         channelValueLeft pcs == 0
 
-newPaymentChannelState cfg channelParameters fundingTxInfo paymentConfig paySig =
-    CPaymentChannelState {
-        pcsConfig               = cfg,
-        pcsParameters           = channelParameters,
-        pcsFundingTxInfo        = fundingTxInfo,
-        pcsPaymentConfig        = paymentConfig,
-        pcsPaymentCount         = 0,
-        pcsClientChangeVal      = ftiOutValue fundingTxInfo,
-        pcsPaymentSignature     = paySig
-    }
-
-
--- |Update state with verified payment.
-updatePaymentChannelState  ::
-    PaymentChannelState
-    -> FullPayment
-    -> Either PayChanError PaymentChannelState
-updatePaymentChannelState (CPaymentChannelState cfg cp fun@(CFundingTxInfo h i _)
-                          pconf@(CPaymentTxConfig addr) payCount oldSenderVal _)
-    (CFullPayment payment@(CPayment newSenderVal _) payOP payScript payChgAddr)
-        | (HT.outPointHash payOP /= h) || (HT.outPointIndex payOP /= i) =
-            Left $ OutPointMismatch $ OutPoint h i
-        | payChgAddr /= addr =
-            Left $ ChangeAddrMismatch addr
-        | payScript /= getRedeemScript cp =
-            Left $ RedeemScriptMismatch $ getRedeemScript cp
-        | newSenderVal > oldSenderVal =
-            Left $ BadPaymentValue (newSenderVal - oldSenderVal)
-        | otherwise =
-            CPaymentChannelState cfg cp fun pconf newPayCount newSenderVal . cpSignature <$>
-                checkDustLimit cfg payment
-      where
-        newPayCount = if newSenderVal == oldSenderVal then payCount else payCount+1
-
 -- |Create a 'ReceiverPaymentChannelX', which has an associated XPubKey, from a
 --  'ReceiverPaymentChannel'
 mkExtendedKeyRPC :: ReceiverPaymentChannel -> HC.XPubKey -> Maybe ReceiverPaymentChannelX
@@ -101,22 +162,3 @@ mkExtendedKeyRPC (CReceiverPaymentChannel pcs _) xpk =
             Just $ CReceiverPaymentChannel pcs (HC.xPubIndex xpk)
         else
             Nothing
-
-checkDustLimit :: Config -> Payment -> Either PayChanError Payment
-checkDustLimit (Config dustLimit _) payment@(CPayment senderChangeVal _)
-    | senderChangeVal < dustLimit =
-        Left $ DustOutput dustLimit
-    | otherwise = Right payment
-
-isPastLockTimeDate :: UTCTime
-                   -> Config
-                   -> ChannelParameters
-                   -> Bool
-isPastLockTimeDate currentTime (Config _ settlePeriodHrs) (CChannelParameters _ _ (LockTimeDate expTime)) =
-    currentTime > (settlePeriod `addUTCTime` expTime)
-        where settlePeriod = -1 * fromIntegral (toSeconds settlePeriodHrs) :: NominalDiffTime
-isPastLockTimeDate _ _ (CChannelParameters _ _ (LockTimeBlockHeight _)) =
-    True
-    -- We don't have the current Bitcoin block so we regard the channel as expired,
-    -- in order to make we don't accept block count-based locktimes for now.
-

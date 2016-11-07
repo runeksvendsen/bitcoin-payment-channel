@@ -57,9 +57,9 @@ instance Bin.Serialize Payment where
     get = CPayment <$> Bin.get <*> Bin.get
 
 instance Bin.Serialize FullPayment where
-    put (CFullPayment p op script addr) =
-        Bin.put p >> Bin.put op >> Bin.put (ChanScript script) >> Bin.put addr
-    get = CFullPayment <$> Bin.get <*> Bin.get <*> fmap getScript Bin.get <*> Bin.get
+    put (CFullPayment p op cp addr) =
+        Bin.put p >> Bin.put op >> Bin.put cp >> Bin.put addr
+    get = CFullPayment <$> Bin.get <*> Bin.get <*> Bin.get <*> Bin.get
 
 instance Bin.Serialize PaymentSignature where
     put (CPaymentSignature sig sigHash) =

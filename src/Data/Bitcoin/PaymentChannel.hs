@@ -113,19 +113,21 @@ module Data.Bitcoin.PaymentChannel
     -- *Settlement
     recvPaymentForClose,
     getSettlementBitcoinTx,
-    getRefundBitcoinTx
+    getRefundBitcoinTx,
+
+    -- *Types
+    module Data.Bitcoin.PaymentChannel.Types
 )
 where
 
 import Data.Bitcoin.PaymentChannel.Internal.Types
     (PaymentTxConfig(..), Payment(..), FullPayment(..), Config,
-     ReceiverPaymentChannelI(..), PaymentChannelState,
-    pcsConfig, pcsClientChangeVal, pcsParameters)
+     ReceiverPaymentChannelI(..), pcsClientChangeVal)
 import Data.Bitcoin.PaymentChannel.Internal.State
-    (newPaymentChannelState, updatePaymentChannelState, isPastLockTimeDate)
+    (newPaymentChannelState, updatePaymentChannelState)
 import qualified Data.Bitcoin.PaymentChannel.Internal.State as S
 import Data.Bitcoin.PaymentChannel.Internal.Payment
-    (createPayment, paymentFromState, verifyPaymentSigFromState)
+    (createPayment, mkPaymentFromState)
 import Data.Bitcoin.PaymentChannel.Internal.Settlement
     (signedSettlementTxFromState)
 import Data.Bitcoin.PaymentChannel.Internal.Refund (mkRefundTx)
@@ -165,18 +167,19 @@ sendPayment ::
     -> BitcoinAmount                    -- ^ Amount to send (the actual payment amount is capped)
     -> (BitcoinAmount, FullPayment, SenderPaymentChannel)  -- ^ Actual amount actually sent, payment, and updated sender state object
 sendPayment (CSenderPaymentChannel cs signFunc) amountToSend =
-    let
-        valSent = pcsClientChangeVal cs - newSenderValue
-        newSenderValue = max (S.pcsDustLimit cs) (pcsClientChangeVal cs - amountToSend)
-        fullPay = paymentFromState cs newSenderValue signFunc
-    in
-        case updatePaymentChannelState cs fullPay of
-            Right newCS ->
-                (valSent
-                ,fullPay
-                ,CSenderPaymentChannel newCS signFunc)
-            Left e ->
-                error $ "BUG: bad payment" ++ show e
+    case S.updatePayCount paym cs >>=
+         S.updateSignature paym >>=
+         S.updateValue paym of
+              Right newCS ->
+                  (valSent
+                  ,paym
+                  ,CSenderPaymentChannel newCS signFunc)
+              Left e ->
+                  error $ "BUG: bad payment" ++ show e
+    where
+        valSent = pcsClientChangeVal cs - newChangeVal
+        newChangeVal = max (S.pcsDustLimit cs) (pcsClientChangeVal cs - amountToSend)
+        paym = mkPaymentFromState cs newChangeVal signFunc
 
 -- |Produces a Bitcoin transaction which sends all channel funds back to the sender.
 -- Will not be accepted by the Bitcoin network until the expiration time specified in
@@ -218,30 +221,12 @@ recvPayment ::
     -> ReceiverPaymentChannelI a    -- ^Receiver state object
     -> FullPayment                  -- ^Payment to verify and register
     -> Either PayChanError (BitcoinAmount, ReceiverPaymentChannelI a) -- ^Value received plus new receiver state object
-recvPayment currentTime rpc@(CReceiverPaymentChannel oldState _) fp@(CFullPayment paymnt _ _ _)  =
-    updatePaymentChannelState oldState fp >>=
-    checkExpiration >>=
-    verifyPaymentSignature paymnt >>=
+recvPayment currentTime rpc@(CReceiverPaymentChannel oldState _) fp =
+    updatePaymentChannelState oldState fp currentTime >>=
     (\newState -> Right (
         S.channelValueLeft oldState - S.channelValueLeft newState
         , rpc { rpcState = newState })
     )
-    where checkExpiration s =
-            if isPastLockTimeDate currentTime (pcsConfig oldState) (pcsParameters oldState) then
-                Left ChannelExpired
-            else
-                Right s
-
-verifyPaymentSignature ::
-    Payment                 -- ^Payment whose signature to verify
-    -> PaymentChannelState  -- ^State object
-    -> Either PayChanError PaymentChannelState
-verifyPaymentSignature paymnt state =
-    if verifyPaymentSigFromState state verifySenderPayment paymnt then
-        Right state
-    else
-        Left SigVerifyFailed
-    where verifySenderPayment hash pk sig = HC.verifySig hash sig (getPubKey pk)
 
 -- |Same as 'recvPayment' but accept only a payment of zero value
 --  with a new client change address. Used to produce the settlement
@@ -250,14 +235,14 @@ recvPaymentForClose ::
     ReceiverPaymentChannelI a    -- ^Receiver state object
     -> FullPayment              -- ^Payment to verify and register
     -> Either PayChanError (ReceiverPaymentChannelI a) -- ^ Receiver state object
-recvPaymentForClose (CReceiverPaymentChannel state pki) fp =
+recvPaymentForClose (CReceiverPaymentChannel state m) fp =
     recvPayment futureTimeStamp newAddressState fp >>=
         \(amtRecv, newState) -> case amtRecv of
             0 -> Right newState
             _ -> Left ClosingPaymentBadValue
     where newAddressState = CReceiverPaymentChannel
             { rpcState    = S.setClientChangeAddress state (fpChangeAddr fp)
-            , rpcMetadata = pki
+            , rpcMetadata = m
             }
 
           -- When receiving a payment of zero value, which only modifies the

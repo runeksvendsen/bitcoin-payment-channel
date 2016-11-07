@@ -60,7 +60,7 @@ unsafeUpdateRecvState (CReceiverPaymentChannel s pki) (CPayment val sig) =
     CReceiverPaymentChannel ( s { pcsClientChangeVal = val, pcsPaymentSignature = sig} ) pki
 
 fpGetSig :: FullPayment -> HC.Signature
-fpGetSig = psSig . cpSignature . fpPayment
+fpGetSig = psSig . paySignature . fpPayment
 
 pGetSig :: Payment -> HC.Signature
-pGetSig = psSig . cpSignature
+pGetSig = psSig . paySignature

@@ -35,6 +35,10 @@ tests =
         , testProperty "Sent amount == received amount" $
             testPaymentSession checkRecvSendAmount
         ]
+    , testGroup "Conversion"
+        [ testProperty "RedeemScript"
+            redeemScriptConversion
+        ]
     , testGroup "Serialization"
         [ testGroup "JSON"
             [ testProperty "FullPayment"
@@ -53,6 +57,12 @@ tests =
         ]
     ]
 
+redeemScriptConversion :: ChannelParameters -> Bool
+redeemScriptConversion cp = -- fromRedeemScript (getRedeemScript cp) == Right cp
+--     let res =  in
+    case fromRedeemScript (getRedeemScript cp) of
+        Left e -> error (show cp ++ "\n\n" ++ show e)
+        Right r -> if r /= cp then error (show cp ++ "\n\n" ++ show r) else True
 
 checkSenderValue :: (ChannelPairResult, [BitcoinAmount]) -> Bool
 checkSenderValue (ChannelPairResult{..}, _) = do

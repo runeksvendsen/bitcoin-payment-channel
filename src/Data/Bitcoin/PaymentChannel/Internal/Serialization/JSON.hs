@@ -4,12 +4,12 @@ module Data.Bitcoin.PaymentChannel.Internal.Serialization.JSON where
 
 import           Data.Bitcoin.PaymentChannel.Internal.Types
 import           Data.Bitcoin.PaymentChannel.Internal.Util
+import           Data.Bitcoin.PaymentChannel.Internal.Bitcoin.Script
 import qualified Network.Haskoin.Transaction as HT
 import           Data.Aeson
 import           Data.Aeson.Types (Parser, Pair)
 import           Data.Scientific (Scientific, scientific, toBoundedInteger)
 import           Data.Word (Word64)
-
 
 deriving instance ToJSON SendPubKey
 deriving instance FromJSON SendPubKey
@@ -83,17 +83,16 @@ parseJSONPayment o = CPayment
                    (o .: "sighash_flag"   >>= withText "SigHashFlagHex" deserHex))
 
 instance ToJSON FullPayment where
-    toJSON CFullPayment {
-        fpPayment       = payment,
-        fpOutPoint      = (HT.OutPoint txid vout), fpRedeemScript = script,
-        fpChangeAddr    = addr } =
-            object $
-                paymentJSONLst payment ++
-                [   "funding_txid"     .= txid
-                ,   "funding_vout"     .= vout
-                ,   "redeem_script"    .= String (serHex script)
-                ,   "change_address"   .= addr
-                ]
+    toJSON CFullPayment{..}
+        | HT.OutPoint txid vout <- fpOutPoint = object $
+            paymentJSONLst fpPayment ++
+            [   "funding_txid"     .= txid
+            ,   "funding_vout"     .= vout
+            ,   "redeem_script"    .= toScriptHex fpChanParams
+            ,   "change_address"   .= fpChangeAddr
+            ]
+        where
+            toScriptHex = String . serHex . getRedeemScript
 
 instance FromJSON FullPayment where
     parseJSON = withObject "FullPayment" parseFullPayment
@@ -104,8 +103,11 @@ parseFullPayment o = CFullPayment
     <*>     (HT.OutPoint <$>
                  o .: "funding_txid" <*>
                  o .: "funding_vout")
-    <*>     (o .: "redeem_script" >>= withText "RedeemScriptHex" deserHex)
+    <*>     (o .: "redeem_script" >>= parseChanParams >>= either fail return)
     <*>      o .: "change_address"
+  where
+    parseChanParams = withText "RedeemScriptHex" $ \txt ->
+        fromRedeemScript <$> deserHex txt
 
 instance ToJSON BitcoinAmount where
     toJSON amt = Number $ scientific

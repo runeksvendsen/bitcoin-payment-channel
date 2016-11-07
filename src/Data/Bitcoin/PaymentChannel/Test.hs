@@ -6,6 +6,7 @@ module Data.Bitcoin.PaymentChannel.Test
   , module Data.Bitcoin.PaymentChannel.Types
   , module Data.Bitcoin.PaymentChannel.Internal.Types
   , module Data.Bitcoin.PaymentChannel.Internal.State
+  , module Data.Bitcoin.PaymentChannel.Internal.Bitcoin.Script
 )
 
 where
@@ -15,6 +16,7 @@ import           Data.Bitcoin.PaymentChannel.Types
 import           Data.Bitcoin.PaymentChannel.Internal.Types
 import           Data.Bitcoin.PaymentChannel.Util
 import           Data.Bitcoin.PaymentChannel.Internal.State hiding (channelIsExhausted, channelValueLeft)
+import           Data.Bitcoin.PaymentChannel.Internal.Bitcoin.Script
 
 import qualified Network.Haskoin.Crypto as HC
 import           Network.Haskoin.Test

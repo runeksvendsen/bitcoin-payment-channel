@@ -15,7 +15,7 @@ import qualified Data.ByteString as B
 data UnsignedPayment = UnsignedPayment
   {  fundingOutPoint    :: HT.OutPoint
   ,  outPointValue      :: BitcoinAmount
-  ,  redeemScript       :: HS.Script
+  ,  upChannelParams    :: ChannelParameters
   ,  changeAddress      :: HC.Address
   ,  changeValue        :: BitcoinAmount
   }
@@ -30,8 +30,7 @@ fromState :: PaymentChannelState -> UnsignedPayment
 fromState (CPaymentChannelState _ cp (CFundingTxInfo hash idx fundingVal)
           (CPaymentTxConfig changeAddr) _ changeValue _) =
     UnsignedPayment
-        (HT.OutPoint hash idx) fundingVal
-        (getRedeemScript cp)   changeAddr changeValue
+        (HT.OutPoint hash idx) fundingVal cp changeAddr changeValue
 
 toUnsignedBitcoinTx :: UnsignedPayment -> HT.Tx
 toUnsignedBitcoinTx (UnsignedPayment fundingOutPoint _ _ changeAddr changeVal) =
@@ -49,21 +48,21 @@ toUnsignedBitcoinTx (UnsignedPayment fundingOutPoint _ _ changeAddr changeVal) =
             (addressToScriptPubKeyBS changeAddr)
 
 getHashForSigning :: UnsignedPayment -> HS.SigHash -> HC.Hash256
-getHashForSigning up@(UnsignedPayment _ _ redeemScript _ _) =
+getHashForSigning up@(UnsignedPayment _ _ cp _ _) =
     HS.txSigHash
         (toUnsignedBitcoinTx up)
-        redeemScript
+        (getRedeemScript cp)
         0 -- In the tx we construct using 'toUnsignedBitcoinTx',
           --  the input in question is always at index 0
 
 ---Payment create/verify---
 -- |Create payment, from state. No check of value is performed.
-paymentFromState ::
+mkPaymentFromState ::
     PaymentChannelState
     -> BitcoinAmount                -- ^ sender change value (subtract 'n' from current sender change value to get payment of value 'n')
     -> (HC.Hash256 -> HC.Signature) -- ^ signing function
     -> FullPayment
-paymentFromState (CPaymentChannelState _ cp fti (CPaymentTxConfig changeAddr) _ _ _) =
+mkPaymentFromState (CPaymentChannelState _ cp fti (CPaymentTxConfig changeAddr) _ _ _) =
     createPayment cp fti changeAddr
 
 -- |Create payment, pure.
@@ -76,15 +75,15 @@ createPayment ::
     -> FullPayment
 createPayment cp (CFundingTxInfo hash idx val) changeAddr changeVal signFunc =
     let
-        unsignedPayment@(UnsignedPayment op _ script _ _) = UnsignedPayment
-                (HT.OutPoint hash idx) val (getRedeemScript cp)
+        unsignedPayment@(UnsignedPayment op _ _ _ _) = UnsignedPayment
+                (HT.OutPoint hash idx) val cp
                 changeAddr changeVal
         sigHash = if changeVal /= 0 then HS.SigSingle True else HS.SigNone True
         hashToSign = getHashForSigning unsignedPayment sigHash
         sig = signFunc hashToSign
         payment = CPayment changeVal (CPaymentSignature sig sigHash)
     in
-        CFullPayment payment op script changeAddr
+        CFullPayment payment op cp changeAddr
 
 
 verifyPaymentSig ::
@@ -98,14 +97,13 @@ verifyPaymentSig ::
 verifyPaymentSig cp (CFundingTxInfo fundTxId idx val) changeAddr sendPK verifyFunc
     (CPayment newSenderVal (CPaymentSignature sig sigHash)) =
         let
-            payProxy = UnsignedPayment
-                    (HT.OutPoint fundTxId idx) val (getRedeemScript cp)
-                     changeAddr newSenderVal
+            payProxy = UnsignedPayment (HT.OutPoint fundTxId idx) val cp
+                            changeAddr newSenderVal
             hash = case sigHash of
                 HS.SigSingle True   -> getHashForSigning payProxy sigHash
                 --sender has relinquished remaining channel value
                 HS.SigNone   True   -> getHashForSigning payProxy sigHash
-                _                   -> dummyHash256 --will fail verification
+                _                   -> dummyHash256 --will fail verification. probably.
         in
             verifyFunc hash sendPK sig
 

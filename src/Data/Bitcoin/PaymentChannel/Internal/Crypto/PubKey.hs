@@ -3,10 +3,12 @@ module Data.Bitcoin.PaymentChannel.Internal.Crypto.PubKey
 (   IsPubKey(..)
 ,   SendPubKey(..)
 ,   RecvPubKey(..)
+,   HasSendPubKey(..)
 ) where
 
 import qualified Network.Haskoin.Crypto as HC
 import qualified Data.Serialize     as Bin
+
 
 -- |Types which contain a pubkey
 class Bin.Serialize a => IsPubKey a where
@@ -28,3 +30,8 @@ instance IsPubKey RecvPubKey where
 
 instance IsPubKey HC.XPubKey where
     getPubKey = HC.xPubKey
+
+
+-- |Types which contain a 'SendPubKey'
+class HasSendPubKey a where
+    getSendPubKey :: a -> SendPubKey

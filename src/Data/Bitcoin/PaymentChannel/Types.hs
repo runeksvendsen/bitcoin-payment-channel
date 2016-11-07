@@ -26,7 +26,7 @@ module Data.Bitcoin.PaymentChannel.Types
     ChannelParameters(..), ChanParams,
 
     -- *Payment
-    Payment,cpSignature,
+    Payment,paySignature,
     FullPayment(..),
     -- **Error
     PayChanError(..)
@@ -37,7 +37,7 @@ module Data.Bitcoin.PaymentChannel.Types
 ,   module Data.Bitcoin.PaymentChannel.Internal.Bitcoin.Fee
 
     -- *Crypto
-,   SendPubKey(..),RecvPubKey(..),IsPubKey(..),
+,   SendPubKey(..),RecvPubKey(..),IsPubKey(..),HasSendPubKey(..),
 
     -- *Util
     S.mkExtendedKeyRPC, fromDate, usesBlockHeight
@@ -53,7 +53,6 @@ import qualified Data.Bitcoin.PaymentChannel.Internal.Bitcoin.Script as Script
 import Data.Bitcoin.PaymentChannel.Internal.Error (PayChanError(..))
 import Data.Bitcoin.PaymentChannel.Internal.Bitcoin.Fee
 
-import qualified  Data.Serialize as Bin
 import qualified  Network.Haskoin.Crypto as HC
 import qualified  Network.Haskoin.Transaction as HT
 import            Data.Word (Word64)
@@ -96,7 +95,7 @@ class PaymentChannel a where
     channelIsExhausted = S.channelIsExhausted . getChannelState
     expiresBefore expDate chan = getExpirationDate chan < expDate
     getNewestPayment pcs = S.pcsGetPayment (getChannelState pcs)
-    getNewestSig = psSig . cpSignature . getNewestPayment
+    getNewestSig = psSig . paySignature . getNewestPayment
 
 -- |State object for the value sender
 data SenderPaymentChannel = CSenderPaymentChannel {
