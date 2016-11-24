@@ -130,8 +130,8 @@ mkChanParams = do
     ArbitraryPubKeyC sendPriv sendPK <- arbitrary
     -- receiver key pair
     ArbitraryPubKeyC recvPriv recvPK <- arbitrary
-    -- TODO: We use an expiration date far off into the future for now
-    let lockTime = parseBitcoinLocktime 2524651200
+    -- TODO: Use a future expiration date for now
+    lockTime <- parseBitcoinLocktime <$> choose (1795556940, maxBound)
     return (CChannelParameters
                 (MkSendPubKey sendPK) (MkRecvPubKey recvPK) lockTime,
            (sendPriv, recvPriv))
