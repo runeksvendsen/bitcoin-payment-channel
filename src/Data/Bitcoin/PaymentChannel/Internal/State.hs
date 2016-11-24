@@ -159,6 +159,24 @@ mkExtendedKeyRPC :: ReceiverPaymentChannel -> HC.XPubKey -> Maybe ReceiverPaymen
 mkExtendedKeyRPC (CReceiverPaymentChannel pcs _) xpk =
     -- Check that it's the right pubkey first
     if xPubKey xpk == getPubKey (pcsServerPubKey pcs) then
-            Just $ CReceiverPaymentChannel pcs (HC.xPubIndex xpk)
+            Just $ CReceiverPaymentChannel pcs $
+                MetaData (HC.xPubIndex xpk) (pcsValueTransferred pcs)
         else
             Nothing
+
+class UpdateMetadata a where
+    calcNewData :: a -> PaymentChannelState -> a
+
+instance UpdateMetadata () where
+    calcNewData _ _ = ()
+
+instance UpdateMetadata MetaData where
+    calcNewData (MetaData ki oldValRecvd) pcs =
+        MetaData ki $
+            if newValRecvd < oldValRecvd then error "Value lost :(" else newValRecvd
+        where newValRecvd = pcsValueTransferred pcs
+
+updateWithMetadata :: UpdateMetadata d => d -> PaymentChannelState -> ReceiverPaymentChannelI d
+updateWithMetadata oldData pcs =
+    CReceiverPaymentChannel pcs (calcNewData oldData pcs)
+

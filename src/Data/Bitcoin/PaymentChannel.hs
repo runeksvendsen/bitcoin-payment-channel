@@ -217,22 +217,25 @@ channelFromInitialPayment now cfg cp fundInf fp@(CFullPayment (CPayment _ sig) _
 -- Returns error if either the signature or payment amount is invalid, and otherwise
 -- the amount received with this 'Payment' and a new state object.
 recvPayment ::
-       UTCTime                      -- ^Current time. Needed for payment verification.
+       S.UpdateMetadata a
+    => UTCTime                      -- ^Current time. Needed for payment verification.
     -> ReceiverPaymentChannelI a    -- ^Receiver state object
     -> FullPayment                  -- ^Payment to verify and register
     -> Either PayChanError (BitcoinAmount, ReceiverPaymentChannelI a) -- ^Value received plus new receiver state object
-recvPayment currentTime rpc@(CReceiverPaymentChannel oldState _) fp =
+recvPayment currentTime (CReceiverPaymentChannel oldState md) fp =
     updatePaymentChannelState oldState fp currentTime >>=
-    (\newState -> Right (
-        S.channelValueLeft oldState - S.channelValueLeft newState
-        , rpc { rpcState = newState })
-    )
+    \newState -> Right
+        ( S.channelValueLeft oldState - S.channelValueLeft newState
+        , S.updateWithMetadata md newState
+        )
+
 
 -- |Same as 'recvPayment' but accept only a payment of zero value
 --  with a new client change address. Used to produce the settlement
 --  transaction that returns unsent funds to the client.
 recvPaymentForClose ::
-    ReceiverPaymentChannelI a    -- ^Receiver state object
+       S.UpdateMetadata a
+    => ReceiverPaymentChannelI a    -- ^Receiver state object
     -> FullPayment              -- ^Payment to verify and register
     -> Either PayChanError (ReceiverPaymentChannelI a) -- ^ Receiver state object
 recvPaymentForClose (CReceiverPaymentChannel state m) fp =

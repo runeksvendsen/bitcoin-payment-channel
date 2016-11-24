@@ -112,7 +112,7 @@ instance PaymentChannel SenderPaymentChannel where
 
 instance PaymentChannel (ReceiverPaymentChannelI s) where
     valueToMe rpc@(CReceiverPaymentChannel s _) =
-        S.pcsChannelTotalValue s - channelValueLeft rpc
+        S.pcsValueTransferred s
     getChannelState = rpcState
     _setChannelState rpc s = rpc { rpcState = s }
 

@@ -1,5 +1,5 @@
 name:                 bitcoin-payment-channel
-version:              0.7.0.0
+version:              0.7.1.0
 synopsis:             Library for working with Bitcoin payment channels
 description:
     A Bitcoin payment channel allows secure and instant transfer of bitcoins from one

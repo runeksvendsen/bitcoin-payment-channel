@@ -75,3 +75,8 @@ instance Bin.Serialize ReceiverPaymentChannelX where
     put (CReceiverPaymentChannel rpc pki ) =
         Bin.put rpc >> Bin.putWord8 0x02 >> Bin.put pki
     get = CReceiverPaymentChannel <$> Bin.get <*> Bin.get
+
+instance Bin.Serialize MetaData where
+    put (MetaData ki val) =
+        Bin.put ki >> Bin.put val
+    get = MetaData <$> Bin.get <*> Bin.get
