@@ -43,8 +43,8 @@ tests =
         [ testGroup "JSON"
             [ testProperty "FullPayment"
                 (jsonSerDeser :: FullPayment -> Bool)
-            , testProperty "ReceiverPaymentChannel"
-                (jsonSerDeser :: ReceiverPaymentChannel -> Bool)
+            , testProperty "RecvPayChan"
+                (jsonSerDeser :: RecvPayChanX -> Bool)
             ]
         , testGroup "Binary"
             [ testProperty "FullPayment"
