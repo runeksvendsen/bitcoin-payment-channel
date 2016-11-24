@@ -160,7 +160,7 @@ mkExtendedKeyRPC (CReceiverPaymentChannel pcs _) xpk =
     -- Check that it's the right pubkey first
     if xPubKey xpk == getPubKey (pcsServerPubKey pcs) then
             Just $ CReceiverPaymentChannel pcs $
-                MetaData (HC.xPubIndex xpk) (pcsValueTransferred pcs)
+                Metadata (HC.xPubIndex xpk) (pcsValueTransferred pcs)
         else
             Nothing
 
@@ -170,9 +170,9 @@ class UpdateMetadata a where
 instance UpdateMetadata () where
     calcNewData _ _ = ()
 
-instance UpdateMetadata MetaData where
-    calcNewData (MetaData ki oldValRecvd) pcs =
-        MetaData ki $
+instance UpdateMetadata Metadata where
+    calcNewData (Metadata ki oldValRecvd) pcs =
+        Metadata ki $
             if newValRecvd < oldValRecvd then error "Value lost :(" else newValRecvd
         where newValRecvd = pcsValueTransferred pcs
 

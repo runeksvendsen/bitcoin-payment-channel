@@ -121,7 +121,7 @@ type ChanParams = ChannelParameters
 -- |ReceiverPaymentChannel without metadata
 type ReceiverPaymentChannel = ReceiverPaymentChannelI ()
 -- |ReceiverPaymentChannel with BIP32, "extended key" index as metadata
-type ReceiverPaymentChannelX = ReceiverPaymentChannelI MetaData
+type ReceiverPaymentChannelX = ReceiverPaymentChannelI Metadata
 
 -- |State object for the value receiver. "meta" is the metadata type,
 --  which is '()' in the case of 'ReceiverPaymentChannel'
@@ -141,7 +141,7 @@ toSeconds = fromIntegral . (* 3600) . Tag.unTagged
 -- |Key index for a BIP32 key
 type KeyDeriveIndex = Word32
 
-data MetaData = MetaData
+data Metadata = Metadata
     { mdKeyIndex        :: KeyDeriveIndex
     , mdValueReceived   :: BitcoinAmount
     } deriving (Eq, Typeable, Show, Generic)

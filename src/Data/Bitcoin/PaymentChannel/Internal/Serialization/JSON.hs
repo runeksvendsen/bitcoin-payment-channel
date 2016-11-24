@@ -20,6 +20,8 @@ deriving instance FromJSON RecvPubKey
 -- Generic
 instance ToJSON PaymentChannelState
 instance FromJSON PaymentChannelState
+instance ToJSON Metadata
+instance FromJSON Metadata
 instance ToJSON PaymentTxConfig
 instance FromJSON PaymentTxConfig
 instance ToJSON FundingTxInfo
