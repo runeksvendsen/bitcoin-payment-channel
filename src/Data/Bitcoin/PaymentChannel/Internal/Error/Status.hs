@@ -4,7 +4,7 @@ import Data.Bitcoin.PaymentChannel.Internal.Types
 
 type HTTPError = (Int,String)
 
-checkReadyForPayment :: ChannelStatus -> Maybe HTTPError
+checkReadyForPayment :: PayChanStatus -> Maybe HTTPError
 checkReadyForPayment ReadyForPayment        = Nothing
 checkReadyForPayment PaymentInProgress      = Just (400, "Channel busy (payment in progress)")
 checkReadyForPayment SettlementInProgress   = Just (409, "Settlement in progress")

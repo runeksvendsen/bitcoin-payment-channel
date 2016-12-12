@@ -165,11 +165,11 @@ mkExtendedKeyRPC (CReceiverPaymentChannel pcs _) xpk =
         else
             Nothing
 
-setChannelStatus :: ChannelStatus -> RecvPayChanX -> RecvPayChanX
+setChannelStatus :: PayChanStatus -> RecvPayChanX -> RecvPayChanX
 setChannelStatus s pcs@CReceiverPaymentChannel{ rpcMetadata = meta } =
     pcs { rpcMetadata = metaSetStatus s meta }
 
-getChannelStatus :: RecvPayChanX -> ChannelStatus
+getChannelStatus :: RecvPayChanX -> PayChanStatus
 getChannelStatus CReceiverPaymentChannel{ rpcMetadata = meta } =
     metaGetStatus meta
 

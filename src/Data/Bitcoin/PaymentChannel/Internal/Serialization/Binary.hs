@@ -13,7 +13,7 @@ import qualified Data.Tagged as Tag
 
 
 instance Bin.Serialize PayChanError -- Generic PayChanError instance
-instance Bin.Serialize ChannelStatus -- Generic PayChanError instance
+instance Bin.Serialize PayChanStatus -- Generic PayChanError instance
 
 instance Bin.Serialize ChanScript where
     put (ChanScript s) =

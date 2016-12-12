@@ -18,7 +18,7 @@ module Data.Bitcoin.PaymentChannel.Types
     -- *State
     SenderPaymentChannel(..), SendPayChan,
     ReceiverPaymentChannel, ReceiverPaymentChannelI(rpcMetadata), RecvPayChan,
-    ReceiverPaymentChannelX, RecvPayChanX, ChannelStatus(..),
+    ReceiverPaymentChannelX, RecvPayChanX, PayChanStatus(..),
 
     -- *Config
     Config(..),defaultConfig,

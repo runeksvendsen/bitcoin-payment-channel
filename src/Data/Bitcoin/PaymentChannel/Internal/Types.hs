@@ -144,20 +144,20 @@ type KeyDeriveIndex = Word32
 data Metadata = Metadata
     { mdKeyIndex        :: KeyDeriveIndex
     , mdValueReceived   :: BitcoinAmount
-    , mdChannelStatus   :: ChannelStatus
+    , mdChannelStatus   :: PayChanStatus
     } deriving (Eq, Typeable, Show, Generic)
 
-data ChannelStatus =
+data PayChanStatus =
     ReadyForPayment
   | PaymentInProgress
   | SettlementInProgress
   | ChannelClosed HT.TxHash
     deriving (Eq, Typeable, Show, Generic)
 
-metaSetStatus :: ChannelStatus -> Metadata -> Metadata
+metaSetStatus :: PayChanStatus -> Metadata -> Metadata
 metaSetStatus s md = md { mdChannelStatus = s }
 
-metaGetStatus :: Metadata -> ChannelStatus
+metaGetStatus :: Metadata -> PayChanStatus
 metaGetStatus Metadata{ mdChannelStatus = s } = s
 
 -- Defaults
