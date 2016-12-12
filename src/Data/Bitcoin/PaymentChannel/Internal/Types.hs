@@ -1,4 +1,4 @@
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE OverloadedStrings, RecordWildCards #-}
 {-# LANGUAGE DeriveGeneric, DataKinds #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving, TypeSynonymInstances, FlexibleInstances #-}
 module Data.Bitcoin.PaymentChannel.Internal.Types
@@ -144,7 +144,18 @@ type KeyDeriveIndex = Word32
 data Metadata = Metadata
     { mdKeyIndex        :: KeyDeriveIndex
     , mdValueReceived   :: BitcoinAmount
+    , mdChannelStatus   :: ChannelStatus
     } deriving (Eq, Typeable, Show, Generic)
+
+data ChannelStatus = ReadyForPayment | PaymentInProgress
+    deriving (Eq, Typeable, Show, Generic)
+
+metaSetBusy :: Metadata -> Metadata
+metaSetBusy md = md { mdChannelStatus = PaymentInProgress }
+
+metaIsBusy :: Metadata -> Bool
+metaIsBusy Metadata{..} =
+    mdChannelStatus == PaymentInProgress
 
 
 -- Defaults

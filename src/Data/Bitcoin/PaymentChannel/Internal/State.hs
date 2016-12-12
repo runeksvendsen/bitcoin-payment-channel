@@ -160,9 +160,17 @@ mkExtendedKeyRPC (CReceiverPaymentChannel pcs _) xpk =
     -- Check that it's the right pubkey first
     if xPubKey xpk == getPubKey (pcsServerPubKey pcs) then
             Just $ CReceiverPaymentChannel pcs $
-                Metadata (HC.xPubIndex xpk) (pcsValueTransferred pcs)
+                Metadata (HC.xPubIndex xpk) (pcsValueTransferred pcs) ReadyForPayment
         else
             Nothing
+
+markAsBusy :: ReceiverPaymentChannelX -> ReceiverPaymentChannelX
+markAsBusy pcs@CReceiverPaymentChannel{ rpcMetadata = meta } =
+    pcs { rpcMetadata = metaSetBusy meta }
+
+isChannelBusy :: ReceiverPaymentChannelX -> Bool
+isChannelBusy CReceiverPaymentChannel{..} =
+    metaIsBusy rpcMetadata
 
 class UpdateMetadata a where
     calcNewData :: a -> PaymentChannelState -> a
@@ -171,10 +179,10 @@ instance UpdateMetadata () where
     calcNewData _ _ = ()
 
 instance UpdateMetadata Metadata where
-    calcNewData (Metadata ki oldValRecvd) pcs =
-        Metadata ki $
-            if newValRecvd < oldValRecvd then error "Value lost :(" else newValRecvd
-        where newValRecvd = pcsValueTransferred pcs
+    calcNewData (Metadata ki oldValRecvd s) pcs =
+        Metadata ki checkedVal s
+        where checkedVal  = if newValRecvd < oldValRecvd then error "BUG: Value lost :(" else newValRecvd
+              newValRecvd = pcsValueTransferred pcs
 
 updateWithMetadata :: UpdateMetadata d => d -> PaymentChannelState -> ReceiverPaymentChannelI d
 updateWithMetadata oldData pcs =

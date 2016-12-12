@@ -13,6 +13,7 @@ import qualified Data.Tagged as Tag
 
 
 instance Bin.Serialize PayChanError -- Generic PayChanError instance
+instance Bin.Serialize ChannelStatus -- Generic PayChanError instance
 
 instance Bin.Serialize ChanScript where
     put (ChanScript s) =
@@ -77,6 +78,6 @@ instance Bin.Serialize ReceiverPaymentChannelX where
     get = CReceiverPaymentChannel <$> Bin.get <*> Bin.get
 
 instance Bin.Serialize Metadata where
-    put (Metadata ki val) =
-        Bin.put ki >> Bin.put val
-    get = Metadata <$> Bin.get <*> Bin.get
+    put (Metadata ki val md) =
+        Bin.put ki >> Bin.put val >> Bin.put md
+    get = Metadata <$> Bin.get <*> Bin.get <*> Bin.get

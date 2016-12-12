@@ -229,7 +229,6 @@ recvPayment currentTime (CReceiverPaymentChannel oldState md) fp =
         , S.updateWithMetadata md newState
         )
 
-
 -- |Same as 'recvPayment' but accept only a payment of zero value
 --  with a new client change address. Used to produce the settlement
 --  transaction that returns unsent funds to the client.

@@ -22,6 +22,8 @@ instance ToJSON PaymentChannelState
 instance FromJSON PaymentChannelState
 instance ToJSON Metadata
 instance FromJSON Metadata
+instance ToJSON ChannelStatus
+instance FromJSON ChannelStatus
 instance ToJSON PaymentTxConfig
 instance FromJSON PaymentTxConfig
 instance ToJSON FundingTxInfo

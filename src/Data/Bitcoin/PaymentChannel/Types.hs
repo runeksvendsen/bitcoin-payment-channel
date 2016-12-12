@@ -40,7 +40,8 @@ module Data.Bitcoin.PaymentChannel.Types
 ,   SendPubKey(..),RecvPubKey(..),IsPubKey(..),HasSendPubKey(..),
 
     -- *Util
-    S.mkExtendedKeyRPC, fromDate, usesBlockHeight
+    S.mkExtendedKeyRPC, S.markAsBusy, S.isChannelBusy,
+    fromDate, usesBlockHeight
 
 )
 where

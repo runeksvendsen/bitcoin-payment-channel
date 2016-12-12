@@ -4,7 +4,7 @@ packages:
 - '.'
 - location:
     git: https://github.com/runeksvendsen/haskoin.git
-    commit: cbc4031f2337f1d7714f55fdd951b9942f8da130
+    commit: ddb3adbf59aa5a21c349e5db27ee977282036868
   extra-dep: true
   subdirs:
     - haskoin-core
