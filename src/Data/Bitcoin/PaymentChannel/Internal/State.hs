@@ -4,6 +4,7 @@ module Data.Bitcoin.PaymentChannel.Internal.State where
 
 import Data.Bitcoin.PaymentChannel.Internal.Types
 import Data.Bitcoin.PaymentChannel.Internal.Error
+import Data.Bitcoin.PaymentChannel.Internal.Error.Status (checkReadyForPayment)
 import Data.Bitcoin.PaymentChannel.Internal.Payment
 import Data.Bitcoin.PaymentChannel.Internal.Util  (addressToScriptPubKeyBS)
 import Data.Bitcoin.PaymentChannel.Internal.Bitcoin.Script
@@ -164,27 +165,43 @@ mkExtendedKeyRPC (CReceiverPaymentChannel pcs _) xpk =
         else
             Nothing
 
-markAsBusy :: ReceiverPaymentChannelX -> ReceiverPaymentChannelX
-markAsBusy pcs@CReceiverPaymentChannel{ rpcMetadata = meta } =
-    pcs { rpcMetadata = metaSetBusy meta }
+setChannelStatus :: ChannelStatus -> RecvPayChanX -> RecvPayChanX
+setChannelStatus s pcs@CReceiverPaymentChannel{ rpcMetadata = meta } =
+    pcs { rpcMetadata = metaSetStatus s meta }
 
-isChannelBusy :: ReceiverPaymentChannelX -> Bool
-isChannelBusy CReceiverPaymentChannel{..} =
-    metaIsBusy rpcMetadata
+getChannelStatus :: RecvPayChanX -> ChannelStatus
+getChannelStatus CReceiverPaymentChannel{ rpcMetadata = meta } =
+    metaGetStatus meta
 
-class UpdateMetadata a where
+markAsBusy :: RecvPayChanX -> RecvPayChanX
+markAsBusy = setChannelStatus PaymentInProgress
+
+isReadyForPayment :: RecvPayChanX -> Bool
+isReadyForPayment =
+    (== ReadyForPayment) . getChannelStatus
+
+class HasMetadata a where
     calcNewData :: a -> PaymentChannelState -> a
+    checkChannelStatus :: ReceiverPaymentChannelI a -> Either PayChanError (ReceiverPaymentChannelI a)
 
-instance UpdateMetadata () where
+instance HasMetadata () where
     calcNewData _ _ = ()
+    checkChannelStatus = Right
 
-instance UpdateMetadata Metadata where
+instance HasMetadata Metadata where
     calcNewData (Metadata ki oldValRecvd s) pcs =
         Metadata ki checkedVal s
         where checkedVal  = if newValRecvd < oldValRecvd then error "BUG: Value lost :(" else newValRecvd
               newValRecvd = pcsValueTransferred pcs
 
-updateWithMetadata :: UpdateMetadata d => d -> PaymentChannelState -> ReceiverPaymentChannelI d
+    checkChannelStatus rpc =
+        maybe
+        (Right rpc)
+        (Left . StatusError)
+        (checkReadyForPayment $ getChannelStatus rpc)
+
+
+updateWithMetadata :: HasMetadata d => d -> PaymentChannelState -> ReceiverPaymentChannelI d
 updateWithMetadata oldData pcs =
     CReceiverPaymentChannel pcs (calcNewData oldData pcs)
 

@@ -217,13 +217,14 @@ channelFromInitialPayment now cfg cp fundInf fp@(CFullPayment (CPayment _ sig) _
 -- Returns error if either the signature or payment amount is invalid, and otherwise
 -- the amount received with this 'Payment' and a new state object.
 recvPayment ::
-       S.UpdateMetadata a
+       S.HasMetadata a
     => UTCTime                      -- ^Current time. Needed for payment verification.
     -> ReceiverPaymentChannelI a    -- ^Receiver state object
     -> FullPayment                  -- ^Payment to verify and register
     -> Either PayChanError (BitcoinAmount, ReceiverPaymentChannelI a) -- ^Value received plus new receiver state object
-recvPayment currentTime (CReceiverPaymentChannel oldState md) fp =
-    updatePaymentChannelState oldState fp currentTime >>=
+recvPayment currentTime rpc@(CReceiverPaymentChannel oldState md) fp =
+    S.checkChannelStatus rpc >>=
+    \rpc -> updatePaymentChannelState (rpcState rpc) fp currentTime >>=
     \newState -> Right
         ( S.channelValueLeft oldState - S.channelValueLeft newState
         , S.updateWithMetadata md newState
@@ -233,7 +234,7 @@ recvPayment currentTime (CReceiverPaymentChannel oldState md) fp =
 --  with a new client change address. Used to produce the settlement
 --  transaction that returns unsent funds to the client.
 recvPaymentForClose ::
-       S.UpdateMetadata a
+       S.HasMetadata a
     => ReceiverPaymentChannelI a    -- ^Receiver state object
     -> FullPayment              -- ^Payment to verify and register
     -> Either PayChanError (ReceiverPaymentChannelI a) -- ^ Receiver state object
@@ -260,12 +261,11 @@ recvPaymentForClose (CReceiverPaymentChannel state m) fp =
 -- from the receiver and publishing it to the Bitcoin network.
 getSettlementBitcoinTx
     :: HasFee fee
-    => ReceiverPaymentChannelI a       -- ^ Receiver state object
+    => ReceiverPaymentChannelI a    -- ^ Receiver state object
     -> HC.Address                   -- ^ Receiver destination address. Funds sent over the channel will be sent to this address, the rest back to the client change address (an argument to 'channelWithInitialPaymentOf').
     -> (HC.Hash256 -> HC.Signature) -- ^ Function which produces a signature which verifies against 'cpReceiverPubKey'
     -> fee                          -- ^ Bitcoin transaction fee
     -> HT.Tx                        -- ^ Settling Bitcoin transaction
 getSettlementBitcoinTx (CReceiverPaymentChannel cs _) =
     signedSettlementTxFromState cs
-
 

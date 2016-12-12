@@ -2,6 +2,7 @@
 
 module Data.Bitcoin.PaymentChannel.Internal.Error.User where
 
+import Data.Bitcoin.PaymentChannel.Internal.Error.Status (HTTPError)
 import Data.Bitcoin.PaymentChannel.Internal.Types
 import Data.Bitcoin.PaymentChannel.Internal.Util
 import           GHC.Generics
@@ -15,6 +16,7 @@ data PayChanError =
   |  DustOutput BitcoinAmount       -- ^Client change value is less than dust limit (payment transaction would contain a dust output)
   |  ClosingPaymentBadValue         -- ^The closing payment only changes the payment transaction change address. Sending value is not allowed.
   |  ChannelExpired                 -- ^Channel has expired or is too close to expiration date
+  |  StatusError HTTPError          -- ^Channel not ready for payment. 409=try again; 400=don't do that; 410=channel gone.
         deriving Generic
 
 instance Show PayChanError where
@@ -30,6 +32,7 @@ instance Show PayChanError where
     show ClosingPaymentBadValue = "payment not of zero value." ++
         " cannot receive value in closing payment."
     show ChannelExpired = "channel too close to expiration date"
+    show (StatusError (_,e)) = "Status error:" ++ e
 
 
 

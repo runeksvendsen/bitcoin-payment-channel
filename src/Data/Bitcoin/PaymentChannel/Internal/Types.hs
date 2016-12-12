@@ -147,16 +147,18 @@ data Metadata = Metadata
     , mdChannelStatus   :: ChannelStatus
     } deriving (Eq, Typeable, Show, Generic)
 
-data ChannelStatus = ReadyForPayment | PaymentInProgress
+data ChannelStatus =
+    ReadyForPayment
+  | PaymentInProgress
+  | SettlementInProgress
+  | ChannelClosed HT.TxHash
     deriving (Eq, Typeable, Show, Generic)
 
-metaSetBusy :: Metadata -> Metadata
-metaSetBusy md = md { mdChannelStatus = PaymentInProgress }
+metaSetStatus :: ChannelStatus -> Metadata -> Metadata
+metaSetStatus s md = md { mdChannelStatus = s }
 
-metaIsBusy :: Metadata -> Bool
-metaIsBusy Metadata{..} =
-    mdChannelStatus == PaymentInProgress
-
+metaGetStatus :: Metadata -> ChannelStatus
+metaGetStatus Metadata{ mdChannelStatus = s } = s
 
 -- Defaults
 defaultConfig = Config defaultDustLimit defaultSettlementPeriod
@@ -164,6 +166,8 @@ defaultConfig = Config defaultDustLimit defaultSettlementPeriod
 defaultDustLimit = 700 :: BitcoinAmount
 defaultSettlementPeriod = 10 :: Hour
 
-
-
+-- |Short-hand
+type RecvPayChan = ReceiverPaymentChannel
+-- |Short-hand
+type RecvPayChanX = ReceiverPaymentChannelX
 

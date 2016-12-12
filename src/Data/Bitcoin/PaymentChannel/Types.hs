@@ -18,7 +18,7 @@ module Data.Bitcoin.PaymentChannel.Types
     -- *State
     SenderPaymentChannel(..), SendPayChan,
     ReceiverPaymentChannel, ReceiverPaymentChannelI(rpcMetadata), RecvPayChan,
-    ReceiverPaymentChannelX, RecvPayChanX,
+    ReceiverPaymentChannelX, RecvPayChanX, ChannelStatus(..),
 
     -- *Config
     Config(..),defaultConfig,
@@ -40,7 +40,9 @@ module Data.Bitcoin.PaymentChannel.Types
 ,   SendPubKey(..),RecvPubKey(..),IsPubKey(..),HasSendPubKey(..),
 
     -- *Util
-    S.mkExtendedKeyRPC, S.markAsBusy, S.isChannelBusy,
+    S.mkExtendedKeyRPC,
+    S.getChannelStatus, S.setChannelStatus,
+    S.markAsBusy, S.isReadyForPayment,
     fromDate, usesBlockHeight
 
 )
@@ -112,7 +114,7 @@ instance PaymentChannel SenderPaymentChannel where
     _setChannelState spc s = spc { spcState = s }
 
 instance PaymentChannel (ReceiverPaymentChannelI s) where
-    valueToMe rpc@(CReceiverPaymentChannel s _) =
+    valueToMe (CReceiverPaymentChannel s _) =
         S.pcsValueTransferred s
     getChannelState = rpcState
     _setChannelState rpc s = rpc { rpcState = s }
@@ -121,13 +123,8 @@ instance Show SenderPaymentChannel where
     show (CSenderPaymentChannel s _) =
         "<SenderPaymentChannel:\n\t" ++ show s ++ ">"
 
-
 -- |Short-hand
 type SendPayChan = SenderPaymentChannel
--- |Short-hand
-type RecvPayChan = ReceiverPaymentChannel
--- |Short-hand
-type RecvPayChanX = ReceiverPaymentChannelX
 -- |Short-hand
 class PaymentChannel a => PayChan a
 
