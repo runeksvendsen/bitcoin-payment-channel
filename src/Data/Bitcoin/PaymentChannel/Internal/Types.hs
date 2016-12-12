@@ -151,7 +151,7 @@ data PayChanStatus =
     ReadyForPayment
   | PaymentInProgress
   | SettlementInProgress
-  | ChannelClosed HT.TxHash
+  | ChanClosed HT.TxHash
     deriving (Eq, Typeable, Show, Generic)
 
 metaSetStatus :: PayChanStatus -> Metadata -> Metadata
