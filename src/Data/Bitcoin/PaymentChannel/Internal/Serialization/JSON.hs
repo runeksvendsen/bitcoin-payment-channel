@@ -57,6 +57,9 @@ instance FromJSON BitcoinLockTime where
 instance ToJSON Payment where
     toJSON = object . paymentJSONLst
 
+instance FromJSON Payment where
+    parseJSON = withObject "Payment" parseJSONPayment
+
 instance ToJSON PaymentSignature where
     toJSON = object . paySigJSONLst
 
