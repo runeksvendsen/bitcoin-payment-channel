@@ -4,6 +4,7 @@ module Data.Bitcoin.PaymentChannel.Internal.Crypto.PubKey
 ,   SendPubKey(..)
 ,   RecvPubKey(..)
 ,   HasSendPubKey(..)
+,   HasRecvPubKey(..)
 ) where
 
 import qualified Network.Haskoin.Crypto as HC
@@ -31,7 +32,9 @@ instance IsPubKey RecvPubKey where
 instance IsPubKey HC.XPubKey where
     getPubKey = HC.xPubKey
 
-
 -- |Types which contain a 'SendPubKey'
 class HasSendPubKey a where
     getSendPubKey :: a -> SendPubKey
+
+class HasRecvPubKey a where
+    getRecvPubKey :: a -> RecvPubKey

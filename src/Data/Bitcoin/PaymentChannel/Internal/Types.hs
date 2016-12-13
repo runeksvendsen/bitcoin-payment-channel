@@ -46,7 +46,11 @@ data PaymentChannelState = CPaymentChannelState {
 } deriving (Eq, Show, Typeable, Generic)
 
 instance HasSendPubKey PaymentChannelState where
-    getSendPubKey = cpSenderPubKey . pcsParameters
+    getSendPubKey = getSendPubKey . pcsParameters
+
+instance HasRecvPubKey PaymentChannelState where
+    getRecvPubKey = getRecvPubKey . pcsParameters
+
 
 -- |Defines channel: sender, receiver, and expiration date
 data ChannelParameters = CChannelParameters {
@@ -58,6 +62,9 @@ data ChannelParameters = CChannelParameters {
 
 instance HasSendPubKey ChannelParameters where
     getSendPubKey = cpSenderPubKey
+
+instance HasRecvPubKey ChannelParameters where
+    getRecvPubKey = cpReceiverPubKey
 
 -- |Holds information about the Bitcoin transaction used to fund
 -- the channel
@@ -103,7 +110,11 @@ data FullPayment = CFullPayment {
 } deriving (Eq, Typeable)
 
 instance HasSendPubKey FullPayment where
-    getSendPubKey = cpSenderPubKey . fpChanParams
+    getSendPubKey = getSendPubKey . fpChanParams
+
+instance HasRecvPubKey FullPayment where
+    getRecvPubKey = getRecvPubKey . fpChanParams
+
 
 -- |Contains payment signature plus sig hash flag byte
 data PaymentSignature = CPaymentSignature {
@@ -133,6 +144,10 @@ data ReceiverPaymentChannelI meta = CReceiverPaymentChannel {
 
 instance HasSendPubKey (ReceiverPaymentChannelI a) where
     getSendPubKey = getSendPubKey . rpcState
+
+instance HasRecvPubKey (ReceiverPaymentChannelI a) where
+    getRecvPubKey = getRecvPubKey . rpcState
+
 
 type Hour = Tag.Tagged "Hour" Word32
 toSeconds :: Hour -> Integer

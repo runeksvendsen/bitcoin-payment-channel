@@ -37,7 +37,7 @@ module Data.Bitcoin.PaymentChannel.Types
 ,   module Data.Bitcoin.PaymentChannel.Internal.Bitcoin.Fee
 
     -- *Crypto
-,   SendPubKey(..),RecvPubKey(..),IsPubKey(..),HasSendPubKey(..),
+,   SendPubKey(..),RecvPubKey(..),IsPubKey(..),HasSendPubKey(..),HasRecvPubKey(..),
 
     -- *Util
     S.mkExtendedKeyRPC,
