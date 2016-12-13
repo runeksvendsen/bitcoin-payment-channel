@@ -26,7 +26,7 @@ module Data.Bitcoin.PaymentChannel.Types
     ChannelParameters(..), ChanParams,
 
     -- *Payment
-    Payment,paySignature,
+    Payment,paySignature,payClientChange,
     FullPayment(..),
     -- **Error
     PayChanError(..)
