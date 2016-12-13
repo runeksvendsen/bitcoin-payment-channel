@@ -43,7 +43,7 @@ module Data.Bitcoin.PaymentChannel.Types
     S.mkExtendedKeyRPC,
     S.getChannelStatus, S.setChannelStatus,
     S.markAsBusy, S.isReadyForPayment,
-    fromDate, usesBlockHeight
+    fromDate, usesBlockHeight, dummyPayment
 
 )
 where

@@ -23,10 +23,12 @@ import           Network.Haskoin.Script
 import qualified Network.Haskoin.Transaction as HT
 import qualified Network.Haskoin.Crypto as HC
 import qualified Network.Haskoin.Script as HS
+import qualified Data.ByteString.Base16 as B16
 import           Data.Typeable
 import           Data.Word
-import qualified Data.Tagged as Tag
-import           GHC.Generics (Generic)
+import qualified Data.Tagged as     Tag
+import           GHC.Generics       (Generic)
+import           Data.Maybe         (fromMaybe)
 
 
 -- |Shared state object used by both value sender and value receiver.
@@ -175,8 +177,10 @@ metaSetStatus s md = md { mdChannelStatus = s }
 metaGetStatus :: Metadata -> PayChanStatus
 metaGetStatus Metadata{ mdChannelStatus = s } = s
 
--- Defaults
 defaultConfig = Config defaultDustLimit defaultSettlementPeriod
+dummyPayment = CPayment 0 ( CPaymentSignature dummySig (HS.SigAll True) )
+    where dummySig = fromMaybe (error "BUG: Invalid dummy sig data") (HC.decodeDerSig hex2BS)
+          hex2BS = fst $ B16.decode "304402204202cdb61cb702aa62de312a8e5eada817d90c4e26c8b696780b14d1576f204f02203c134d0acb057d917508ca9baab241a4f66ebea32f7acceeaf621a334927e17701"
 
 defaultDustLimit = 700 :: BitcoinAmount
 defaultSettlementPeriod = 10 :: Hour
