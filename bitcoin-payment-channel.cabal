@@ -97,4 +97,5 @@ test-suite test-bitcoin-payment-channel
                         cereal, aeson,
 
                         test-framework, test-framework-quickcheck2,
-                        bitcoin-payment-channel
+                        bitcoin-payment-channel,
+                        tf-random, random
