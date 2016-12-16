@@ -168,8 +168,8 @@ data PayChanStatus =
     ReadyForPayment
   | PaymentInProgress
   | SettlementInProgress
-  | ChanClosed HT.TxHash
-    deriving (Eq, Typeable, Show, Generic)
+  | ChanClosed
+    deriving (Eq, Typeable, Show, Read, Generic)
 
 metaSetStatus :: PayChanStatus -> Metadata -> Metadata
 metaSetStatus s md = md { mdChannelStatus = s }

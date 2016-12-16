@@ -22,8 +22,6 @@ instance ToJSON PaymentChannelState
 instance FromJSON PaymentChannelState
 instance ToJSON Metadata
 instance FromJSON Metadata
-instance ToJSON PayChanStatus
-instance FromJSON PayChanStatus
 instance ToJSON PaymentTxConfig
 instance FromJSON PaymentTxConfig
 instance ToJSON FundingTxInfo
@@ -33,6 +31,12 @@ instance FromJSON Config
 instance ToJSON ChannelParameters
 instance FromJSON ChannelParameters
 
+
+instance ToJSON PayChanStatus where
+    toJSON = String . cs . show
+
+instance FromJSON PayChanStatus where
+    parseJSON = withText "PayChanStatus" (return . read . cs)
 
 instance ToJSON d => ToJSON (ReceiverPaymentChannelI d) where
     toJSON rpc = object
