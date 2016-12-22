@@ -1,8 +1,6 @@
 module Data.Bitcoin.PaymentChannel.Internal.Bitcoin.Amount where
 
-import qualified Data.Serialize     as Ser
-import qualified Data.Serialize.Put as SerPut
-import qualified Data.Serialize.Get as SerGet
+import           Data.Bitcoin.PaymentChannel.Internal.Util
 import           Data.Word
 import           Data.Ratio
 
@@ -53,6 +51,15 @@ capTo21Mill i = fromIntegral $
         where
             cappedValue = min i $ fromIntegral (maxBound :: BitcoinAmount)
 
-instance Ser.Serialize BitcoinAmount where
-    put = SerPut.putWord64le . fromIntegral . toInteger
-    get = BitcoinAmount . fromIntegral <$> SerGet.getWord64le
+instance Serialize BitcoinAmount where
+    put = putWord64le . fromIntegral . toInteger
+    get = BitcoinAmount . fromIntegral <$> getWord64le
+
+instance ToJSON BitcoinAmount where
+    toJSON amt = Number $ scientific
+        (fromIntegral $ toInteger amt) 0
+
+instance FromJSON BitcoinAmount where
+    parseJSON = withScientific "BitcoinAmount" $
+        fmap fromIntegral . parseJSONWord
+

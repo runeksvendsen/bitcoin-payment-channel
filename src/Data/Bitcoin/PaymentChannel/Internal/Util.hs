@@ -3,39 +3,48 @@
 module Data.Bitcoin.PaymentChannel.Internal.Util
 (
     module Data.Bitcoin.PaymentChannel.Internal.Util
-,   module Data.Bitcoin.PaymentChannel.Internal.Bitcoin.Util
-,   module Data.Bitcoin.PaymentChannel.Internal.Bitcoin.LockTime
+-- ,   module Data.Bitcoin.PaymentChannel.Internal.Bitcoin.Util
+-- ,   module Data.Bitcoin.PaymentChannel.Internal.Bitcoin.LockTime
+,   module Bin, module BinGet, module BinPut
+,   module JSON, module JSONT, module JSONUtil
+,   module Sci
+,   Generic
+,   Typeable
 ,   cs
+,   fmapL
+,   module Ctrl
 )
     where
 
-import Data.Bitcoin.PaymentChannel.Internal.Bitcoin.Util
-import Data.Bitcoin.PaymentChannel.Internal.Bitcoin.LockTime
+-- import Data.Bitcoin.PaymentChannel.Internal.Bitcoin.Util
+-- import Data.Bitcoin.PaymentChannel.Internal.Bitcoin.LockTime
+import Data.Bitcoin.PaymentChannel.Internal.Serialization.JSON as JSONUtil
 
-import Data.String (fromString)
 
-import qualified Data.Serialize as Bin
-import qualified Data.Serialize.Get as BinGet
+import Data.Serialize       as Bin
+import Data.Serialize.Get   as BinGet
+import Data.Serialize.Put   as BinPut
+import Data.Aeson           as JSON hiding (Result(..), encode, decode)
+import Data.Aeson.Types     as JSONT hiding (Result(..), encode, decode)
+import Data.Scientific      as Sci
 
 import           Data.Typeable
-import qualified Data.ByteString.Base16 as B16
-import qualified Data.ByteString as B
-import qualified Data.ByteString.Char8 as C
-import qualified Data.Text as T
-import qualified Data.Aeson.Types as JSON
-import qualified Network.Haskoin.Crypto as HC
-import qualified  Network.Haskoin.Transaction as HT
-import           Data.String.Conversions (cs)
-import           Data.Text.Encoding       (decodeUtf8, encodeUtf8)
+import qualified Data.ByteString.Base16         as B16
+import qualified Data.ByteString                as B
+import qualified Data.ByteString.Char8          as C
+import qualified Data.Text                      as T
+import qualified Data.Aeson.Types               as JSON
+import qualified Network.Haskoin.Crypto         as HC
+import qualified Network.Haskoin.Transaction    as HT
+import           Data.String.Conversions    (cs)
+import           Data.Text.Encoding         (decodeUtf8, encodeUtf8)
+import           Data.EitherR               (fmapL)
+import           Control.Monad              as Ctrl (forM, mapM, (>=>), (<=<))
+import           GHC.Generics               (Generic)
+import           Data.Typeable              (Typeable)
 
-
-calcTxSize :: HT.Tx -> Word
-calcTxSize = fromIntegral . B.length . Bin.encode
-
-mapLeft f  = either (Left . f) Right
-mapRight f = either Left (Right . f)
-
-dummyHash256 = fromString "3d96c573baf8f782e5f5f33dc8ce3c5bae654cbc888e9a3bbb8185a75febfd76" :: HC.Hash256
+getIndexSafe :: [a] -> Int -> Maybe a
+getIndexSafe l i = if i < 0 || i+1 > length l then Nothing else Just $ l !! i
 
 toHexString :: B.ByteString -> String
 toHexString =  C.unpack . B16.encode

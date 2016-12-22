@@ -1,18 +1,24 @@
-{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE RecordWildCards, TypeSynonymInstances #-}
 
-module Data.Bitcoin.PaymentChannel.Internal.State where
+module Data.Bitcoin.PaymentChannel.Internal.State
+(
+  module Data.Bitcoin.PaymentChannel.Internal.State
+, module Data.Bitcoin.PaymentChannel.Internal.Types
+)
+where
 
 import Data.Bitcoin.PaymentChannel.Internal.Types
 import Data.Bitcoin.PaymentChannel.Internal.Error
 import Data.Bitcoin.PaymentChannel.Internal.Error.Status (checkReadyForPayment)
 import Data.Bitcoin.PaymentChannel.Internal.Payment
-import Data.Bitcoin.PaymentChannel.Internal.Util  (addressToScriptPubKeyBS)
+import Data.Bitcoin.PaymentChannel.Internal.Bitcoin.Util  (addressToScriptPubKeyBS)
 import Data.Bitcoin.PaymentChannel.Internal.Bitcoin.Script
 
 import qualified Network.Haskoin.Transaction as HT
 import qualified Network.Haskoin.Crypto as HC
 import qualified Network.Haskoin.Script as HS
 import           Data.Time.Clock
+import qualified Data.Serialize     as Bin
 
 
 newPaymentChannelState cfg channelParameters fundingTxInfo paymentConfig paySig =
@@ -109,8 +115,8 @@ updatePayCount CFullPayment{..} pcs@CPaymentChannelState{..}
         Right pcs
     | otherwise = Right pcs { pcsPaymentCount = pcsPaymentCount+1 }
 
-pcsChannelTotalValue = ftiOutValue . pcsFundingTxInfo
-pcsValueTransferred cs = pcsChannelTotalValue cs - pcsClientChangeVal cs
+pcsFundingValue = ftiOutValue . pcsFundingTxInfo
+pcsValueTransferred cs = pcsFundingValue cs - pcsClientChangeVal cs
 pcsChannelValueLeft = pcsClientChangeVal
 pcsClientPubKey = cpSenderPubKey . pcsParameters
 pcsServerPubKey = cpReceiverPubKey . pcsParameters
@@ -121,8 +127,8 @@ pcsClientChangeScriptPubKey = addressToScriptPubKeyBS . pcsClientChangeAddress
 pcsLockTime = cpLockTime . pcsParameters
 pcsPrevOut (CPaymentChannelState _ _ (CFundingTxInfo h i _) _ _ _ _) = OutPoint h i
 
-pcsChannelFundingSource :: PaymentChannelState -> HT.OutPoint
-pcsChannelFundingSource pcs = HT.OutPoint (ftiHash fti) (ftiOutIndex fti)
+pcsFundingSource :: PaymentChannelState -> HT.OutPoint
+pcsFundingSource pcs = HT.OutPoint (ftiHash fti) (ftiOutIndex fti)
     where fti = pcsFundingTxInfo pcs
 
 pcsGetPayment :: PaymentChannelState -> Payment
@@ -154,54 +160,9 @@ channelIsExhausted pcs =
     psSigHash (pcsPaymentSignature pcs) == HS.SigNone True ||
         channelValueLeft pcs == 0
 
--- |Create a 'ReceiverPaymentChannelX', which has an associated XPubKey, from a
---  'ReceiverPaymentChannel'
-mkExtendedKeyRPC :: ReceiverPaymentChannel -> HC.XPubKey -> Maybe ReceiverPaymentChannelX
-mkExtendedKeyRPC (CReceiverPaymentChannel pcs _) xpk =
-    -- Check that it's the right pubkey first
-    if xPubKey xpk == getPubKey (pcsServerPubKey pcs) then
-            Just $ CReceiverPaymentChannel pcs $
-                Metadata (HC.xPubIndex xpk) (pcsValueTransferred pcs) ReadyForPayment
-        else
-            Nothing
-
-setChannelStatus :: PayChanStatus -> RecvPayChanX -> RecvPayChanX
-setChannelStatus s pcs@CReceiverPaymentChannel{ rpcMetadata = meta } =
-    pcs { rpcMetadata = metaSetStatus s meta }
-
-getChannelStatus :: RecvPayChanX -> PayChanStatus
-getChannelStatus CReceiverPaymentChannel{ rpcMetadata = meta } =
-    metaGetStatus meta
-
-markAsBusy :: RecvPayChanX -> RecvPayChanX
-markAsBusy = setChannelStatus PaymentInProgress
-
-isReadyForPayment :: RecvPayChanX -> Bool
-isReadyForPayment =
-    (== ReadyForPayment) . getChannelStatus
-
-class HasMetadata a where
-    calcNewData :: a -> PaymentChannelState -> a
-    checkChannelStatus :: ReceiverPaymentChannelI a -> Either PayChanError (ReceiverPaymentChannelI a)
-
-instance HasMetadata () where
-    calcNewData _ _ = ()
-    checkChannelStatus = Right
-
-instance HasMetadata Metadata where
-    calcNewData (Metadata ki oldValRecvd s) pcs =
-        Metadata ki checkedVal s
-        where checkedVal  = if newValRecvd < oldValRecvd then error "BUG: Value lost :(" else newValRecvd
-              newValRecvd = pcsValueTransferred pcs
-
-    checkChannelStatus rpc =
-        maybe
-        (Right rpc)
-        (Left . StatusError)
-        (checkReadyForPayment $ getChannelStatus rpc)
-
-
-updateWithMetadata :: HasMetadata d => d -> PaymentChannelState -> ReceiverPaymentChannelI d
-updateWithMetadata oldData pcs =
-    CReceiverPaymentChannel pcs (calcNewData oldData pcs)
+-- settleUpdateEverything :: HT.OutPoint -> ReceiverPaymentChannelI a -> ReceiverPaymentChannelI a
+-- settleUpdateEverything op rpc =
+--     rpc
+--     let newFti = CFundingTxInfo (HT.txHash tx) idx (fromIntegral $ HT.outValue output)
+--     let newPCS = pcs { pcsFundingTxInfo = newFti, pcsPaymentCount = 0}
 

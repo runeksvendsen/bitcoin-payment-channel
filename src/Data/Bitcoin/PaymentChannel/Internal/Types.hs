@@ -1,11 +1,12 @@
 {-# LANGUAGE OverloadedStrings, RecordWildCards #-}
 {-# LANGUAGE DeriveGeneric, DataKinds #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving, TypeSynonymInstances, FlexibleInstances #-}
+{-# LANGUAGE TypeSynonymInstances, FlexibleInstances #-}
 module Data.Bitcoin.PaymentChannel.Internal.Types
 (
     module Data.Bitcoin.PaymentChannel.Internal.Types
   , module Data.Bitcoin.PaymentChannel.Internal.Bitcoin.Amount
   , module Data.Bitcoin.PaymentChannel.Internal.Bitcoin.LockTime
+  , module Data.Bitcoin.PaymentChannel.Internal.Bitcoin.Script
   , module Data.Bitcoin.PaymentChannel.Internal.Crypto.PubKey
   , module Network.Haskoin.Transaction
   , module Crypto
@@ -15,6 +16,7 @@ module Data.Bitcoin.PaymentChannel.Internal.Types
 import Data.Bitcoin.PaymentChannel.Internal.Util
 import Data.Bitcoin.PaymentChannel.Internal.Bitcoin.Amount
 import Data.Bitcoin.PaymentChannel.Internal.Bitcoin.LockTime
+import Data.Bitcoin.PaymentChannel.Internal.Bitcoin.Script
 import Data.Bitcoin.PaymentChannel.Internal.Crypto.PubKey
 
 import           Network.Haskoin.Transaction
@@ -23,8 +25,8 @@ import           Network.Haskoin.Script
 import qualified Network.Haskoin.Transaction as HT
 import qualified Network.Haskoin.Crypto as HC
 import qualified Network.Haskoin.Script as HS
+import qualified Data.ByteString as B
 import qualified Data.ByteString.Base16 as B16
-import           Data.Typeable
 import           Data.Word
 import qualified Data.Tagged as     Tag
 import           GHC.Generics       (Generic)
@@ -53,20 +55,6 @@ instance HasSendPubKey PaymentChannelState where
 instance HasRecvPubKey PaymentChannelState where
     getRecvPubKey = getRecvPubKey . pcsParameters
 
-
--- |Defines channel: sender, receiver, and expiration date
-data ChannelParameters = CChannelParameters {
-    cpSenderPubKey      ::  SendPubKey,
-    cpReceiverPubKey    ::  RecvPubKey,
-    -- |Channel expiration date/time
-    cpLockTime          ::  BitcoinLockTime
-} deriving (Eq, Show, Typeable, Generic)
-
-instance HasSendPubKey ChannelParameters where
-    getSendPubKey = cpSenderPubKey
-
-instance HasRecvPubKey ChannelParameters where
-    getRecvPubKey = cpReceiverPubKey
 
 -- |Holds information about the Bitcoin transaction used to fund
 -- the channel
@@ -131,62 +119,147 @@ newtype ChanScript = ChanScript { getScript :: HS.Script } deriving (Eq, Show)
 type PayChanState  = PaymentChannelState
 type ChanParams = ChannelParameters
 
--- |ReceiverPaymentChannel without metadata
-type ReceiverPaymentChannel = ReceiverPaymentChannelI ()
--- |ReceiverPaymentChannel with BIP32, "extended key" index as metadata
-type ReceiverPaymentChannelX = ReceiverPaymentChannelI Metadata
-
--- |State object for the value receiver. "meta" is the metadata type,
---  which is '()' in the case of 'ReceiverPaymentChannel'
-data ReceiverPaymentChannelI meta = CReceiverPaymentChannel {
-    -- |Internal state object
-    rpcState    :: PaymentChannelState
-  , rpcMetadata :: meta
-} deriving (Eq, Typeable)
-
-instance HasSendPubKey (ReceiverPaymentChannelI a) where
-    getSendPubKey = getSendPubKey . rpcState
-
-instance HasRecvPubKey (ReceiverPaymentChannelI a) where
-    getRecvPubKey = getRecvPubKey . rpcState
-
 
 type Hour = Tag.Tagged "Hour" Word32
 toSeconds :: Hour -> Integer
 toSeconds = fromIntegral . (* 3600) . Tag.unTagged
-
--- |Key index for a BIP32 key
-type KeyDeriveIndex = Word32
-
-data Metadata = Metadata
-    { mdKeyIndex        :: KeyDeriveIndex
-    , mdValueReceived   :: BitcoinAmount
-    , mdChannelStatus   :: PayChanStatus
-    } deriving (Eq, Typeable, Show, Generic)
-
-data PayChanStatus =
-    ReadyForPayment
-  | PaymentInProgress
-  | SettlementInProgress
-  | ChanClosed
-    deriving (Eq, Typeable, Show, Read, Generic)
-
-metaSetStatus :: PayChanStatus -> Metadata -> Metadata
-metaSetStatus s md = md { mdChannelStatus = s }
-
-metaGetStatus :: Metadata -> PayChanStatus
-metaGetStatus Metadata{ mdChannelStatus = s } = s
 
 defaultConfig = Config defaultDustLimit defaultSettlementPeriod
 dummyPayment = CPayment 0 ( CPaymentSignature dummySig (HS.SigAll True) )
     where dummySig = fromMaybe (error "BUG: Invalid dummy sig data") (HC.decodeDerSig hex2BS)
           hex2BS = fst $ B16.decode "304402204202cdb61cb702aa62de312a8e5eada817d90c4e26c8b696780b14d1576f204f02203c134d0acb057d917508ca9baab241a4f66ebea32f7acceeaf621a334927e17701"
 
-defaultDustLimit = 700 :: BitcoinAmount
+defaultDustLimit = 6000 :: BitcoinAmount
 defaultSettlementPeriod = 10 :: Hour
 
--- |Short-hand
-type RecvPayChan = ReceiverPaymentChannel
--- |Short-hand
-type RecvPayChanX = ReceiverPaymentChannelX
+
+-- Serialization
+
+instance Serialize ChanScript where
+    put (ChanScript s) =
+        putWord16be scriptBSLen >>
+        putByteString scriptBS
+            where scriptBS    = encode s
+                  scriptBSLen = fromIntegral $ B.length scriptBS
+    get = either error ChanScript . decode <$>
+            (getWord16be >>=
+             getByteString . fromIntegral)
+
+instance Serialize PaymentChannelState where
+    put (CPaymentChannelState cfg par fti payConf payCount valLeft sig) =
+        put cfg >> put par >> put fti >> put payConf >> put payCount >>
+        put valLeft >> put sig
+    get = CPaymentChannelState <$> get <*> get <*>
+        get <*> get <*> get <*> get <*> get
+
+instance Serialize FundingTxInfo where
+    put (CFundingTxInfo h idx val) =
+        put h >> putWord32be idx >> put val
+    get = CFundingTxInfo <$> get <*> getWord32be <*> get
+
+instance Serialize PaymentTxConfig where
+    put (CPaymentTxConfig sendAddr) =
+        put sendAddr
+    get = CPaymentTxConfig <$> get
+
+instance Serialize Config where
+    put (Config dl sp) =
+        put dl >> put (Tag.unTagged sp)
+    get = Config <$> get <*> fmap Tag.Tagged get
+
+instance Serialize Payment where
+    put (CPayment val sig) =
+        put val >> put sig
+    get = CPayment <$> get <*> get
+
+instance Serialize FullPayment where
+    put (CFullPayment p op cp addr) =
+        put p >> put op >> put cp >> put addr
+    get = CFullPayment <$> get <*> get <*> get <*> get
+
+instance Serialize PaymentSignature where
+    put (CPaymentSignature sig sigHash) =
+        put sig >> put sigHash
+    get = CPaymentSignature <$> get <*> get
+
+-- Generic
+instance ToJSON PaymentChannelState
+instance FromJSON PaymentChannelState
+instance ToJSON PaymentTxConfig
+instance FromJSON PaymentTxConfig
+instance ToJSON FundingTxInfo
+instance FromJSON FundingTxInfo
+instance ToJSON Config
+instance FromJSON Config
+
+
+
+instance ToJSON Payment where
+    toJSON = object . paymentJSONLst
+
+instance FromJSON Payment where
+    parseJSON = withObject "Payment" parseJSONPayment
+
+instance ToJSON PaymentSignature where
+    toJSON = object . paySigJSONLst
+
+instance FromJSON PaymentSignature where
+    parseJSON = withObject "PaymentSignature" $ \o ->
+        CPaymentSignature <$>
+            (o .: "signature_data" >>= withText "SigDataHex" deserHex) <*>
+            (o .: "sighash_flag"   >>= withText "SigHashFlagHex" deserHex)
+
+
+paySigJSONLst :: PaymentSignature -> [Pair]
+paySigJSONLst  (CPaymentSignature sig flag) =
+    [ "signature_data"  .= String (serHex sig)
+    , "sighash_flag"  .= String (serHex flag)
+    ]
+
+paymentJSONLst :: Payment -> [Pair]
+paymentJSONLst (CPayment changeVal paySig) =
+    ("change_value"      .= changeVal) :
+        paySigJSONLst paySig
+
+
+parseJSONPayment :: Object -> Parser Payment
+parseJSONPayment o = CPayment
+       <$>      o .: "change_value"
+       <*>     (CPaymentSignature <$>
+                   (o .: "signature_data" >>= withText "SigDataHex" deserHex) <*>
+                   (o .: "sighash_flag"   >>= withText "SigHashFlagHex" deserHex))
+
+instance ToJSON FullPayment where
+    toJSON CFullPayment{..}
+        | HT.OutPoint txid vout <- fpOutPoint = object $
+            paymentJSONLst fpPayment ++
+            [   "funding_txid"     .= txid
+            ,   "funding_vout"     .= vout
+            ,   "redeem_script"    .= fpChanParams
+            ,   "change_address"   .= fpChangeAddr
+            ]
+
+instance FromJSON FullPayment where
+    parseJSON = withObject "FullPayment" parseFullPayment
+
+parseFullPayment :: Object -> Parser FullPayment
+parseFullPayment o = CFullPayment
+    <$>     parseJSONPayment o
+    <*>     (HT.OutPoint <$>
+                 o .: "funding_txid" <*>
+                 o .: "funding_vout")
+    <*>     (o .: "redeem_script")
+    <*>      o .: "change_address"
+
+
+--- Misc.
+instance Show Payment where
+    show (CPayment val sig) =
+        "<Payment: valLeft=" ++ show val ++
+        ", sig=" ++ toHexString (encode sig) ++ ">"
+
+instance Show FullPayment where
+    show (CFullPayment p op cp addr) =
+        "<FullPayment: payment = " ++ show p ++ " " ++
+        show (op, cp, addr) ++ ">"
 

@@ -1,10 +1,16 @@
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+module Data.Bitcoin.PaymentChannel.Internal.Bitcoin.Util
+(
+  module Data.Bitcoin.PaymentChannel.Internal.Bitcoin.Util
+, module Data.Bitcoin.PaymentChannel.Internal.Util
+)
+where
 
-module Data.Bitcoin.PaymentChannel.Internal.Bitcoin.Util where
 
+import Data.Bitcoin.PaymentChannel.Internal.Util
+import Data.Bitcoin.PaymentChannel.Internal.Bitcoin.Amount
 
-import qualified Data.Serialize as Ser
+import qualified Data.Serialize as Bin
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Char8 as C
 import qualified Network.Haskoin.Transaction as HT
@@ -12,6 +18,13 @@ import qualified Network.Haskoin.Util as HU
 import qualified Network.Haskoin.Script as HS
 import qualified Network.Haskoin.Crypto as HC
 import           Data.Word (Word32)
+import Data.String (fromString)
+
+
+calcTxSize :: HT.Tx -> Word
+calcTxSize = fromIntegral . B.length . Bin.encode
+
+dummyHash256 = fromString "3d96c573baf8f782e5f5f33dc8ce3c5bae654cbc888e9a3bbb8185a75febfd76" :: HC.Hash256
 
 
 -- | Converts a pay-to-pubkey-hash address string to Script.
@@ -37,11 +50,11 @@ addressToScript addr =
 addressToScriptPubKeyBS :: HC.Address -> B.ByteString
 addressToScriptPubKeyBS = HS.encodeOutputBS . addressToScript
 
-replaceScriptInput :: Word32 -> B.ByteString -> HT.Tx -> HT.Tx
+replaceScriptInput :: Word32 -> HS.Script -> HT.Tx -> HT.Tx
 replaceScriptInput index scriptIn tx =
     HT.createTx (HT.txVersion tx) newTxIns (HT.txOut tx) (HT.txLockTime tx)
         where newTxIns = HU.updateIndex (fromIntegral index) (HT.txIn tx) replaceScriptIn
-              replaceScriptIn txIn = txIn { HT.scriptInput = scriptIn}
+              replaceScriptIn txIn = txIn { HT.scriptInput = Bin.encode scriptIn}
 
 removeOutputs :: HT.Tx -> HT.Tx
 removeOutputs tx =
@@ -55,4 +68,9 @@ appendOutput tx txOut =
 bitcoinPayPK :: HC.PubKeyC -> HS.Script
 bitcoinPayPK pk = HS.encodeOutput $ HS.PayPKHash $ HC.pubKeyAddr pk
 bitcoinPayPKBS = serialize . bitcoinPayPK
-    where serialize = Ser.encode
+    where serialize = Bin.encode
+
+mkTxOut :: (HC.Address, BitcoinAmount) -> HT.TxOut
+mkTxOut (adr,val) = HT.TxOut
+    (fromIntegral . toInteger $ val)
+    (addressToScriptPubKeyBS adr)

@@ -1,6 +1,7 @@
 module Data.Bitcoin.PaymentChannel.Internal.Error.Status where
 
-import Data.Bitcoin.PaymentChannel.Internal.Types
+-- import Data.Bitcoin.PaymentChannel.Internal.Types
+import Data.Bitcoin.PaymentChannel.Internal.Metadata.Types
 
 type HTTPError = (Int,String)
 

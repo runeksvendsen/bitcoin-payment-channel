@@ -44,7 +44,7 @@ tests =
             [ testProperty "FullPayment"
                 (jsonSerDeser :: FullPayment -> Bool)
             , testProperty "RecvPayChan"
-                (jsonSerDeser :: RecvPayChanX -> Bool)
+                (jsonSerDeser :: RecvPayChan -> Bool)
             ]
         , testGroup "Binary"
             [ testProperty "FullPayment"
@@ -58,11 +58,11 @@ tests =
     ]
 
 redeemScriptConversion :: ChannelParameters -> Bool
-redeemScriptConversion cp = -- fromRedeemScript (getRedeemScript cp) == Right cp
---     let res =  in
+redeemScriptConversion cp =
     case fromRedeemScript (getRedeemScript cp) of
         Left e -> error (show cp ++ "\n\n" ++ show e)
-        Right r -> if r /= cp then error (show cp ++ "\n\n" ++ show r) else True
+        Right r -> r == cp || error (show cp ++ "\n\n" ++ show r)
+        -- if r /= cp then error (show cp ++ "\n\n" ++ show r) else True
 
 checkSenderValue :: (ChannelPairResult, [BitcoinAmount]) -> Bool
 checkSenderValue (ChannelPairResult{..}, _) = do
@@ -71,7 +71,7 @@ checkSenderValue (ChannelPairResult{..}, _) = do
     let clientChangeAmount = HT.outValue . head . HT.txOut $ settleTx
     -- Check that the client change amount in the settlement transaction equals the
     --  channel funding amount minus the sum of all payment amounts.
-    let fundAmountMinusPaySum = pcsChannelTotalValue (getChannelState resRecvChan) -
+    let fundAmountMinusPaySum = pcsFundingValue (getChannelState resRecvChan) -
             fromIntegral (sum resSendAmount)
     fromIntegral clientChangeAmount == fundAmountMinusPaySum
 

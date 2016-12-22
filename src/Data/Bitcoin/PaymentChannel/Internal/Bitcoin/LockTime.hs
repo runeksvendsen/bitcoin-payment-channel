@@ -1,9 +1,10 @@
 module Data.Bitcoin.PaymentChannel.Internal.Bitcoin.LockTime where
 
+import           Data.Bitcoin.PaymentChannel.Internal.Util
 import           Data.Word (Word32)
-import qualified Data.Serialize as Bin
-import           Data.Serialize.Put (putWord32le)
-import           Data.Serialize.Get (getWord32le)
+-- import qualified Data.Serialize as Bin
+-- import           Data.Serialize.Put (putWord32le)
+-- import           Data.Serialize.Get (getWord32le)
 import           Data.Time.Clock
 import           Data.Time.Clock.POSIX
 import           Data.Typeable
@@ -21,7 +22,7 @@ instance Show BitcoinLockTime where
     show (LockTimeBlockHeight blockNum) = "block number " ++ show blockNum
     show (LockTimeDate date) = show date
 
-instance Bin.Serialize BitcoinLockTime where
+instance Serialize BitcoinLockTime where
     put = putWord32le . toWord32
     get = parseBitcoinLocktime <$> getWord32le
 
@@ -45,3 +46,11 @@ usesBlockHeight :: BitcoinLockTime -> Bool
 usesBlockHeight (LockTimeBlockHeight _) = True
 usesBlockHeight _ = False
 
+
+instance ToJSON BitcoinLockTime where
+    toJSON blt = Number $ scientific
+        (fromIntegral $ toWord32 blt) 0
+
+instance FromJSON BitcoinLockTime where
+    parseJSON = withScientific "BitcoinLockTime" $
+        fmap (parseBitcoinLocktime . fromIntegral) . parseJSONWord

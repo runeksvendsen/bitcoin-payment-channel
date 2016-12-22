@@ -5,6 +5,7 @@ import Data.Bitcoin.PaymentChannel.Internal.State
 import Data.Bitcoin.PaymentChannel.Internal.Bitcoin.Script
 import Data.Bitcoin.PaymentChannel.Internal.Payment
 import Data.Bitcoin.PaymentChannel.Internal.Util
+import Data.Bitcoin.PaymentChannel.Internal.Bitcoin.Util
 import Data.Bitcoin.PaymentChannel.Internal.Bitcoin.Fee
 
 import qualified Network.Haskoin.Transaction as HT
@@ -17,7 +18,7 @@ getUnsignedRefundTx st txFee =
     let
         baseTx = toUnsignedBitcoinTx $ fromState st --create empty payment tx, which redeems funding tx
         refundOut = HT.TxOut
-                (fromIntegral . toInteger $ pcsChannelTotalValue st - txFee)
+                (fromIntegral . toInteger $ pcsFundingValue st - txFee)
                 (pcsClientChangeScriptPubKey st)
         txInput0 = head $ HT.txIn baseTx
     in
@@ -50,7 +51,7 @@ refundTxCreate pcs@(CPaymentChannelState _ cp _ _ _ _ _) txFee signFunc =
             inputScript = getP2SHInputScript cp $ refundTxScriptSig sig
             sig = signFunc $ getRefundTxHashForSigning pcs txFee
         in
-            replaceScriptInput 0 (serialize inputScript) $ getUnsignedRefundTx pcs txFee
+            replaceScriptInput 0 inputScript $ getUnsignedRefundTx pcs txFee
 
 
 mkRefundTx :: HasFee fee => PaymentChannelState -> fee -> (HC.Hash256 -> HC.Signature) -> HT.Tx

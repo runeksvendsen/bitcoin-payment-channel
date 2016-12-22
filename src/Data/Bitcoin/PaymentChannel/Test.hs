@@ -4,23 +4,22 @@ module Data.Bitcoin.PaymentChannel.Test
     module Data.Bitcoin.PaymentChannel.Test
   , module Data.Bitcoin.PaymentChannel
   , module Data.Bitcoin.PaymentChannel.Types
-  , module Data.Bitcoin.PaymentChannel.Internal.Types
+  , module Data.Bitcoin.PaymentChannel.Internal.Receiver.Types
   , module Data.Bitcoin.PaymentChannel.Internal.State
   , module Data.Bitcoin.PaymentChannel.Internal.Bitcoin.Script
 )
 
 where
 
-import           Data.Bitcoin.PaymentChannel
-import           Data.Bitcoin.PaymentChannel.Types
-import           Data.Bitcoin.PaymentChannel.Internal.Types
-import           Data.Bitcoin.PaymentChannel.Util
-import           Data.Bitcoin.PaymentChannel.Internal.State hiding (channelIsExhausted, channelValueLeft)
-import           Data.Bitcoin.PaymentChannel.Internal.Bitcoin.Script
+import Data.Bitcoin.PaymentChannel
+import Data.Bitcoin.PaymentChannel.Types
+import Data.Bitcoin.PaymentChannel.Internal.Receiver.Types
+import Data.Bitcoin.PaymentChannel.Util
+import Data.Bitcoin.PaymentChannel.Internal.State hiding (channelIsExhausted, channelValueLeft)
+import Data.Bitcoin.PaymentChannel.Internal.Bitcoin.Script
 
 import qualified Network.Haskoin.Crypto as HC
 import           Network.Haskoin.Test
-import           Data.Maybe                      (fromMaybe)
 import           Data.Time.Clock                 (UTCTime(..))
 import           Data.Time.Calendar              (Day(..))
 
@@ -37,7 +36,7 @@ mIN_CHANNEL_SIZE = cDustLimit defaultConfig * 2
 
 data ArbChannelPair = ArbChannelPair
     { sendChan          :: SenderPaymentChannel
-    , recvChan          :: RecvPayChanX
+    , recvChan          :: RecvPayChan
     , initPayAmount     :: BitcoinAmount
     , initRecvAmount    :: BitcoinAmount
     , initPayment       :: FullPayment
@@ -47,7 +46,7 @@ data ArbChannelPair = ArbChannelPair
 data ChannelPairResult = ChannelPairResult
     { resInitPair   :: ArbChannelPair
     , resSendChan   :: SenderPaymentChannel
-    , resRecvChan   :: RecvPayChanX
+    , resRecvChan   :: RecvPayChan
     , resSendAmount :: [BitcoinAmount]
     , resRecvAmount :: [BitcoinAmount]
     , resPayList    :: [FullPayment]
@@ -90,11 +89,11 @@ instance Arbitrary ChannelPairResult where
 instance Arbitrary SenderPaymentChannel where
     arbitrary = fmap (sendChan . fst) mkChanPair
 
-instance Arbitrary RecvPayChanX where
+instance Arbitrary RecvPayChan where
     arbitrary = fmap (recvChan . fst) mkChanPair
 
 instance Arbitrary PaymentChannelState where
-    arbitrary = fmap rpcState (arbitrary :: Gen RecvPayChanX)
+    arbitrary = fmap rpcState (arbitrary :: Gen RecvPayChan)
 
 instance Arbitrary ChanScript where
     arbitrary = ChanScript . getRedeemScript <$> arbitrary
@@ -145,18 +144,13 @@ mkChanPairInitAmount initPayAmount = do
     fti <- arbitrary
     -- create states
     let (initPayActualAmount,initPayment,sendChan) = channelWithInitialPaymentOf defaultConfig
-         cp fti (flip HC.signMsg sendPriv) (getFundingAddress cp) initPayAmount
+         cp fti (`HC.signMsg` sendPriv) (getFundingAddress cp) initPayAmount
     let eitherRecvChan = channelFromInitialPayment
          nowishTimestamp defaultConfig cp fti initPayment
     case eitherRecvChan of
      Left e -> error (show e)
-     Right (initRecvAmount,recvChan) -> do
-        (ArbitraryHash256 arbHash) <- arbitrary
-        let fakeXPub = HC.XPubKey 0 0 0 arbHash serverPK
-            serverPK = getPubKey . pcsServerPubKey $ rpcState recvChan
-            extRPC = fromMaybe (error "mkExtendedKeyRPC failed") $ mkExtendedKeyRPC recvChan fakeXPub
-        return
+     Right (initRecvAmount,recvChan) -> return
              (ArbChannelPair
-                 sendChan extRPC initPayActualAmount initRecvAmount initPayment
-                 (flip HC.signMsg recvPriv),
+                 sendChan recvChan initPayActualAmount initRecvAmount initPayment
+                 (`HC.signMsg` recvPriv),
              initPayment)

@@ -120,12 +120,11 @@ module Data.Bitcoin.PaymentChannel
 )
 where
 
-import Data.Bitcoin.PaymentChannel.Internal.Types
-    (PaymentTxConfig(..), Payment(..), FullPayment(..), Config,
-     ReceiverPaymentChannelI(..), pcsClientChangeVal)
+import Data.Bitcoin.PaymentChannel.Internal.Receiver.Types
 import Data.Bitcoin.PaymentChannel.Internal.State
     (newPaymentChannelState, updatePaymentChannelState)
-import qualified Data.Bitcoin.PaymentChannel.Internal.State as S
+import qualified Data.Bitcoin.PaymentChannel.Internal.Receiver.Util as S
+import Data.Bitcoin.PaymentChannel.Internal.Metadata.Util
 import Data.Bitcoin.PaymentChannel.Internal.Payment
     (createPayment, mkPaymentFromState)
 import Data.Bitcoin.PaymentChannel.Internal.Settlement
@@ -208,17 +207,19 @@ channelFromInitialPayment ::
 channelFromInitialPayment now cfg cp fundInf fp@(CFullPayment (CPayment _ sig) _ _ sendAddr) =
         let
             pConf = CPaymentTxConfig sendAddr
+            newState = newPaymentChannelState cfg cp fundInf pConf sig
+            metadata = Metadata () [] (S.pcsValueTransferred newState) ReadyForPayment
         in
-            flip (recvPayment now) fp $ CReceiverPaymentChannel
-                -- Create a new state with the unverified signature; then verify the same signature in 'recvPayment'
-                (newPaymentChannelState cfg cp fundInf pConf sig) ()
+            -- Create a new state with the unverified signature;
+            --  then verify the same signature in 'recvPayment'
+            flip (recvPayment now) fp $ CReceiverPaymentChannel newState metadata
+
 
 -- |Register, on the receiving side, a payment made by 'sendPayment' on the sending side.
 -- Returns error if either the signature or payment amount is invalid, and otherwise
 -- the amount received with this 'Payment' and a new state object.
 recvPayment ::
-       S.HasMetadata a
-    => UTCTime                      -- ^Current time. Needed for payment verification.
+       UTCTime                      -- ^Current time. Needed for payment verification.
     -> ReceiverPaymentChannelI a    -- ^Receiver state object
     -> FullPayment                  -- ^Payment to verify and register
     -> Either PayChanError (BitcoinAmount, ReceiverPaymentChannelI a) -- ^Value received plus new receiver state object
@@ -234,8 +235,7 @@ recvPayment currentTime rpc@(CReceiverPaymentChannel oldState md) fp =
 --  with a new client change address. Used to produce the settlement
 --  transaction that returns unsent funds to the client.
 recvPaymentForClose ::
-       S.HasMetadata a
-    => ReceiverPaymentChannelI a    -- ^Receiver state object
+       ReceiverPaymentChannelI a    -- ^Receiver state object
     -> FullPayment              -- ^Payment to verify and register
     -> Either PayChanError (ReceiverPaymentChannelI a) -- ^ Receiver state object
 recvPaymentForClose (CReceiverPaymentChannel state m) fp =

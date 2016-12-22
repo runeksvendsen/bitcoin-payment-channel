@@ -10,29 +10,23 @@ Utility functions for "Data.Bitcoin.PaymentChannel".
 
 module Data.Bitcoin.PaymentChannel.Util
 (
-getFundingAddress,getRedeemScript,
+getFundingAddress,Scr.getRedeemScript,
 setSenderChangeAddress,
 
 serialize, deserEither,
 BitcoinLockTime, parseBitcoinLocktime, toWord32, fromDate,
-parseJSONInt,
+Ser.parseJSONWord,
 pGetSig,fpGetSig,
 
 unsafeUpdateRecvState
 )
 where
 
-import Data.Bitcoin.PaymentChannel.Internal.Types
-    (PaymentChannelState(..), ReceiverPaymentChannelI(..),
-    Payment(..), PaymentSignature(..))
-import Data.Bitcoin.PaymentChannel.Internal.Bitcoin.Script
-    (getP2SHFundingAddress, getRedeemScript)
-import Data.Bitcoin.PaymentChannel.Internal.Util
-    (parseBitcoinLocktime, toWord32, deserEither, serialize)
-import Data.Bitcoin.PaymentChannel.Internal.State
-    (setClientChangeAddress)
-import Data.Bitcoin.PaymentChannel.Internal.Serialization
-    (parseJSONInt)
+import Data.Bitcoin.PaymentChannel.Internal.Receiver.Types
+import Data.Bitcoin.PaymentChannel.Internal.Bitcoin.Util
+import Data.Bitcoin.PaymentChannel.Internal.State                           (setClientChangeAddress)
+import qualified Data.Bitcoin.PaymentChannel.Internal.Serialization.JSON    as Ser
+import qualified Data.Bitcoin.PaymentChannel.Internal.Bitcoin.Script        as Scr
 
 import Data.Bitcoin.PaymentChannel.Types
 --     (ChannelParameters, FundingTxInfo)
@@ -45,7 +39,7 @@ import qualified Network.Haskoin.Crypto as HC
 --  and information about this transaction is contained in
 --  'FundingTxInfo'.
 getFundingAddress :: ChannelParameters -> HC.Address
-getFundingAddress = getP2SHFundingAddress
+getFundingAddress = Scr.getP2SHFundingAddress
 
 -- |Set new value sender change address
 setSenderChangeAddress :: PaymentChannel a => a -> HC.Address -> a

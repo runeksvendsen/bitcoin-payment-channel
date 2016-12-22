@@ -36,3 +36,5 @@ instance Show PayChanError where
 
 
 
+
+instance Serialize PayChanError -- Generic PayChanError instance

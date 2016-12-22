@@ -1,13 +1,49 @@
-{-# LANGUAGE OverloadedStrings #-}
-module Data.Bitcoin.PaymentChannel.Internal.Bitcoin.Script where
+module Data.Bitcoin.PaymentChannel.Internal.Bitcoin.Script
+(
+  module Data.Bitcoin.PaymentChannel.Internal.Bitcoin.Script
+, module Network.Haskoin.Script
+)
+where
 
-import Data.Bitcoin.PaymentChannel.Internal.Types
-import Data.Bitcoin.PaymentChannel.Internal.Serialization.Binary   ()
+import Data.Bitcoin.PaymentChannel.Internal.Bitcoin.Types
+import Data.Bitcoin.PaymentChannel.Internal.Crypto.PubKey
+import Data.Bitcoin.PaymentChannel.Internal.Bitcoin.LockTime
 import Data.Bitcoin.PaymentChannel.Internal.Util
+import Network.Haskoin.Script
 
 import qualified Network.Haskoin.Internals as HI
 import qualified Network.Haskoin.Crypto as HC
 import qualified Data.ByteString as B
+
+
+
+-- |Defines channel: sender, receiver, and expiration date
+data ChannelParameters = CChannelParameters {
+    cpSenderPubKey      ::  SendPubKey,
+    cpReceiverPubKey    ::  RecvPubKey,
+    -- |Channel expiration date/time
+    cpLockTime          ::  BitcoinLockTime
+} deriving (Eq, Show, Typeable, Generic)
+
+instance HasSendPubKey ChannelParameters where
+    getSendPubKey = cpSenderPubKey
+
+instance HasRecvPubKey ChannelParameters where
+    getRecvPubKey = cpReceiverPubKey
+
+instance ToJSON ChannelParameters where
+    toJSON = String . serHex . getRedeemScript
+
+instance FromJSON ChannelParameters where
+    parseJSON = withText "RedeemScriptHex" $
+        deserHex >=> either fail return . fromRedeemScript
+
+
+
+instance Serialize ChannelParameters where
+    put (CChannelParameters pks pkr lt) =
+        put pks >> put pkr >> put lt
+    get = CChannelParameters <$> get <*> get <*> get
 
 
 -- |Generate OP_CHECKLOCKTIMEVERIFY redeemScript, which can be redeemed in two ways:
@@ -44,12 +80,6 @@ fromRedeemScript (Script
         <*> decodeScriptLocktime lockTimeData
 fromRedeemScript _ = Left "Unrecognized redeemScript format"
 
--- |scriptSig fulfilling 'mkChannelRedeemScript' using two signatures (client+server)
-paymentTxScriptSig :: PaymentSignature -> PaymentSignature -> Script --ScriptSig
-paymentTxScriptSig clientSig serverSig = Script
-    [opPushData $ serialize clientSig, --sig including SigHash byte
-    opPushData $ serialize serverSig,  --sig including SigHash byte
-    OP_1]   -- Make reeemScript OP_IF evaluate to true (two pubkeys/sigs)
 
 -- |scriptSig fulfilling 'mkChannelRedeemScript' using a single signature (client)
 --  (not valid until specified lockTime)
