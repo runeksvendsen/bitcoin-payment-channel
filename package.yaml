@@ -1,0 +1,88 @@
+name:         bitcoin-payment-channel
+version:      '0.8.0.0'
+synopsis:     Library for working with Bitcoin payment channels
+category:     Bitcoin, Finance, Network
+author:       Rune K. Svendsen <runesvend@gmail.com>
+maintainer:   Rune K. Svendsen <runesvend@gmail.com>
+license:      PublicDomain
+homepage:     https://github.com/runeksvendsen/bitcoin-payment-channel
+git:          git://github.com/runeksvendsen/bitcoin-payment-channel.git
+bug-reports:  https://github.com/runeksvendsen/bitcoin-payment-channel/issues
+stability:    experimental
+
+description: ! 'A Bitcoin payment channel allows secure and instant transfer of bitcoins
+  from one party to another. Payments are created and verified in less than a millisecond
+  (plus network latency), and cannot be double spent, as the receiver of funds is
+  defined during channel setup.
+  When the channel is closed, the settlement transaction transfers the appropriate
+  value to each party, thus paying the Bitcoin transaction fee only once, regardless of the number
+  of payments made over the channel.
+
+  The channel setup procedure is trustless, because the funding party - after the
+  chosen expiration date - is able to reclaim the bitcoins used to fund the channel,
+  in case the receiving party goes missing.
+
+  This library implements a type of payment channel where channel setup
+  is safe from transaction ID malleability, and value transfer is uni-directional
+  (one party sends and the other party receives) (CHECKLOCKTIMEVERIFY-style).'
+
+default-extensions:
+- OverloadedStrings
+- RecordWildCards
+- DeriveGeneric
+- MultiParamTypeClasses
+- TypeSynonymInstances
+- FlexibleInstances
+- FlexibleContexts
+- FunctionalDependencies
+- DataKinds
+- ScopedTypeVariables
+
+dependencies:
+- base >=4.7 && <5
+- QuickCheck >=2.8 && <2.10
+
+library:
+  source-dirs: src
+  ghc-options: -W
+  exposed-modules:
+  - Data.Bitcoin.PaymentChannel
+  - Data.Bitcoin.PaymentChannel.Types
+  - Data.Bitcoin.PaymentChannel.Util
+  - Data.Bitcoin.PaymentChannel.Test
+  dependencies:
+  - haskoin-core        >=0.4.0   && <0.5.0
+  - base16-bytestring   >=0.1.0   && <0.2.0
+  - bytestring          >=0.10.0  && <0.11.0
+  - cereal              >=0.5.0   && <0.6.0
+  - errors              >=2.0.0   && <2.2.0
+  - hexstring           >=0.11.0  && <0.12.0
+  - text                >=1.2.0   && <1.3.0
+  - time                >=1.5.0   && <1.7.0
+  - aeson               >=0.11.0  && <1.1
+  - scientific          >=0.3.0   && <0.4.0
+  - string-conversions  >=0.4     && <0.5
+  - tagged              >=0.8     && <1.0
+
+tests:
+  test-bitcoin-payment-channel:
+    main: Main.hs
+    source-dirs: test
+    ghc-options: -Wall
+    dependencies:
+    - haskoin-core >=0.4.0 && <1.0.0
+    - bytestring
+    - base16-bytestring
+    - base64-bytestring
+    - hexstring
+    - text
+    - string-conversions
+    - time
+    - cereal
+    - aeson
+    - test-framework
+    - test-framework-quickcheck2
+    - bitcoin-payment-channel
+    - tf-random
+    - random
+
