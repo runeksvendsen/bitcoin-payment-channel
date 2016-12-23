@@ -64,6 +64,7 @@ library
       Data.Bitcoin.PaymentChannel.Internal.Payment
       Data.Bitcoin.PaymentChannel.Internal.Payment.Payment
       Data.Bitcoin.PaymentChannel.Internal.Payment.Types
+      Data.Bitcoin.PaymentChannel.Internal.Receiver.Settle
       Data.Bitcoin.PaymentChannel.Internal.Receiver.Types
       Data.Bitcoin.PaymentChannel.Internal.Receiver.Util
       Data.Bitcoin.PaymentChannel.Internal.Refund
