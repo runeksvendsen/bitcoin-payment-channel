@@ -7,11 +7,11 @@ module Data.Bitcoin.PaymentChannel.Internal.Settlement.Util
 import Data.Bitcoin.PaymentChannel.Internal.Settlement.Types
 import Data.Bitcoin.PaymentChannel.Internal.Receiver.Types
 import Data.Bitcoin.PaymentChannel.Internal.Class.Value     (HasValue(..))
-import           Data.Time.Clock                            (getCurrentTime)
+-- import           Data.Time.Clock                            (getCurrentTime)
 
 
 fromState :: ReceiverPaymentChannelI a -> SettleInfo
 fromState rpc = SettleInfo (valueOf rpc) (pcsPaymentCount $ rpcState rpc)
---     now <- getCurrentTime
+
 
 

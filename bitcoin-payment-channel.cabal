@@ -28,7 +28,7 @@ library
   default-extensions: OverloadedStrings RecordWildCards DeriveGeneric MultiParamTypeClasses TypeSynonymInstances FlexibleInstances FlexibleContexts FunctionalDependencies DataKinds ScopedTypeVariables
   ghc-options: -W
   build-depends:
-      base                >=4.7 && <5
+      base                >=4.7     && <5
     , haskoin-core        >=0.4.0   && <0.5.0
     , base16-bytestring   >=0.1.0   && <0.2.0
     , bytestring          >=0.10.0  && <0.11.0
@@ -41,7 +41,7 @@ library
     , scientific          >=0.3.0   && <0.4.0
     , string-conversions  >=0.4     && <0.5
     , tagged              >=0.8     && <1.0
-    , QuickCheck          >=2.8 && <2.10
+    , QuickCheck          >=2.8     && <2.10
   exposed-modules:
       Data.Bitcoin.PaymentChannel
       Data.Bitcoin.PaymentChannel.Types
@@ -87,7 +87,7 @@ test-suite test-bitcoin-payment-channel
   default-extensions: OverloadedStrings RecordWildCards DeriveGeneric MultiParamTypeClasses TypeSynonymInstances FlexibleInstances FlexibleContexts FunctionalDependencies DataKinds ScopedTypeVariables
   ghc-options: -Wall
   build-depends:
-      base                >=4.7 && <5
+      base                >=4.7     && <5
     , haskoin-core        >=0.4.0   && <0.5.0
     , base16-bytestring   >=0.1.0   && <0.2.0
     , bytestring          >=0.10.0  && <0.11.0
@@ -100,11 +100,11 @@ test-suite test-bitcoin-payment-channel
     , scientific          >=0.3.0   && <0.4.0
     , string-conversions  >=0.4     && <0.5
     , tagged              >=0.8     && <1.0
-    , QuickCheck          >=2.8 && <2.10
+    , QuickCheck          >=2.8     && <2.10
+    , bitcoin-payment-channel
     , base64-bytestring
     , test-framework
     , test-framework-quickcheck2
-    , bitcoin-payment-channel
     , tf-random
     , random
   default-language: Haskell2010

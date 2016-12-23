@@ -15,8 +15,8 @@ matrix:
       compiler: ": #stack 7.10.3"
       addons: {apt: {packages: [cabal-install-head,ghc-7.10.3], sources: [hvr-ghc]}}
 
-    - env: BUILD=stack GHCVER=8.0.1 STACK_YAML=stack.yaml
-      compiler: ": #stack 8.0.1"
+    - env: BUILD=stack GHCVER=8.0.1 STACK_YAML=stack-8.0.2.yaml
+      compiler: ": #stack 8.0.2"
       addons: {apt: {packages: [cabal-install-head,ghc-8.0.1], sources: [hvr-ghc]}}
 
 before_install:

@@ -19,7 +19,9 @@ cPaymentIdxFromState CReceiverPaymentChannel{..} =
         where csp = cPaymentFromState rpcState
 
 
--- |Create a 'ReceiverPaymentChannelX', which has an associated XPubKey, from a
+-- KeyDeriveIndex
+
+-- |Create a 'ReceiverPaymentChannelX', which has an associated BIP32 key index, from a
 --  'ReceiverPaymentChannel'
 mkExtendedKeyRPC :: RecvPayChanI a -> HC.XPubKey -> Maybe RecvPayChanX
 mkExtendedKeyRPC (CReceiverPaymentChannel pcs _) xpk =
@@ -30,8 +32,11 @@ mkExtendedKeyRPC (CReceiverPaymentChannel pcs _) xpk =
         else
             Nothing
 
+metaKeyIndex :: RecvPayChanI KeyDeriveIndex -> KeyDeriveIndex
+metaKeyIndex = mdKeyData . rpcMetadata
 
 
+-- Status
 setChannelStatus :: PayChanStatus -> RecvPayChanI a -> RecvPayChanI a
 setChannelStatus s pcs@CReceiverPaymentChannel{ rpcMetadata = meta } =
     pcs { rpcMetadata = metaSetStatus s meta }
@@ -40,46 +45,12 @@ getChannelStatus :: RecvPayChanI a -> PayChanStatus
 getChannelStatus CReceiverPaymentChannel{ rpcMetadata = meta } =
     metaGetStatus meta
 
-metaKeyIndex :: RecvPayChanI KeyDeriveIndex -> KeyDeriveIndex
-metaKeyIndex = mdKeyData . rpcMetadata
-
-
-newMetaAfterSettle :: RecvPayChanI a -> MetadataI a
-newMetaAfterSettle rpc@CReceiverPaymentChannel{rpcMetadata = prevMd} =
-    prevMd
-        { mdSettledValue   = Settle.fromState rpc : mdSettledValue prevMd
-        , mdUnsettledValue = 0
-        , mdChannelStatus  = statusAfterSettlement rpc
-        }
-
-
--- |What would the status of the payment channel be
---   if the settlement transaction were published right now?
-statusAfterSettlement :: ReceiverPaymentChannelI a -> PayChanStatus
-statusAfterSettlement rpc =
-    if changeAddress rpc == fundingAddress rpc then
-        ReadyForPayment
-    else
-        ChanClosed
-  where
-    changeAddress = pcsClientChangeAddress . rpcState
-    fundingAddress = getP2SHFundingAddress . pcsParameters . rpcState
-
-
-
 markAsBusy :: RecvPayChanI a -> RecvPayChanI a
 markAsBusy = setChannelStatus PaymentInProgress
 
 isReadyForPayment :: RecvPayChanI a -> Bool
 isReadyForPayment =
     (== ReadyForPayment) . getChannelStatus
-
-
-calcNewData :: MetadataI a -> PaymentChannelState -> MetadataI a
-calcNewData md@Metadata{ mdUnsettledValue = oldValRecvd } pcs =
-    md { mdUnsettledValue = checkedVal }
-    where checkedVal  = if newValRecvd < oldValRecvd then error "BUG: Value lost :(" else newValRecvd
-          newValRecvd = pcsValueTransferred pcs
 
 checkChannelStatus :: ReceiverPaymentChannelI a -> Either PayChanError (ReceiverPaymentChannelI a)
 checkChannelStatus rpc =
@@ -88,6 +59,13 @@ checkChannelStatus rpc =
     (Left . StatusError)
     (checkReadyForPayment $ getChannelStatus rpc)
 
+
+-- Metadata
+calcNewData :: MetadataI a -> PaymentChannelState -> MetadataI a
+calcNewData md@Metadata{ mdUnsettledValue = oldValRecvd } pcs =
+    md { mdUnsettledValue = checkedVal }
+    where checkedVal  = if newValRecvd < oldValRecvd then error "BUG: Value lost :(" else newValRecvd
+          newValRecvd = pcsValueTransferred pcs
 
 updateWithMetadata :: MetadataI a -> PaymentChannelState -> ReceiverPaymentChannelI a
 updateWithMetadata oldData pcs =
