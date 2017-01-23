@@ -1,4 +1,8 @@
-module Bitcoin.SpendCond.Spec where
+module Bitcoin.SpendCond.Spec
+(
+  spendCondSpec
+)
+where
 
 import Bitcoin.SpendCond.Cond
 import Bitcoin.Util
@@ -38,8 +42,8 @@ p2wshINp2sh  = Pay2 $ ScriptHash $ Witness $ Cond TestCond
 
 
 
-main :: IO ()
-main = hspec $
+spendCondSpec :: IO ()
+spendCondSpec = hspec $
   describe "Transaction script & witness" $ do
     describe "P2PKH has correct" $ do
         it "scriptPubKey" $ scriptPubKey p2pkh `shouldBe`

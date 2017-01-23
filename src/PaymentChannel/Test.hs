@@ -47,41 +47,13 @@ data ChannelPairResult = ChannelPairResult
     , resPayList    :: [SignedPayment]
     }
 
-toInitResult :: ArbChannelPair -> ChannelPairResult
-toInitResult initPair@(ArbChannelPair spc rpc amt rcv pay _) =
-    ChannelPairResult initPair spc rpc [amt] [rcv] [pay]
-
 instance Show ArbChannelPair where
     show (ArbChannelPair spc rpc _ _ _ _) =
         "SendState: " ++ show spc ++ "\n" ++
         "RecvState: " ++ show rpc
 
--- |Fold a payment of specified value into a 'ChannelPairResult'
-doPayment :: MonadTime m => ChannelPairResult -> BtcAmount -> m ChannelPairResult
-doPayment (ChannelPairResult initPair spc rpc sendList recvList payLst) amount = do
-    (newSpc, pmn, amountSent) <- cappedCreatePayment spc amount
-    eitherRpc <- acceptPayment rpc pmn
-    case eitherRpc of
-        Left e -> error (show e)
-        Right (recvAmount, newRpc) -> return $
-            ChannelPairResult initPair newSpc newRpc
-                (amountSent : sendList)
-                (recvAmount : recvList)
-                (pmn : payLst)
-
-runChanPair :: MonadTime m => ArbChannelPair -> [BtcAmount] -> m (ChannelPairResult, [BtcAmount])
-runChanPair chanPair paymentAmountList =
-    foldM doPayment (toInitResult chanPair) paymentAmountList >>=
-        \res -> return (res, paymentAmountList)
-
 instance Arbitrary ArbChannelPair where
     arbitrary = fmap fst mkChanPair
-
-instance Arbitrary ChannelPairResult where
-    arbitrary = do
-        chanPair <- arbitrary
-        amtLst   <- arbitrary
-        fst <$> runChanPair chanPair amtLst
 
 instance Arbitrary ClientPayChan where
     arbitrary = fmap (sendChan . fst) mkChanPair
@@ -99,9 +71,8 @@ instance Arbitrary FundingTxInfo where
     arbitrary = do
         ArbitraryTxHash h <- arbitrary
         i <- arbitrary
-        let nonDustyMinBound = max (fromIntegral mIN_CHANNEL_SIZE) configDustLimit
-        amt <- fromIntegral <$> choose (fromIntegral nonDustyMinBound, maxCoins)
-        let fundAmount = either (error "Dust math fail") id $ mkNonDusty amt
+        amt <- choose (fromIntegral mIN_CHANNEL_SIZE, maxCoins)
+        let fundAmount = either (error "Dust math fail") id $ mkNonDusty (fromIntegral amt :: BtcAmount)
         return $ CFundingTxInfo h i fundAmount
 
 instance Arbitrary BtcAmount where
@@ -111,10 +82,36 @@ newtype NonZeroBitcoinAmount = NonZeroBitcoinAmount { getAmount :: BtcAmount }
 
 instance Arbitrary NonZeroBitcoinAmount where
     arbitrary = (NonZeroBitcoinAmount . fromIntegral) <$>
-        choose (1, round $ ((21e6 :: Double) :: Double) * 1e8 :: Integer)
+        choose (1, maxCoins)
 
 instance Arbitrary (Payment BtcSig) where
-    arbitrary = snd <$> (arbitrary >>= mkChanPairInitAmount)
+    arbitrary = snd <$> mkChanPair
+
+instance MonadTime Gen where
+    currentTime = return futureTimestamp
+
+
+toInitResult :: ArbChannelPair -> ChannelPairResult
+toInitResult initPair@(ArbChannelPair spc rpc amt rcv pay _) =
+    ChannelPairResult initPair spc rpc [amt] [rcv] [pay]
+
+
+-- |Fold a payment of specified value into a 'ChannelPairResult'
+doPayment :: MonadTime m => ChannelPairResult -> BtcAmount -> m ChannelPairResult
+doPayment (ChannelPairResult initPair spc rpc sendList recvList payLst) amount = do
+    (newSpc, pmn, amountSent) <- cappedCreatePayment spc amount
+    eitherRpc <- acceptPayment rpc pmn
+    case eitherRpc of
+        Left e -> error (show e)
+        Right (recvAmount, newRpc) -> return $
+            ChannelPairResult initPair newSpc newRpc
+                (amountSent : sendList)
+                (recvAmount : recvList)
+                (pmn : payLst)
+
+runChanPair :: MonadTime m => ArbChannelPair -> m ChannelPairResult
+runChanPair chanPair = let paymentAmountList = fromIntegral <$> [3,4,5,4,3,3] in
+    foldM doPayment (toInitResult chanPair) paymentAmountList
 
 mkChanParams :: Gen (ChanParams, (HC.PrvKeyC, HC.PrvKeyC))
 mkChanParams = do
@@ -150,8 +147,5 @@ mkChanPairInitAmount initPayAmount = do
 
 
 -- TODO: We don't bother testing expiration time for now
-nowishTimestamp :: UTCTime
-nowishTimestamp = UTCTime (ModifiedJulianDay 57683) 0     -- 2016-10-22
-
-instance MonadTime Gen where
-    currentTime = return nowishTimestamp
+futureTimestamp :: UTCTime
+futureTimestamp = UTCTime (ModifiedJulianDay 75933) 0     -- 2066-ish

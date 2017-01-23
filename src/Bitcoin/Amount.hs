@@ -16,15 +16,15 @@ import           Data.Ratio
 --  It is thus not possible to eg. construct a negative BtcAmount which, when added to
 --  another BtcAmount, subtracts from its value. Adding two large amounts together will
 --  never overflow, nor will subtraction underflow.
-newtype BtcAmount = MkBitcoinAmount Integer
+newtype BtcAmount = MkBitcoinAmount Word64
     deriving (Eq, Ord)
 instance Show BtcAmount where
     show amount = show (toInteger amount) ++ " satoshi"
 
 instance Num BtcAmount where
-    (MkBitcoinAmount a1) * (MkBitcoinAmount a2) = mkCapped $ a1*a2
-    (MkBitcoinAmount a1) + (MkBitcoinAmount a2) = mkCapped $ a1+a2
-    (MkBitcoinAmount a1) - (MkBitcoinAmount a2) = mkCapped $ a1-a2
+    (MkBitcoinAmount a1) * (MkBitcoinAmount a2) = mkCapped $ fromIntegral a1 * fromIntegral a2
+    (MkBitcoinAmount a1) + (MkBitcoinAmount a2) = mkCapped $ fromIntegral a1 + fromIntegral a2
+    (MkBitcoinAmount a1) - (MkBitcoinAmount a2) = mkCapped $ fromIntegral a1 - fromIntegral a2
     abs = id    -- Always positive
     signum (MkBitcoinAmount 0) = MkBitcoinAmount 0
     signum (MkBitcoinAmount _) = MkBitcoinAmount 1
@@ -38,17 +38,17 @@ instance Real BtcAmount where
     toRational (MkBitcoinAmount amount) = toRational amount
 
 instance Integral BtcAmount where
-    toInteger (MkBitcoinAmount int) = int
+    toInteger (MkBitcoinAmount int) = fromIntegral int
     quotRem (MkBitcoinAmount a1) (MkBitcoinAmount a2) =
         (mkCapped res1, mkCapped res2)
-            where (res1,res2) = quotRem a1 a2
+            where (res1,res2) = quotRem (fromIntegral a1) (fromIntegral a2)
 
 instance Bounded BtcAmount where
     minBound = MkBitcoinAmount 0
     maxBound = MkBitcoinAmount $ round $ (21e6 :: Ratio Integer) * (1e8 :: Ratio Integer)
 
 mkCapped :: Integer -> BtcAmount
-mkCapped = fromIntegral . capTo21Mill
+mkCapped = MkBitcoinAmount . capTo21Mill
 
 -- | Convert to 21 million, zero as floor
 capTo21Mill :: Integer -> Word64

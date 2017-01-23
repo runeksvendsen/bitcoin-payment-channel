@@ -144,22 +144,22 @@ import Bitcoin.Compare
 
 
 channelWithInitialPayment :: Monad m =>
-    -- | Used to sign payments from client
        HC.PrvKeyC
-    -- | Specifies channel sender, receiver, and expiration date
+       -- ^ Used to sign payments from client
     -> ChanParams
-    -- | Holds information about the Bitcoin transaction used to fund the channel
+       -- ^ Specifies channel sender, receiver, and expiration date
     -> FundingTxInfo
-    -- | Client change address
+       -- ^ Holds information about the Bitcoin transaction used to fund the channel
     -> HC.Address
-    -- | Value of initial channel payment. This payment is sent to the receiver
-    --    in the initial handshake that opens the channel. Can be zero, in which
-    --    case the payment simply acts as a proof that the client owns the private
-    --    key whose corresponding public key is in 'ChanParams'.
+       -- ^ Client change address
     -> BtcAmount
-    -- | Client state and first payment. Error if the channel funding value
-    --    can't cover the specified payment value.
+       -- ^ Value of initial channel payment. This payment is sent to the receiver
+       --    in the initial handshake that opens the channel. Can be zero, in which
+       --    case the payment simply acts as a proof that the client owns the private
+       --    key whose corresponding public key is in 'ChanParams'.
     -> m (Either BtcError (ClientPayChanI BtcSig, SignedPayment))
+       -- ^ Client state and first payment. Error if the channel funding value
+       --    can't cover the specified payment value.
 channelWithInitialPayment prvKey cp fundInf sendAddr payVal =
     let mkPayChanState sp = MkPayChanState sp (sigDataHash sp)
         mkClientChan sp = (MkClientPayChan (mkPayChanState sp) prvKey, sp)
@@ -169,9 +169,12 @@ channelWithInitialPayment prvKey cp fundInf sendAddr payVal =
 
 -- |Create new payment of specified value, along with updated state containing this payment.
 createPayment :: Monad m =>
-       ClientPayChanI BtcSig         -- ^ Sender state object
-    -> BtcAmount                    -- ^ Amount to send (the actual payment amount is capped, so no invalid payment is created)
-    -> m (Either BtcError (ClientPayChanI BtcSig, SignedPayment))  -- ^ Updated sender state & payment
+       ClientPayChanI BtcSig
+    -- ^ Sender state object
+    -> BtcAmount
+    -- ^ Amount to send (the actual payment amount is capped, so no invalid payment is created)
+    -> m (Either BtcError (ClientPayChanI BtcSig, SignedPayment))
+    -- ^ Updated sender state & payment
 createPayment cpc@MkClientPayChan{..} payVal =
     createPaymentOfValue spcPrvKey (clearSig $ pcsPayment spcState) payVal >>=
         either (return . Left) returnResult
@@ -184,8 +187,8 @@ createPayment cpc@MkClientPayChan{..} payVal =
 cappedCreatePayment :: Monad m =>
        ClientPayChanI BtcSig
     -> BtcAmount
-    -- | (state, payment, actual payment amount)
     -> m (ClientPayChanI BtcSig, SignedPayment, BtcAmount)
+    -- ^ (state, payment, actual payment amount)
 cappedCreatePayment cpc amt =
     createPayment cpc cappedAmount >>=
     \resE -> case resE of

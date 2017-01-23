@@ -60,7 +60,7 @@ dependencies:
 
 library:
   source-dirs: src
-  ghc-options: -W -fno-warn-unused-imports
+  ghc-options: -W
   exposed-modules:
   - PaymentChannel
   - PaymentChannel.Types
@@ -71,7 +71,7 @@ tests:
   test-bitcoin-payment-channel:
     main: Main.hs
     source-dirs: test
-    ghc-options: -Wall -fno-warn-unused-imports
+    ghc-options: -Wall
     dependencies:
     - bitcoin-payment-channel
     - base64-bytestring
@@ -79,4 +79,5 @@ tests:
     - test-framework-quickcheck2
     - tf-random
     - random
+    - mtl
 

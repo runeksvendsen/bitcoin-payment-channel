@@ -36,9 +36,8 @@ mkUnsignedSettleData rpcL extraOuts =
         where payLst = NE.map (pcsPayment . rpcState) rpcL
 
 
-getSignedSettlementTx
-    :: (Functor m, Monad m)
-    => ServerPayChanI kd
+getSignedSettlementTx :: Monad m =>
+       ServerPayChanI kd
     -> (KeyDeriveIndex -> m HC.PrvKeyC) -- ^ Server/receiver's signing key.
     -> ChangeOut
     -> m (Either ReceiverError SignedTx)
