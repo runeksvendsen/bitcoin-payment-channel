@@ -4,7 +4,7 @@ synopsis:     Instant, two-party Bitcoin payments
 category:     Bitcoin, Finance, Network
 author:       Rune K. Svendsen <runesvend@gmail.com>
 maintainer:   Rune K. Svendsen <runesvend@gmail.com>
-license:      PublicDomain
+license:      CC0
 homepage:     https://github.com/runeksvendsen/bitcoin-payment-channel
 git:          git://github.com/runeksvendsen/bitcoin-payment-channel.git
 bug-reports:  https://github.com/runeksvendsen/bitcoin-payment-channel/issues
@@ -29,7 +29,6 @@ description: ! 'A Bitcoin payment channel allows secure and instant transfer of 
 default-extensions:
 - OverloadedStrings
 - RecordWildCards
-#- DeriveGeneric
 - MultiParamTypeClasses
 - TypeSynonymInstances
 - FlexibleInstances
