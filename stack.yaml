@@ -1,3 +1,6 @@
+compiler: ghc-8.0.1
+compiler-check: match-exact
+
 resolver: lts-7.1
 
 packages:
@@ -10,10 +13,14 @@ packages:
     - haskoin-core
     - haskoin-node
     - haskoin-wallet
+- location:
+    git: https://github.com/runeksvendsen/haskell-rbpcp-api.git
+    commit: f39757a183eac18f0c5dca25ac5032ec05f3feee
+  extra-dep: true
+
 
 # Haskoin dependencies
 extra-deps:
-- haskoin-core-0.4.0
 - murmur3-1.0.3
 - pbkdf-1.1.1.1
 - secp256k1-0.4.6

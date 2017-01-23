@@ -1,6 +1,6 @@
 name:         bitcoin-payment-channel
-version:      '0.8.0.0'
-synopsis:     Library for working with Bitcoin payment channels
+version:      '1.0.0.0'
+synopsis:     Instant, two-party Bitcoin payments
 category:     Bitcoin, Finance, Network
 author:       Rune K. Svendsen <runesvend@gmail.com>
 maintainer:   Rune K. Svendsen <runesvend@gmail.com>
@@ -29,7 +29,7 @@ description: ! 'A Bitcoin payment channel allows secure and instant transfer of 
 default-extensions:
 - OverloadedStrings
 - RecordWildCards
-- DeriveGeneric
+#- DeriveGeneric
 - MultiParamTypeClasses
 - TypeSynonymInstances
 - FlexibleInstances
@@ -41,6 +41,7 @@ default-extensions:
 dependencies:
 - base                >=4.7     && <5
 - haskoin-core        >=0.4.0   && <0.5.0
+- haskell-rbpcp-api
 - base16-bytestring   >=0.1.0   && <0.2.0
 - bytestring          >=0.10.0  && <0.11.0
 - cereal              >=0.5.0   && <0.6.0
@@ -52,22 +53,25 @@ dependencies:
 - scientific          >=0.3.0   && <0.4.0
 - string-conversions  >=0.4     && <0.5
 - tagged              >=0.8     && <1.0
+- semigroups          >=0.17    && <0.19
 - QuickCheck          >=2.8     && <2.10
+- monad-time          ==0.2
+- hspec
 
 library:
   source-dirs: src
-  ghc-options: -W
+  ghc-options: -W -fno-warn-unused-imports
   exposed-modules:
-  - Data.Bitcoin.PaymentChannel
-  - Data.Bitcoin.PaymentChannel.Types
-  - Data.Bitcoin.PaymentChannel.Util
-  - Data.Bitcoin.PaymentChannel.Test
+  - PaymentChannel
+  - PaymentChannel.Types
+  - PaymentChannel.Util
+  - PaymentChannel.Test
 
 tests:
   test-bitcoin-payment-channel:
     main: Main.hs
     source-dirs: test
-    ghc-options: -Wall
+    ghc-options: -Wall -fno-warn-unused-imports
     dependencies:
     - bitcoin-payment-channel
     - base64-bytestring
