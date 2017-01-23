@@ -9,29 +9,36 @@ import qualified Network.Haskoin.Crypto         as HC
 import qualified Data.Aeson                     as JSON
 import qualified Data.Serialize                 as Bin
 import           Data.Typeable
+import           Data.Maybe
+import           Data.Either
 
 import Test.Framework                       (Test, testGroup, defaultMain)
 import Test.Framework.Providers.QuickCheck2 (testProperty)
-import Test.QuickCheck                      (arbitrary)
+import Test.QuickCheck                      -- (arbitrary)
 import Test.QuickCheck.Monadic              (monadic, run , assert)
 import Test.QuickCheck.Property             (Property)
-
 import Control.Monad.Identity (Identity(Identity))
+
+import Debug.Trace
+
 
 newtype TestM a = TestM { runTestId :: Identity a }
     deriving (Functor, Applicative, Monad)
 
 instance MonadTime TestM where
-    currentTime = return futureTimestamp
+    currentTime = return nowishTimestamp
 
 runTestM :: forall c. TestM c -> c
 runTestM = getIt . runTestId
     where getIt (Identity a) = a
 
-testAddrTestnet :: HC.Address
-testAddrTestnet = "2N414xMNQaiaHCT5D7JamPz7hJEc9RG7469"
+-- testAddrTestnet :: HC.Address
+-- testAddrTestnet = "2N414xMNQaiaHCT5D7JamPz7hJEc9RG7469"
 testAddrLivenet :: HC.Address
 testAddrLivenet = "14wjVnwHwMAXDr6h5Fw38shCWUB6RSEa63"
+
+recvSettleAddr :: HC.Address
+recvSettleAddr = testAddrLivenet
 
 main :: IO ()
 main = putStrLn "" >> defaultMain tests
@@ -39,14 +46,20 @@ main = putStrLn "" >> defaultMain tests
 tests :: [Test]
 tests =
     [ testGroup "Payment"
-        [ testProperty "Sender value in settlement tx" $
-            testPaymentSessionM checkSenderValue
-        , testProperty "Receiver value in settlement tx" $
-            testPaymentSessionM checkReceiverValue
-        , testProperty "Sender/receiver state match" $
-            testPaymentSessionM checkSendRecvStateMatch
-        , testProperty "Sent amount == received amount" $
-            testPaymentSessionM checkRecvSendAmount
+        [ testGroup "State"
+            [ testProperty "Sender/receiver match" $
+              testPaymentSessionM checkSendRecvStateMatch
+            , testProperty "Sent amount == received amount" $
+              testPaymentSessionM checkRecvSendAmount
+            ]
+        , testGroup "Settlement tx"
+            [ testProperty "Sender value" $
+                testPaymentSessionM checkSenderValue
+            , testProperty "Receiver value" $
+                testPaymentSessionM checkReceiverValue
+            , testProperty "At least one output" $
+                testPaymentSessionM alwaysOneOutput
+            ]
         ]
 --     , testGroup "Conversion"
 --         [ testProperty "RedeemScript"
@@ -77,50 +90,71 @@ redeemScriptConversion cp =
         Right r -> r == cp || error (show cp ++ "\n\n" ++ show r)
         -- if r /= cp then error (show cp ++ "\n\n" ++ show r) else True
 
+indexOf :: HT.Tx -> HC.Address -> Maybe Int
+indexOf tx addr = listToMaybe $ catMaybes $ zipWith f [0..] (HT.txOut tx)
+    where f idx out =
+            if HT.scriptOutput out == addressToScriptPubKeyBS addr
+                then Just idx
+                else Nothing
+
 mkSettleTx :: Monad m =>
             ChannelPairResult -> m Tx
 mkSettleTx ChannelPairResult{..} = do
     settleTxE <- getSettlementBitcoinTx
-            resRecvChan testAddrLivenet
-            (recvPrvKey resInitPair) (SatoshisPerByte 0)
+            resRecvChan recvSettleAddr
+            (recvPrvKey resInitPair) (SatoshisPerByte 0) KeepDust
     return $ either (error . show) id settleTxE
 
 checkSenderValue :: ChannelPairResult -> TestM Bool
 checkSenderValue cpr@ChannelPairResult{..} = do
     settleTx <- mkSettleTx cpr
-    let clientChangeAmount = HT.outValue . head . HT.txOut $ settleTx
+    let clientChangeOutIndex = indexOf settleTx (fundingAddress resSendChan)
+        clientChangeAmount = maybe 0 (HT.outValue . (HT.txOut settleTx !!)) clientChangeOutIndex
     -- Check that the client change amount in the settlement transaction equals the
     --  channel funding amount minus the sum of all payment amounts.
     let fundingVal = fundingValue $ pcsPayment (getChanState resRecvChan)
-        fundAmountMinusPaySum = fundingVal - fromIntegral (sum resSendAmount)
-    return $ fromIntegral clientChangeAmount == fundAmountMinusPaySum
+        fundValMinusPaym = fundingVal - fromIntegral (sum resSentAmounts)
+    return $ fromIntegral clientChangeAmount == fundValMinusPaym
 
 checkReceiverValue :: ChannelPairResult -> TestM Bool
 checkReceiverValue cpr@ChannelPairResult{..} = do
     settleTx <- mkSettleTx cpr
-    let receiverAmount = HT.outValue (HT.txOut settleTx !! 1)
+    let recvOutIndex = indexOf settleTx recvSettleAddr
+        recvAmount = maybe 0 (HT.outValue . (HT.txOut settleTx !!)) recvOutIndex
     -- Check receiver amount in settlement transaction with zero fee equals sum
     -- of all payments.
-    return $ (fromIntegral receiverAmount :: BtcAmount) == fromIntegral (sum resRecvAmount)
+    return $ (fromIntegral recvAmount :: BtcAmount) == fromIntegral (sum resRecvdAmounts)
+
+alwaysOneOutput :: ChannelPairResult -> TestM Bool
+alwaysOneOutput cpr = not . null . HT.txOut <$> mkSettleTx cpr
 
 checkSendRecvStateMatch :: ChannelPairResult -> TestM Bool
-checkSendRecvStateMatch cpr@ChannelPairResult{..} =
+checkSendRecvStateMatch ChannelPairResult{..} =
     return $ getChanState resSendChan == getChanState resRecvChan
 
 checkRecvSendAmount :: ChannelPairResult -> TestM Bool
-checkRecvSendAmount cpr@ChannelPairResult{..} =
-    return $ sum resSendAmount == sum resRecvAmount
+checkRecvSendAmount ChannelPairResult{..} =
+    return $ if sum resSentAmounts == sum resRecvdAmounts then
+        True else error $ show (resSentAmounts, resRecvdAmounts)
 
 testPaymentSessionM ::
     (ChannelPairResult -> TestM Bool)
     -> ArbChannelPair
+    -> [BtcAmount]
     -> Property
-testPaymentSessionM testFunc arbChanPair = monadic runTestM $ do
---     let paymentAmountList = fromIntegral <$> [2,45,23,1,22,6,4,334,3,4] :: [BtcAmount]
---     hey <- run arbitrary
-    chanPairRes <- run $ runChanPair arbChanPair -- paymentAmountList
-    resBool  <- run $ testFunc chanPairRes
-    assert resBool
+testPaymentSessionM testFunc arbChanPair payLst =
+    monadic runTestM $
+        run (runChanPair arbChanPair payLst) >>= run . testFunc >>= assert
+
+
+-- testPaymentSessionM' ::
+--     (ChannelPairResult -> TestM Property)
+--     -> ArbChannelPair
+--     -> Property
+-- testPaymentSessionM' testFunc arbChanPair =
+--     monadic runTestM $
+--         run (runChanPair arbChanPair) >>= run . testFunc
+
 
 jsonSerDeser :: (Show a, Eq a, JSON.FromJSON a, JSON.ToJSON a) => a -> Bool
 jsonSerDeser fp =

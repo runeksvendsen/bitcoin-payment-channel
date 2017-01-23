@@ -285,8 +285,9 @@ getSettlementBitcoinTx :: Monad m =>
     -> HC.Address                       -- ^ Receiver destination address. Funds sent over the channel will be sent to this address, the rest back to the client change address (an argument to 'channelWithInitialPaymentOf').
     -> HC.PrvKeyC     -- ^ Function which produces a signature which verifies against 'cpReceiverPubKey'
     -> SatoshisPerByte                  -- ^ Bitcoin transaction fee
+    -> DustPolicy
     -> m (Either ReceiverError HT.Tx)   -- ^ Settling Bitcoin transaction
-getSettlementBitcoinTx rpc recvAdr prvKey txFee =
+getSettlementBitcoinTx rpc recvAdr prvKey txFee dp =
     fmap toHaskoinTx <$>
-        getSignedSettlementTx rpc (const $ return prvKey) (mkChangeOut recvAdr txFee DropDust)
+        getSignedSettlementTx rpc (const $ return prvKey) (mkChangeOut recvAdr txFee dp)
 

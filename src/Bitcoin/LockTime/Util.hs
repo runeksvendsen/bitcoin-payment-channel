@@ -23,5 +23,5 @@ class HasLockTimeDate a where
 isLocked :: (MonadTime m, HasLockTimeDate a) => a -> m Bool
 isLocked a = do
     now <- fromIntegral . round . utcTimeToPOSIXSeconds <$> currentTime
-    return $ toWord32 (getLockTimeDate a) + toSeconds configSettlePeriod < now
+    return $ now + toSeconds configSettlePeriod < toWord32 (getLockTimeDate a)
 

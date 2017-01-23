@@ -191,6 +191,9 @@ setSignFlag sh inp = inp { btcSignFlag = sh }
 setLockTime :: LockTimeDate -> BtcTx r a -> BtcTx r a
 setLockTime lt tx = tx { btcLock = Just lt }
 
+setChangeOut :: ChangeOut -> BtcTx r a -> BtcTx r a
+setChangeOut co tx = tx { btcChgOut = Just co }
+
 disableLockTime :: BtcTx r a -> BtcTx r a
 disableLockTime tx = tx { btcLock = Nothing }
 

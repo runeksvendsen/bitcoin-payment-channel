@@ -43,7 +43,8 @@ signSettleTx :: forall t r ss oldSd m.
        -> BtcTx t oldSd
        -> m (Either BtcError (BtcTx t ss))
 signSettleTx signFunc chgOut tx@BtcTx{..} = mkRelativeFeeTxM (btcTxFee chgOut) mkTx
-        where mkTx fee = signReplaceInputs signFunc (setTxRawFee fee tx)
+        where mkTx fee = signReplaceInputs signFunc (txWithChange fee)
+              txWithChange fee = setTxRawFee fee $ setChangeOut chgOut tx
 
 signReplaceInputs :: forall t r ss oldSd m.
           ( Monad m

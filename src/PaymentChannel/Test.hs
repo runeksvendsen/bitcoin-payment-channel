@@ -39,12 +39,12 @@ data ArbChannelPair = ArbChannelPair
     }
 
 data ChannelPairResult = ChannelPairResult
-    { resInitPair   :: ArbChannelPair
-    , resSendChan   :: ClientPayChan
-    , resRecvChan   :: ServerPayChan
-    , resSendAmount :: [BtcAmount]
-    , resRecvAmount :: [BtcAmount]
-    , resPayList    :: [SignedPayment]
+    { resInitPair       :: ArbChannelPair
+    , resSendChan       :: ClientPayChan
+    , resRecvChan       :: ServerPayChan
+    , resSentAmounts    :: [BtcAmount]
+    , resRecvdAmounts   :: [BtcAmount]
+    , resPayList        :: [SignedPayment]
     }
 
 instance Show ArbChannelPair where
@@ -88,12 +88,12 @@ instance Arbitrary (Payment BtcSig) where
     arbitrary = snd <$> mkChanPair
 
 instance MonadTime Gen where
-    currentTime = return futureTimestamp
+    currentTime = return nowishTimestamp
 
 
 toInitResult :: ArbChannelPair -> ChannelPairResult
-toInitResult initPair@(ArbChannelPair spc rpc amt rcv pay _) =
-    ChannelPairResult initPair spc rpc [amt] [rcv] [pay]
+toInitResult initPair@(ArbChannelPair spc rpc payAmt rcvAmt pay _) =
+    ChannelPairResult initPair spc rpc [payAmt] [rcvAmt] [pay]
 
 
 -- |Fold a payment of specified value into a 'ChannelPairResult'
@@ -109,8 +109,8 @@ doPayment (ChannelPairResult initPair spc rpc sendList recvList payLst) amount =
                 (recvAmount : recvList)
                 (pmn : payLst)
 
-runChanPair :: MonadTime m => ArbChannelPair -> m ChannelPairResult
-runChanPair chanPair = let paymentAmountList = fromIntegral <$> [3,4,5,4,3,3] in
+runChanPair :: MonadTime m => ArbChannelPair -> [BtcAmount] -> m ChannelPairResult
+runChanPair chanPair paymentAmountList =
     foldM doPayment (toInitResult chanPair) paymentAmountList
 
 mkChanParams :: Gen (ChanParams, (HC.PrvKeyC, HC.PrvKeyC))
@@ -133,19 +133,18 @@ mkChanPairInitAmount :: BtcAmount -> Gen (ArbChannelPair, SignedPayment)
 mkChanPairInitAmount initPayAmount = do
     (cp, (sendPriv, recvPriv)) <- mkChanParams
     fti <- arbitrary
-    -- create states
     sendChanE <- channelWithInitialPayment sendPriv cp fti (getFundingAddress cp) initPayAmount
-    --TODO: Cap initial payment
     let (sendChan,initPayment) = either (error . show) id sendChanE
     recvChanE <- channelFromInitialPayment cp fti initPayment
     case recvChanE of
         Left e -> error (show e)
         Right (initRecvAmount,recvChan) -> return
              (ArbChannelPair
-                sendChan recvChan initPayAmount initRecvAmount initPayment recvPriv
+                                  --TODO: Cap initial payment amount
+                sendChan recvChan initRecvAmount initRecvAmount initPayment recvPriv
              , initPayment)
 
 
 -- TODO: We don't bother testing expiration time for now
-futureTimestamp :: UTCTime
-futureTimestamp = UTCTime (ModifiedJulianDay 75933) 0     -- 2066-ish
+nowishTimestamp :: UTCTime
+nowishTimestamp = UTCTime (ModifiedJulianDay 50000) 0
