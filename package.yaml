@@ -40,7 +40,7 @@ default-extensions:
 dependencies:
 - base                >=4.7     && <5
 - haskoin-core        >=0.4.0   && <0.5.0
-- haskell-rbpcp-api
+- rbpcp-api
 - base16-bytestring   >=0.1.0   && <0.2.0
 - bytestring          >=0.10.0  && <0.11.0
 - cereal              >=0.5.0   && <0.6.0
@@ -65,6 +65,8 @@ library:
   - PaymentChannel.Types
   - PaymentChannel.Util
   - PaymentChannel.Test
+  - Bitcoin.SpendCond.Cond
+  - Bitcoin.SpendCond.Util
 
 tests:
   test-bitcoin-payment-channel:

@@ -3,6 +3,7 @@ module Main where
 
 import           PaymentChannel.Test
 import           PaymentChannel.Util
+import           Bitcoin.SpendCond.Util
 
 import qualified Network.Haskoin.Transaction    as HT
 import qualified Network.Haskoin.Crypto         as HC
@@ -20,6 +21,7 @@ import Test.QuickCheck.Property             (Property)
 import Control.Monad.Identity (Identity(Identity))
 
 import Debug.Trace
+{-# ANN module ("HLint: ignore Redundant if"::String) #-}
 
 
 newtype TestM a = TestM { runTestId :: Identity a }
@@ -61,26 +63,26 @@ tests =
                 testPaymentSessionM alwaysOneOutput
             ]
         ]
---     , testGroup "Conversion"
---         [ testProperty "RedeemScript"
---             redeemScriptConversion
---         ]
---     , testGroup "Serialization"
---         [ testGroup "JSON"
---             [ testProperty "Payment"
---                 (jsonSerDeser :: Payment BtcSig -> Bool)
---             , testProperty "ServerPayChan"
---                 (jsonSerDeser :: ServerPayChan -> Bool)
---             ]
---         , testGroup "Binary"
---             [ testProperty "Payment"
---                 (binSerDeser  :: Payment BtcSig -> Bool)
---             , testProperty "PayChanState"
---                 (binSerDeser  :: PayChanState BtcSig -> Bool)
---             , testProperty "ChanParams"
---                 (binSerDeser  :: ChanParams -> Bool)
---             ]
---         ]
+    , testGroup "Conversion"
+        [ testProperty "RedeemScript"
+            redeemScriptConversion
+        ]
+    , testGroup "Serialization"
+        [ testGroup "JSON"
+            [ testProperty "Payment"
+                (jsonSerDeser :: Payment BtcSig -> Bool)
+            , testProperty "ServerPayChan"
+                (jsonSerDeser :: ServerPayChan -> Bool)
+            ]
+        , testGroup "Binary"
+            [ testProperty "Payment"
+                (binSerDeser  :: Payment BtcSig -> Bool)
+            , testProperty "PayChanState"
+                (binSerDeser  :: PayChanState BtcSig -> Bool)
+            , testProperty "ChanParams"
+                (binSerDeser  :: ChanParams -> Bool)
+            ]
+        ]
     ]
 
 redeemScriptConversion :: ChanParams -> Bool
@@ -137,6 +139,13 @@ checkRecvSendAmount ChannelPairResult{..} =
     return $ if sum resSentAmounts == sum resRecvdAmounts then
         True else error $ show (resSentAmounts, resRecvdAmounts)
 
+checkSpendCondTx :: ChannelPairResult -> TestM Bool
+checkSpendCondTx cpr@ChannelPairResult{..} = do
+    tx <- mkSettleTx cpr
+    let rdmScr = pairRedeemScript $ pcsPayment $ spcState resSendChan
+    let ins = getPrevIn tx rdmScr :: [InputG (Pay2 (ScriptHash (Witness (Cond ChanParams)))) ()]
+    return $ show ins `trace` True
+
 testPaymentSessionM ::
     (ChannelPairResult -> TestM Bool)
     -> ArbChannelPair
@@ -162,7 +171,8 @@ jsonSerDeser fp =
         where decodedObj = JSON.decode $ JSON.encode fp
               checkEquals serDeserVal =
                 if serDeserVal /= fp then
-                        error ("Ser/deser mismatch.\nOriginal: " ++ show fp ++ "\nCopy: " ++ show decodedObj)
+                        error $ "Ser/deser mismatch.\nOriginal: " ++
+                                show fp ++ "\nCopy: " ++ show decodedObj
                     else
                         True
 
@@ -173,9 +183,11 @@ binSerDeser fp =
               decodeRes = deserEither bs
               checkEquals serDeserRes = case serDeserRes of
                     Left e      -> error $ "Serialize/deserialize error: " ++ show e
-                    Right res   -> if res /= fp then
-                                    error ("Ser/deser mismatch.\nOriginal: " ++ show fp ++ "\nCopy: " ++ show res)
-                                else
-                                    True
+                    Right res   ->
+                            if res /= fp then
+                                error $ "Ser/deser mismatch.\nOriginal: " ++ show fp ++
+                                        "\nCopy: " ++ show res
+                            else
+                                True
 
 

@@ -80,15 +80,20 @@ instance IsWrapper c ScriptHash where unwrap (ScriptHash c) = c
 
 class HasSpendCond c ac | ac -> c where
     getCond :: ac -> c
+    mkCond  :: c  -> ac
 
 instance HasSpendCond c (Pay2 (Cond c)) where
     getCond = unwrap . unwrap
+    mkCond  = Pay2 . Cond
 instance HasSpendCond c (Pay2 (ScriptHash (Cond c))) where
     getCond = unwrap . unwrap . unwrap
+    mkCond  = Pay2 . ScriptHash . Cond
 instance HasSpendCond c (Pay2 (Witness (Cond c))) where
     getCond = unwrap . unwrap . unwrap
+    mkCond  = Pay2 . Witness . Cond
 instance HasSpendCond c (Pay2 (ScriptHash (Witness (Cond c)))) where
     getCond = unwrap . unwrap . unwrap . unwrap
+    mkCond  = Pay2 . ScriptHash . Witness . Cond
 
 inputCondScript :: HasSpendCond r t => InputG t a -> r
 inputCondScript MkInputG{..} = getCond btcInType

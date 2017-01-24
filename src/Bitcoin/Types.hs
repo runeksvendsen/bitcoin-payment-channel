@@ -164,9 +164,13 @@ mkChangeOut chgAdr fee dp = ChangeOut chgAdr fee dp 0
 txAddOuts :: [BtcOut] -> BtcTx r a -> BtcTx r a
 txAddOuts outs tx = tx { btcOuts = btcOuts tx ++ outs }
 
+
 -- Util
 mapSigData :: (a -> b) -> InputG t a -> InputG t b
 mapSigData f bin = bin { btcSigData = f $ btcSigData bin }
+
+mapInputType :: (ta -> tb) -> InputG ta a -> InputG tb a
+mapInputType f bin = bin { btcInType = f $ btcInType bin }
 
 txMapSigData :: (a -> b) -> BtcTx t a -> BtcTx t b
 txMapSigData f tx@BtcTx{..} =
@@ -215,20 +219,6 @@ unsafeCastNE = fromMaybe (error "you promised this was a non-empty list") . NE.n
 
 
 -- Conversion
-
--- | Create inputs from P2SH outputs that pay to the given redeemScript
--- getPrevIn :: SpendCondition r => HT.Tx -> Pay2 (ScriptHash (Cond r)) -> [InputG r ()]
--- getPrevIn tx rdmScr =
---     map mkInput $ catMaybes $
---         zipWith relevantIndexes [0..] (HT.txOut tx)
---   where
---     scrHash = scriptHash160 $ conditionScript rdmScr
---     mkInput (idx,val) = mkNoSigTxIn (mkPrevOut idx) (fromIntegral val) rdmScr
---     mkPrevOut = HT.OutPoint (HT.txHash tx)
---     checkMatch idx (hash,val) = if hash == scrHash then Just (idx,val) else Nothing
---     relevantIndexes idx out =
---         either (const Nothing) (checkMatch idx)
---             (decodeScriptHash (HT.scriptOutput out) >>= \sh -> Right (sh, HT.outValue out))
 
 instance (Bin.Serialize t, Bin.Serialize sd) => Bin.Serialize (BtcTx t sd) where
     put BtcTx{..} =

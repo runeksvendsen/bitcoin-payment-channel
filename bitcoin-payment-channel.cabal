@@ -14,7 +14,8 @@ homepage:       https://github.com/runeksvendsen/bitcoin-payment-channel
 bug-reports:    https://github.com/runeksvendsen/bitcoin-payment-channel/issues
 author:         Rune K. Svendsen <runesvend@gmail.com>
 maintainer:     Rune K. Svendsen <runesvend@gmail.com>
-license:        PublicDomain
+license:        CC0
+license-file:   LICENSE
 build-type:     Simple
 cabal-version:  >= 1.10
 
@@ -30,7 +31,7 @@ library
   build-depends:
       base                >=4.7     && <5
     , haskoin-core        >=0.4.0   && <0.5.0
-    , haskell-rbpcp-api
+    , rbpcp-api
     , base16-bytestring   >=0.1.0   && <0.2.0
     , bytestring          >=0.10.0  && <0.11.0
     , cereal              >=0.5.0   && <0.6.0
@@ -51,6 +52,8 @@ library
       PaymentChannel.Types
       PaymentChannel.Util
       PaymentChannel.Test
+      Bitcoin.SpendCond.Cond
+      Bitcoin.SpendCond.Util
   other-modules:
       Bitcoin.Amount
       Bitcoin.Compare
@@ -64,7 +67,6 @@ library
       Bitcoin.Orphans
       Bitcoin.Signature
       Bitcoin.SinglePair
-      Bitcoin.SpendCond.Cond
       Bitcoin.SpendCond.Spec
       Bitcoin.Tx
       Bitcoin.Types
@@ -112,7 +114,7 @@ test-suite test-bitcoin-payment-channel
   build-depends:
       base                >=4.7     && <5
     , haskoin-core        >=0.4.0   && <0.5.0
-    , haskell-rbpcp-api
+    , rbpcp-api
     , base16-bytestring   >=0.1.0   && <0.2.0
     , bytestring          >=0.10.0  && <0.11.0
     , cereal              >=0.5.0   && <0.6.0

@@ -61,6 +61,7 @@ module PaymentChannel.Types
   , SendPubKey(..),RecvPubKey(..),IsPubKey(..),HasSendPubKey(..),HasRecvPubKey(..)
 
     -- *Util
+  , module Bitcoin.SpendCond.Util
   , fromDate
   , getChanState
 --  , usesBlockHeight, dummyPayment
@@ -76,6 +77,7 @@ import PaymentChannel.Internal.Receiver.Types
 import PaymentChannel.Internal.Metadata.Util
 import PaymentChannel.Internal.Serialization ()
 import PaymentChannel.Internal.Class.Value     (HasValue(..))
+import Bitcoin.SpendCond.Util
 
 import qualified PaymentChannel.Internal.Receiver.Util as S
 import qualified PaymentChannel.Internal.ChanScript as Script
