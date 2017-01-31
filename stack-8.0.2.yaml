@@ -10,10 +10,13 @@ packages:
     - haskoin-core
     - haskoin-node
     - haskoin-wallet
+- location:
+    git: https://github.com/runeksvendsen/rbpcp-api.git
+    commit: 2b05a6aff8d5565b9fec8a307d2c0f75b90653ea
+  extra-dep: true
 
 # Haskoin dependencies
 extra-deps:
-- haskoin-core-0.4.0
 - murmur3-1.0.3
 - pbkdf-1.1.1.1
 - secp256k1-0.4.6

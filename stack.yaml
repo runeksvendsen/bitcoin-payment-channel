@@ -14,7 +14,7 @@ packages:
     - haskoin-node
     - haskoin-wallet
 - location:
-    git: https://github.com/runeksvendsen/haskell-rbpcp-api.git
+    git: https://github.com/runeksvendsen/rbpcp-api.git
     commit: 2b05a6aff8d5565b9fec8a307d2c0f75b90653ea
   extra-dep: true
 
