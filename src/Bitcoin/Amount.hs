@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveGeneric, GeneralizedNewtypeDeriving #-}
 module Bitcoin.Amount
 (
   BtcAmount
@@ -17,7 +18,7 @@ import           Data.Ratio
 --  another BtcAmount, subtracts from its value. Adding two large amounts together will
 --  never overflow, nor will subtraction underflow.
 newtype BtcAmount = MkBitcoinAmount Word64
-    deriving (Eq, Ord)
+    deriving (Eq, Ord, Generic, NFData)
 instance Show BtcAmount where
     show amount = show (toInteger amount) ++ " satoshi"
 

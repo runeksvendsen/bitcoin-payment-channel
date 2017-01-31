@@ -18,7 +18,7 @@ data MetadataI kd = Metadata
     , mdSettledValue    :: [SettleInfo]
     , mdUnsettledValue  :: BtcAmount
     , mdChannelStatus   :: PayChanStatus
-    } deriving (Eq, Typeable, Show, Generic)
+    } deriving (Eq, Typeable, Show, Generic, NFData)
 
 type MetadataIdx = MetadataI KeyDeriveIndex
 
@@ -27,7 +27,7 @@ data PayChanStatus =
   | PaymentInProgress
   | SettlementInProgress
   | ChanClosed
-    deriving (Eq, Typeable, Show, Read, Generic, Serialize)
+    deriving (Eq, Typeable, Show, Read, Generic, Serialize, NFData)
 
 instance Serialize a => Serialize (MetadataI a) where
     put Metadata{..} =

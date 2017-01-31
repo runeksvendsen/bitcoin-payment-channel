@@ -46,19 +46,19 @@ class SignatureScript c f where
 
 -- | Pay to something
 data Pay2 a = Pay2 a
-    deriving (Eq, Show, Typeable, Generic, JSON.ToJSON, JSON.FromJSON, Bin.Serialize)
+    deriving (Eq, Show, Typeable, Generic, JSON.ToJSON, JSON.FromJSON, Bin.Serialize, NFData)
 
 -- | Turns something into its SegWit counterpart
 data Witness a = Witness a
-    deriving (Eq, Show, Typeable, Generic, JSON.ToJSON, JSON.FromJSON, Bin.Serialize)
+    deriving (Eq, Show, Typeable, Generic, JSON.ToJSON, JSON.FromJSON, Bin.Serialize, NFData)
 
 -- | Hash a 'SpendCondition'
 data ScriptHash a = ScriptHash a
-    deriving (Eq, Show, Typeable, Generic, JSON.ToJSON, JSON.FromJSON, Bin.Serialize)
+    deriving (Eq, Show, Typeable, Generic, JSON.ToJSON, JSON.FromJSON, Bin.Serialize, NFData)
 
 -- | Wraps a 'SpendCondition'
 data Cond a = Cond a
-    deriving (Eq, Show, Typeable, Generic, JSON.ToJSON, JSON.FromJSON, Bin.Serialize)
+    deriving (Eq, Show, Typeable, Generic, JSON.ToJSON, JSON.FromJSON, Bin.Serialize, NFData)
 
 -- | Pay to script hash (P2SH)
 type P2SH c    = Pay2 (ScriptHash (Cond c))
@@ -162,9 +162,9 @@ p2shScriptPubKey s = TxOutputScript
 -- ## P2PKH
 -- ##########
 data PubkeyHash = PubkeyHash PubKey
-    deriving (Eq, Show, Typeable, Generic, JSON.ToJSON, JSON.FromJSON, Bin.Serialize)
+    deriving (Eq, Show, Typeable, Generic, JSON.ToJSON, JSON.FromJSON, Bin.Serialize, NFData)
 data SpendPKH   = SpendPKH   BtcSig
-    deriving (Eq, Show, Typeable, Generic, JSON.ToJSON, JSON.FromJSON, Bin.Serialize)
+    deriving (Eq, Show, Typeable, Generic, JSON.ToJSON, JSON.FromJSON, Bin.Serialize, NFData)
 
 instance SpendCondition PubkeyHash where
     conditionScript (PubkeyHash pk) = Script

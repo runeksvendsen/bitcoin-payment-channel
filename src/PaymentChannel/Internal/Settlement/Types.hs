@@ -46,7 +46,7 @@ instance SpendFulfillment RefundScriptSig ChanParams where
 data SettleInfo = SettleInfo
     { siValue       :: BtcAmount
     , siPayCount    :: Word64
-    } deriving (Eq, Show, Generic, Serialize, FromJSON, ToJSON)
+    } deriving (Eq, Show, Generic, Serialize, FromJSON, ToJSON, NFData)
 
 
 

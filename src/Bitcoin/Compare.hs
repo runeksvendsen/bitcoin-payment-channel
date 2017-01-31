@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveGeneric, DeriveAnyClass #-}
 module Bitcoin.Compare where
 
 import Bitcoin.SpendCond.Cond
@@ -17,24 +17,24 @@ data ValDiff =
     Increase BtcAmount
   | Decrease BtcAmount
   | NoChange
-        deriving (Eq, Show, Generic)
+        deriving (Eq, Show, Generic, NFData)
 
 data TxMismatch r =
     TxVersionMismatch Word32 Word32
   | TxLocktimeMismatch (Maybe LockTimeDate) (Maybe LockTimeDate)
   | TxInMismatch (InMismatch r)
   | TxOutMisMatch OutMismatch
-        deriving (Eq, Show, Generic)
+        deriving (Eq, Show, Generic, NFData)
 
 data InMismatch r =
     InPrevOutMismatch HT.OutPoint HT.OutPoint
   | InRdmScrMismatch r r
   | InSequenceMismatch Word32 Word32
-        deriving (Eq, Show, Generic)
+        deriving (Eq, Show, Generic, NFData)
 
 data OutMismatch =
     OutAddressMismatch HC.Address HC.Address
-        deriving (Eq, Show, Generic)
+        deriving (Eq, Show, Generic, NFData)
 
 
 -- | Compare two transactions, ignoring output amounts and signature data, and return either

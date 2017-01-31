@@ -1,4 +1,4 @@
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving, DeriveGeneric #-}
 module PaymentChannel.Internal.Crypto.PubKey
 (   IsPubKey(..)
 ,   SendPubKey(..)
@@ -24,14 +24,14 @@ instance IsPubKey HC.PubKeyC where
 -- |Wrapper for value sender's public key
 newtype SendPubKey = MkSendPubKey {
     getSenderPK    :: HC.PubKeyC
-} deriving (Eq, Show, Serialize, FromJSON, ToJSON)
+} deriving (Eq, Show, Serialize, Generic, FromJSON, ToJSON, NFData)
 instance IsPubKey SendPubKey where
     getPubKey = getSenderPK
 
 -- |Wrapper for value receiver's public key
 newtype RecvPubKey = MkRecvPubKey {
     getReceiverPK  :: HC.PubKeyC
-} deriving (Eq, Show, Serialize, FromJSON, ToJSON)
+} deriving (Eq, Show, Serialize, Generic, FromJSON, ToJSON, NFData)
 instance IsPubKey RecvPubKey where
     getPubKey = getReceiverPK
 
@@ -47,7 +47,7 @@ class HasRecvPubKey a where
 
 -- |Key index for a BIP32 root key
 newtype KeyDeriveIndex = KeyDeriveIndex Word32
-    deriving (Eq, Show, Serialize, Ord, Num, Enum, Real, Integral, FromJSON, ToJSON)
+    deriving (Eq, Show, Serialize, Ord, Num, Enum, Real, Integral, FromJSON, ToJSON, NFData)
 
 class HasKeyIndex a where
     getKeyIndex :: a -> KeyDeriveIndex

@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveGeneric, DeriveAnyClass #-}
 module Bitcoin.LockTime.Types
 (
   BtcLockTime(..)
@@ -12,7 +13,6 @@ import Data.Word (Word32)
 import Data.Time.Clock
 import Data.Time.Clock.POSIX
 import Data.Time.Format ()    -- instance Show UTCTime
-import Control.Monad.Time
 
 
 -- |Data type representing a Bitcoin LockTime, which specifies a point in time.
@@ -22,11 +22,11 @@ class BtcLockTime a where
 
 -- |Specifies a point in time using a timestamp with 1-second accuracy (till 2106-02-07)
 data LockTimeDate = LockTimeDate Word32
-    deriving (Eq, Ord, Typeable)
+    deriving (Eq, Ord, Typeable, Generic, NFData)
 
 -- | A value of "n" represents the point in time at which Bitcoin block number "n" appears
 data LockTimeBlockHeight = LockTimeBlockHeight Word32
-    deriving (Eq, Ord, Typeable)
+    deriving (Eq, Ord, Typeable, Generic, NFData)
 
 instance BtcLockTime LockTimeBlockHeight where
     toWord32 (LockTimeBlockHeight w) = w

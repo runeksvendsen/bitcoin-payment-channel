@@ -3,7 +3,7 @@ module Bitcoin.Fee where
 
 -- import Bitcoin.Types
 import Bitcoin.Amount
-import Bitcoin.Util (calcTxSize)
+import Bitcoin.Util
 import qualified Network.Haskoin.Transaction as HT
 import qualified Data.Serialize     as Bin
 import qualified Data.Aeson.Types   as JSON
@@ -24,7 +24,7 @@ instance HasFee Constant where
 type TxByteSize = Word
 -- |Specify a fee as satoshis per byte
 newtype SatoshisPerByte = SatoshisPerByte BtcAmount -- ^Fee in satoshis per byte
-    deriving (Eq, Show, Ord, Num, Enum, Real, Integral, Bin.Serialize, JSON.ToJSON, JSON.FromJSON)
+    deriving (Eq, Show, Ord, Num, Enum, Real, Integral, Bin.Serialize, JSON.ToJSON, JSON.FromJSON, NFData)
 instance HasFee SatoshisPerByte where
     absoluteFee txByteSize (SatoshisPerByte satoshisPerByte) =
         fromIntegral txByteSize * satoshisPerByte

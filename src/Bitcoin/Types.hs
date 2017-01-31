@@ -8,7 +8,7 @@ module Bitcoin.Types
 
 where
 
-import Bitcoin.Orphans  as X
+import Bitcoin.Orphans  as X ()
 import Bitcoin.Dust     as X
 import Bitcoin.Amount   as X
 import Bitcoin.Fee      as X
@@ -18,14 +18,13 @@ import PaymentChannel.Internal.Crypto.PubKey    as X
 import Bitcoin.LockTime.Types    as X
 
 import qualified Data.List.NonEmpty     as NE
-import qualified Data.ByteString        as B
 import qualified Data.Serialize         as Bin
 import qualified Data.Aeson.Types       as JSON
-import           Data.Word              (Word32)
-
 import qualified Network.Haskoin.Transaction as HT
 import qualified Network.Haskoin.Script as HS
 import qualified Network.Haskoin.Crypto as HC
+import           Data.Word              (Word32)
+import           Control.DeepSeq        (NFData)
 
 
 data BtcTx inType sigData = BtcTx
@@ -34,7 +33,7 @@ data BtcTx inType sigData = BtcTx
     , btcOuts   :: [BtcOut]
     , btcChgOut :: Maybe ChangeOut
     , btcLock   :: Maybe LockTimeDate
-    } deriving (Eq, Show, Typeable, Generic, JSON.ToJSON, JSON.FromJSON)
+    } deriving (Eq, Show, Typeable, Generic, JSON.ToJSON, JSON.FromJSON, NFData)
 
 
 -- | Generic input
@@ -47,19 +46,19 @@ data InputG inType sigData =
     , btcSequence   :: Word32           -- ^ Input sequence (non-default only needed to enable locktime features)
     , btcSignFlag   :: HS.SigHash       -- ^ SigHash flag used to sign this input (default: SIGHASH_ALL)
     , btcKeyIndex   :: KeyDeriveIndex   -- ^ BIP32 key index for key used to sign this input (optional)
-    } deriving (Eq, Show, Typeable, Generic, Bin.Serialize, JSON.ToJSON, JSON.FromJSON)
+    } deriving (Eq, Show, Typeable, Generic, Bin.Serialize, JSON.ToJSON, JSON.FromJSON, NFData)
 
 -- | Generic output
 data OutputG outType =
     MkOutputG
     { btcOutAmount  :: BtcAmount
     , btcOutType    :: outType
-    } deriving (Eq, Show, Typeable, Generic, Bin.Serialize, JSON.ToJSON, JSON.FromJSON)
+    } deriving (Eq, Show, Typeable, Generic, Bin.Serialize, JSON.ToJSON, JSON.FromJSON, NFData)
 
 data BtcOut = BtcOut
     { btcAddress    :: HC.Address
     , btcAmount     :: NonDusty BtcAmount
-    } deriving (Eq, Show, Typeable, Generic, Bin.Serialize, JSON.ToJSON, JSON.FromJSON)
+    } deriving (Eq, Show, Typeable, Generic, Bin.Serialize, JSON.ToJSON, JSON.FromJSON, NFData)
 
 -- | An input/output pair signed with the SigHash flag SIG_SINGLE|ANYONECANPAY,
 --    meaning that only a single input/output pair is signed (SIG_SINGLE) --
@@ -71,7 +70,7 @@ data BtcOut = BtcOut
 data SigSinglePair t sd = SigSinglePair
     { singleInput   :: InputG t sd
     , singleOutput  :: BtcOut
-    } deriving (Eq, Show, Typeable, Generic, Bin.Serialize, JSON.ToJSON, JSON.FromJSON)
+    } deriving (Eq, Show, Typeable, Generic, Bin.Serialize, JSON.ToJSON, JSON.FromJSON, NFData)
 
 instance Eq t => Ord (SigSinglePair t BtcSig) where
     compare a b = compare (sigFlag a) (sigFlag b)
@@ -83,10 +82,10 @@ data ChangeOut = ChangeOut
     , btcDustPolicy :: DustPolicy
       -- | For internal use.
     , btcAbsFee_    :: BtcAmount
-    } deriving (Eq, Show, Typeable, Generic, Bin.Serialize, JSON.ToJSON, JSON.FromJSON)
+    } deriving (Eq, Show, Typeable, Generic, Bin.Serialize, JSON.ToJSON, JSON.FromJSON, NFData)
 
 data DustPolicy = KeepDust | DropDust
-    deriving (Eq, Show, Typeable, Generic, Bin.Serialize, JSON.ToJSON, JSON.FromJSON)
+    deriving (Eq, Show, Typeable, Generic, Bin.Serialize, JSON.ToJSON, JSON.FromJSON, NFData)
 
 type UnsignedBtcTx t = BtcTx t ()
 type UnsignedBtcIn t = InputG t ()
@@ -95,7 +94,7 @@ type UnsignedBtcIn t = InputG t ()
 data BtcSig = MkBtcSig
     { bsSig     ::  HC.Signature
     , bsSigFlag ::  HS.SigHash
-    } deriving (Eq, Show, Typeable, Generic, Bin.Serialize)
+    } deriving (Eq, Show, Typeable, Generic, Bin.Serialize, NFData)
 
 instance ToJSON BtcSig where
     toJSON = object . paySigKV
@@ -138,7 +137,7 @@ instance IsTxLike BtcTx r ss where
 
 data VerifyError =
     SigVerifyFail [(Word32,HC.PubKeyC,HC.Hash256,HC.Signature)]
-        deriving (Eq, Show, Typeable, Generic) -- , Bin.Serialize, JSON.ToJSON, JSON.FromJSON)
+        deriving (Eq, Show, Typeable, Generic) -- , Bin.Serialize, JSON.ToJSON, JSON.FromJSON, NFData)
 
 -- Defaults
 defaultTxVersion :: Word32

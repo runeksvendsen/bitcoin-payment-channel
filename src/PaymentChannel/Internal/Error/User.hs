@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveGeneric, DeriveAnyClass #-}
 
 module PaymentChannel.Internal.Error.User where
 
@@ -16,7 +16,7 @@ data PayChanError =
   |  ClosingPaymentBadValue         -- ^ The closing payment only changes the payment transaction change address. Sending value is not allowed.
   |  ChannelExpired                 -- ^ Channel has expired or is too close to expiration date
   |  StatusError HTTPError          -- ^ Channel not ready for payment. 409=try again; 400=don't do that; 410=channel gone.
-        deriving (Eq, Generic)
+        deriving (Eq, Generic, NFData)
 
 instance Show PayChanError where
     show SigVerifyFailed = "Signature verification failed"

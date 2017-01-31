@@ -1,4 +1,4 @@
-{-# LANGUAGE TypeSynonymInstances, FlexibleInstances #-}
+{-# LANGUAGE TypeSynonymInstances, FlexibleInstances, DeriveGeneric, DeriveAnyClass #-}
 module PaymentChannel.Test
 (
     module PaymentChannel.Test
@@ -36,7 +36,7 @@ data ArbChannelPair = ArbChannelPair
     , initRecvAmount    :: BtcAmount
     , initPayment       :: SignedPayment
     , recvPrvKey        :: HC.PrvKeyC
-    }
+    } deriving (Generic, NFData)
 
 data ChannelPairResult = ChannelPairResult
     { resInitPair       :: ArbChannelPair
@@ -45,7 +45,7 @@ data ChannelPairResult = ChannelPairResult
     , resSentAmounts    :: [BtcAmount]
     , resRecvdAmounts   :: [BtcAmount]
     , resPayList        :: [SignedPayment]
-    }
+    } deriving (Generic, NFData)
 
 instance Show ArbChannelPair where
     show (ArbChannelPair spc rpc _ _ _ _) =

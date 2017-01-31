@@ -25,7 +25,7 @@ data ServerPayChanI kd = MkServerPayChan {
     -- |Internal state object
     rpcState    :: PayChanState BtcSig
   , rpcMetadata :: MetadataI kd
-} deriving (Eq, Show, Typeable, Generic, Serialize)
+} deriving (Eq, Show, Typeable, Generic, Serialize, NFData)
 
 instance HasSendPubKey (ServerPayChanI a) where getSendPubKey = getSendPubKey . rpcState
 instance HasRecvPubKey (ServerPayChanI a) where getRecvPubKey = getRecvPubKey . rpcState

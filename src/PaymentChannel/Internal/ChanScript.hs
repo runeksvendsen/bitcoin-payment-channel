@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveGeneric, DeriveAnyClass #-}
 module PaymentChannel.Internal.ChanScript
 (
   module PaymentChannel.Internal.ChanScript
@@ -23,7 +23,7 @@ data ChanParams = MkChanParams {
     cpReceiverPubKey    ::  RecvPubKey,
     -- |Channel expiration date/time
     cpLockTime          ::  LockTimeDate
-} deriving (Eq, Show, Typeable, Generic)
+} deriving (Eq, Show, Typeable, Generic, NFData)
 
 instance HasSendPubKey ChanParams where
     getSendPubKey = cpSenderPubKey

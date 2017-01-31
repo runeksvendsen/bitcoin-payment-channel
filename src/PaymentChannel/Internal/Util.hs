@@ -12,6 +12,7 @@ module PaymentChannel.Internal.Util
 ,   module Data.Either
 ,   B.ByteString
 ,   Generic
+,   NFData
 ,   Typeable
 ,   Int64
 ,   module Tagged
@@ -24,7 +25,7 @@ where
 
 import PaymentChannel.Internal.Serialization.JSON as JSONUtil
 
-
+import Control.DeepSeq        (NFData)
 import Data.Serialize       as Bin
 import Data.Serialize.Get   as BinGet
 import Data.Serialize.Put   as BinPut

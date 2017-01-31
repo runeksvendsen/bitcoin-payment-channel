@@ -62,7 +62,7 @@ data PayChanState sigData = MkPayChanState
     --    to guess valid resource identifiers, from looking at
     --    in-blockchain data.
     , pcsToken      :: HC.Hash256
-    } deriving (Eq, Show, Typeable, Generic, Serialize, ToJSON, FromJSON)
+    } deriving (Eq, Show, Typeable, Generic, Serialize, ToJSON, FromJSON, NFData)
 
 instance HasSendPubKey (PayChanState a) where getSendPubKey = getSendPubKey . pcsPayment
 instance HasRecvPubKey (PayChanState a) where getRecvPubKey = getRecvPubKey . pcsPayment
@@ -76,7 +76,7 @@ data ClientPayChanI sigData = MkClientPayChan
       spcState    :: PayChanState sigData
     , -- |Payment-signing function
       spcPrvKey   :: HC.PrvKeyC
-    } -- deriving (Eq, Show, Typeable, Generic, Serialize, ToJSON, FromJSON)
+    } deriving (Eq, Typeable, Generic, NFData)
 
 instance HasSendPubKey (ClientPayChanI a) where getSendPubKey = getSendPubKey . spcState
 instance HasRecvPubKey (ClientPayChanI a) where getRecvPubKey = getRecvPubKey . spcState

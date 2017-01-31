@@ -1,4 +1,4 @@
-{-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE DeriveAnyClass, DeriveGeneric #-}
 module Bitcoin.Dust
 (
   NonDusty
@@ -17,7 +17,7 @@ import Bitcoin.Error
 
 -- |Connot represent an amount/output/transaction that contains "dust"
 data NonDusty a = NonDusty a
-    deriving (Eq, Show, Typeable)
+    deriving (Eq, Show, Typeable, Generic, NFData)
 
 class PossiblyDusty a where
     mkNonDusty :: a -> Either BtcError (NonDusty a)
