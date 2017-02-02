@@ -17,20 +17,9 @@ module PaymentChannel.Types
   , ChanParams(..)
   , PaymentChannel(..), PayChan
   , PaymentChannelRecv(..)
---   , getChannelFunding
---   , getExpirationDate
---   , getFundingAmount
---   , getPaymentCount
   , fundingAddress
   , clientChangeAddress
   , availableChannelVal
---   , getNewestPayment
---   , getNewestSig
---   , senderChangeValue
---   , channelValueLeft
---   , chanIsExhausted
---   , expiresBefore
---   , getChannelState
 
     -- *Sender state
   , ClientPayChanI(..)
@@ -44,11 +33,12 @@ module PaymentChannel.Types
     -- *Receiver state (with pubkey metadata)
   , ServerPayChanX
   , S.mkExtendedKeyRPC, S.metaKeyIndex
+  , KeyDeriveIndex
+  , mkKeyIndex, word32Index
 
     -- *Payment
   , SignedPayment
---   , paySignature,payClientChange
---   , FullPayment(..)
+
     -- **Error
   , PayChanError(..)
 
