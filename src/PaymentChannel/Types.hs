@@ -46,7 +46,7 @@ module PaymentChannel.Types
   , S.mkExtendedKeyRPC, S.metaKeyIndex
 
     -- *Payment
-  , Payment
+  , SignedPayment
 --   , paySignature,payClientChange
 --   , FullPayment(..)
     -- **Error
