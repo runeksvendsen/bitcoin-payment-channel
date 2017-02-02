@@ -64,6 +64,7 @@ module PaymentChannel.Types
   , module Bitcoin.SpendCond.Util
   , fromDate
   , getChanState
+  , clientChangeVal
 --  , usesBlockHeight, dummyPayment
 
     -- *Config settings
@@ -85,8 +86,6 @@ import PaymentChannel.Internal.Error (PayChanError(..))
 import Bitcoin.Fee
 
 import qualified  Network.Haskoin.Crypto as HC
-import qualified  Network.Haskoin.Transaction as HT
-import            Data.Word (Word64)
 
 
 -- |Both sender and receiver state objects have a 'PaymentChannelState'
