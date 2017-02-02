@@ -37,7 +37,7 @@ module PaymentChannel.Types
 
     -- *Receiver state
   , ServerPayChan, ServerPayChanI(rpcMetadata)
-  , PayChanStatus(..)
+  , PayChanStatus(..), MetadataI(..)
   , S.getChannelStatus, S.setChannelStatus
   , S.markAsBusy, S.isReadyForPayment
 
