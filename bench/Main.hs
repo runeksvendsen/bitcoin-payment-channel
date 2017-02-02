@@ -5,7 +5,6 @@ import qualified PaymentChannel.Test as Pay
 import Criterion.Main
 import Test.QuickCheck  (sample')
 
-import qualified Data.ByteString as B
 #if !MIN_VERSION_bytestring(0,10,0)
 instance NFData B.ByteString
 #endif
@@ -21,6 +20,6 @@ main = do
   defaultMain
     [ bench "Create payment" $ nfIO ( either (error . show) id <$> mkPayment 2 )
     , bench "Verify payment" $ nfIO
-        ( either (error . show) id <$> Pay.acceptPayment (Pay.recvChan arbPair) payment )
+        ( either (error . show) id <$> Pay.acceptPayment (Pay.recvChan arbPair) (Pay.toPaymentData payment) )
     , bench (show payCount ++ " rounds of create+verify payment") $ nfIO multiMkVerify
     ]
