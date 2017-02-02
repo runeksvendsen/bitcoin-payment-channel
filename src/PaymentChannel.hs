@@ -117,12 +117,15 @@ module PaymentChannel
     getRefundBitcoinTx,
 
     -- *Types
-    module PaymentChannel.Types
+    module PaymentChannel.Types,
+
+    -- *RESTful Bitcoin Payment Channel Protocol
+    module PaymentChannel.RBPCP.Parse
 )
 where
 
 import PaymentChannel.Internal.Payment
-
+import PaymentChannel.RBPCP.Parse
 import PaymentChannel.Internal.Receiver.Util
 
 import PaymentChannel.Internal.Util
@@ -229,13 +232,14 @@ channelFromInitialPayment :: MonadTime m =>
     -> m (Either PayChanError (BtcAmount, ServerPayChan)) -- ^Error or: value_received plus state object
 channelFromInitialPayment cp fundInf payment =
     let
+        unsignedPayment = mkUnsignedPayment cp fundInf (getP2SHFundingAddress cp)
+        signedPayment   = spMapSigData (const $ getSigData payment) unsignedPayment
         metadata = Metadata () 0 [] (valueOf payment) ReadyForPayment
+        -- Helpers
         mkPayChanState sp = MkPayChanState sp (sigDataHash payment)
         mkServChan sp = MkServerPayChan (mkPayChanState sp) metadata
-        zeroValPayment = mkUnsignedPayment cp fundInf (getP2SHFundingAddress cp)
-        zeroPaymFakeSig = spMapSigData (const $ getSigData payment) zeroValPayment
     in
-        acceptPayment (mkServChan zeroPaymFakeSig) payment
+        acceptPayment (mkServChan signedPayment) (toPaymentData payment)
 
 
 -- |Register, on the receiving side, a payment made by 'createPayment' on the sending side.
@@ -243,14 +247,18 @@ channelFromInitialPayment cp fundInf payment =
 -- the amount received with this 'Payment' and a new state object.
 acceptPayment :: MonadTime m =>
        ServerPayChanI a    -- ^Receiver state object
-    -> SignedPayment             -- ^Payment to verify and register
+    -> PaymentData         -- ^Payment to verify and register
     -> m (Either PayChanError (BtcAmount, ServerPayChanI a)) -- ^Value received plus new receiver state object
-acceptPayment rpc@MkServerPayChan{..} payment = do
-    let newState = rpc { rpcState = updateWith payment }
-        updateWith p = rpcState { pcsPayment = p }
-        mkReturnVal v = Right (v, updateMetadata newState )
-    valRecvdE <- paymentValueIncrease (pcsPayment rpcState) payment
-    return (S.checkChannelStatus rpc >> valRecvdE >>= mkReturnVal)
+acceptPayment rpc@MkServerPayChan{..} paymentData =
+    either (return . Left) checkPayment (getPayment paymentData)
+  where
+    mkReturnVal p val = (val, updateMetadata $ updState rpc p)
+    checkPayment p = do
+            valRecvdE <- paymentValueIncrease (pcsPayment rpcState) p
+            return $ mkReturnVal p <$> valRecvdE
+    getPayment pd = S.checkChannelStatus rpc
+            >> fmapL RBPCPError (fromPaymentData (getFundingAmount rpc) pd)
+
 
 
 -- |Same as 'acceptPayment' but accept only a payment of zero value

@@ -68,6 +68,7 @@ library:
   - PaymentChannel.Types
   - PaymentChannel.Util
   - PaymentChannel.Test
+  - PaymentChannel.RBPCP.Parse
   - Bitcoin.SpendCond.Cond
   - Bitcoin.SpendCond.Util
 

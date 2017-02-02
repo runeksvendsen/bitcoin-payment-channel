@@ -104,7 +104,7 @@ toInitResult initPair@(ArbChannelPair spc rpc payAmt rcvAmt pay _) =
 doPayment :: MonadTime m => ChannelPairResult -> BtcAmount -> m ChannelPairResult
 doPayment (ChannelPairResult initPair spc rpc sendList recvList payLst) amount = do
     (newSpc, pmn, amountSent) <- cappedCreatePayment spc amount
-    eitherRpc <- acceptPayment rpc pmn
+    eitherRpc <- acceptPayment rpc (toPaymentData pmn)
     case eitherRpc of
         Left e -> error (show e)
         Right (recvAmount, newRpc) -> return $

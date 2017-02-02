@@ -17,7 +17,11 @@ import qualified Network.Haskoin.Crypto as HC
 
 
 
--- KeyDeriveIndex
+updState :: ServerPayChanI a -> SignedPayment -> ServerPayChanI a
+updState rpc p =
+    rpc { rpcState = replacePayment (rpcState rpc) p }
+  where
+    replacePayment state p = state { pcsPayment = p }
 
 -- |Create a 'ServerPayChanX', which has an associated BIP32 key index, from a
 --  'ServerPayChan'

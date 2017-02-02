@@ -4,23 +4,10 @@ module PaymentChannel.Internal.Payment.Verify
 )
 where
 
-
 import PaymentChannel.Internal.Payment.Types as Export
 import PaymentChannel.Internal.Error.User
-
--- import RBPCP.Types
-import PaymentChannel.Internal.RBPCP.Parse
-import PaymentChannel.Internal.Types
-import PaymentChannel.Internal.ChanScript
-import Bitcoin.Util
-import Bitcoin.SinglePair
 import Bitcoin.Compare
-import PaymentChannel.Internal.Util
-
-import qualified Network.Haskoin.Transaction as HT
-import qualified Network.Haskoin.Crypto as HC
-import qualified Network.Haskoin.Script as HS
-import qualified Data.List.NonEmpty     as NE
+import Debug.Trace
 
 
 paymentValueIncrease :: MonadTime m =>
@@ -60,5 +47,6 @@ comparePayments sp1 sp2 =
     (tx1,tx2) = (toBtcTx sp1, toBtcTx sp2)
     eqIgnoreVal di =
         if not $ eqIgnoreOutVal (IgnoreSigData tx1) (IgnoreSigData tx2)
-            then Left BadSigHashFlag  -- Means sig hash flags differ
+            -- Means sig hash flags differ
+            then Left $ show (tx1,tx2) `trace` BadSigHashFlag (bsSigFlag $ getSigData sp2) (bsSigFlag $ getSigData sp1)
             else Right di

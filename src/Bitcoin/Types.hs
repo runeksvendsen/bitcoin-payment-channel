@@ -46,7 +46,7 @@ data InputG inType sigData =
     , btcSequence   :: Word32           -- ^ Input sequence (non-default only needed to enable locktime features)
     , btcSignFlag   :: HS.SigHash       -- ^ SigHash flag used to sign this input (default: SIGHASH_ALL)
     , btcKeyIndex   :: KeyDeriveIndex   -- ^ BIP32 key index for key used to sign this input (optional)
-    } deriving (Eq, Show, Typeable, Generic, Bin.Serialize, JSON.ToJSON, JSON.FromJSON, NFData)
+    } deriving (Show, Typeable, Generic, Bin.Serialize, JSON.ToJSON, JSON.FromJSON, NFData)
 
 -- | Generic output
 data OutputG outType =
@@ -109,7 +109,10 @@ instance FromJSON BtcSig where
 
 
 
-
+-- Ignore signFlag and keyIndex (metadata)
+instance (Eq typ, Eq sd) => Eq (InputG typ sd) where
+    (MkInputG po1 inv1 sd1 typ1 seq1 _ _) == (MkInputG po2 inv2 sd2 typ2 seq2 _ _) =
+        po1 == po2 && inv1 == inv2 && sd1 == sd2 && typ1 == typ2 && seq1 == seq2
 
 instance Eq (IgnoreSigData BtcSig) where
     IgnoreSigData (MkBtcSig _ flag1) == IgnoreSigData (MkBtcSig _ flag2) =

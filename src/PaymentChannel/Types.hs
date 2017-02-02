@@ -20,6 +20,7 @@ module PaymentChannel.Types
   , fundingAddress
   , clientChangeAddress
   , availableChannelVal
+  , getFundingAmount
 
     -- *Sender state
   , ClientPayChanI(..)
@@ -87,9 +88,9 @@ class HasPayChanState a where
 --
 -- getExpirationDate :: HasPayChanState a => a -> BtcLockTime
 -- getExpirationDate = S.pcsExpirationDate . getPayChanState
---
--- getFundingAmount  :: HasPayChanState a => a -> BtcAmount
--- getFundingAmount = S.pcsFundingValue . getPayChanState
+
+getFundingAmount  :: HasPayChanState a => a -> BtcAmount
+getFundingAmount = fundingValue . pcsPayment . getPayChanState
 
 -- getPaymentCount :: HasPayChanState a => a -> Word64
 -- getPaymentCount = pcsPayCount . getPayChanState

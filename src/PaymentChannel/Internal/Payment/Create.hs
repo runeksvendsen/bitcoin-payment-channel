@@ -8,19 +8,10 @@ where
 
 import PaymentChannel.Internal.Payment.Types as Export
 
--- import RBPCP.Types
-import PaymentChannel.Internal.RBPCP.Parse
-import PaymentChannel.Internal.Types
-import PaymentChannel.Internal.ChanScript
-import Bitcoin.Util
-import Bitcoin.SinglePair
-import Bitcoin.Compare
-import PaymentChannel.Internal.Util
 
 import qualified Network.Haskoin.Transaction as HT
 import qualified Network.Haskoin.Crypto as HC
-import qualified Network.Haskoin.Script as HS
-import qualified Data.List.NonEmpty     as NE
+
 
 
 

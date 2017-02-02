@@ -10,6 +10,8 @@ import qualified Network.Haskoin.Transaction    as HT
 import qualified Network.Haskoin.Crypto         as HC
 import GHC.Generics       (Generic)
 
+import Debug.Trace
+
 
 data DiffInfo = DiffInfo [(HC.Address,ValDiff)]
 
@@ -79,9 +81,9 @@ outputDiff oldOut newOut =
 --  2) output amounts
 eqIgnoreOutVal :: Eq t =>
     IgnoreSigData (BtcTx t BtcSig) -> IgnoreSigData (BtcTx t BtcSig) -> Bool
-eqIgnoreOutVal tx1 tx2 =
-    fmap txClearOutVal tx1 == fmap txClearOutVal tx2
+eqIgnoreOutVal tx1 tx2 = tx1 =~= tx2
   where
+    a =~= b = fmap txClearOutVal a == fmap txClearOutVal b
     txClearOutVal  tx  = tx { btcOuts = map outputValClear (btcOuts tx) }
     outputValClear out = out { btcAmount = nullAmount }
 
