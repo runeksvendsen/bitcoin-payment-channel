@@ -111,6 +111,7 @@ module PaymentChannel
     acceptPayment,
 
     -- *Settlement
+    DustPolicy(..),
 --     acceptClosingPayment,
     getSettlementBitcoinTx,
     getRefundBitcoinTx,
