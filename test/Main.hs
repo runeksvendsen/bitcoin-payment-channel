@@ -104,7 +104,7 @@ mkSettleTx :: Monad m =>
 mkSettleTx ChannelPairResult{..} = do
     settleTxE <- getSettlementBitcoinTx
             resRecvChan recvSettleAddr
-            (recvPrvKey resInitPair) (SatoshisPerByte 0) KeepDust
+            (const $ return $ recvPrvKey resInitPair) (SatoshisPerByte 0) KeepDust
     return $ either (error . show) id settleTxE
 
 checkSenderValue :: ChannelPairResult -> TestM Bool
