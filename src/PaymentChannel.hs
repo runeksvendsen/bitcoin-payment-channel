@@ -281,13 +281,13 @@ acceptPayment rpc@MkServerPayChan{..} payment = do
 -- The sender can only close the channel before expiration by requesting this transaction
 -- from the receiver and publishing it to the Bitcoin network.
 getSettlementBitcoinTx :: Monad m =>
-       ServerPayChanI a        -- ^ Receiver state object
+       ServerPayChanI a                 -- ^ Receiver state object
     -> HC.Address                       -- ^ Receiver destination address. Funds sent over the channel will be sent to this address, the rest back to the client change address (an argument to 'channelWithInitialPaymentOf').
-    -> HC.PrvKeyC     -- ^ Function which produces a signature which verifies against 'cpReceiverPubKey'
+    -> (KeyDeriveIndex -> m HC.PrvKeyC) -- ^ Function which produces a signature which verifies against 'cpReceiverPubKey'
     -> SatoshisPerByte                  -- ^ Bitcoin transaction fee
-    -> DustPolicy
+    -> DustPolicy                       -- ^ Whether to keep or drop receiver change output if below dust limit
     -> m (Either ReceiverError HT.Tx)   -- ^ Settling Bitcoin transaction
-getSettlementBitcoinTx rpc recvAdr prvKey txFee dp =
+getSettlementBitcoinTx rpc recvAdr signFunc txFee dp =
     fmap toHaskoinTx <$>
-        getSignedSettlementTx rpc (const $ return prvKey) (mkChangeOut recvAdr txFee dp)
+        getSignedSettlementTx rpc signFunc (mkChangeOut recvAdr txFee dp)
 
