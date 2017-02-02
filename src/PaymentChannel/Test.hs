@@ -31,7 +31,7 @@ mIN_CHANNEL_SIZE = configDustLimit * 2
 
 data ArbChannelPair = ArbChannelPair
     { sendChan          :: ClientPayChan
-    , recvChan          :: ServerPayChan
+    , recvChan          :: ServerPayChanX
     , initPayAmount     :: BtcAmount
     , initRecvAmount    :: BtcAmount
     , initPayment       :: SignedPayment
@@ -41,7 +41,7 @@ data ArbChannelPair = ArbChannelPair
 data ChannelPairResult = ChannelPairResult
     { resInitPair       :: ArbChannelPair
     , resSendChan       :: ClientPayChan
-    , resRecvChan       :: ServerPayChan
+    , resRecvChan       :: ServerPayChanX
     , resSentAmounts    :: [BtcAmount]
     , resRecvdAmounts   :: [BtcAmount]
     , resPayList        :: [SignedPayment]
@@ -58,11 +58,11 @@ instance Arbitrary ArbChannelPair where
 instance Arbitrary ClientPayChan where
     arbitrary = fmap (sendChan . fst) mkChanPair
 
-instance Arbitrary ServerPayChan where
+instance Arbitrary ServerPayChanX where
     arbitrary = fmap (recvChan . fst) mkChanPair
 
 instance Arbitrary (PayChanState BtcSig) where
-    arbitrary = fmap rpcState (arbitrary :: Gen ServerPayChan)
+    arbitrary = fmap rpcState (arbitrary :: Gen ServerPayChanX)
 
 instance Arbitrary ChanParams where
     arbitrary = fmap fst mkChanParams
@@ -86,6 +86,10 @@ instance Arbitrary NonZeroBitcoinAmount where
 
 instance Arbitrary (Payment BtcSig) where
     arbitrary = snd <$> mkChanPair
+
+-- Hard sub keys have an index of, at most, 0x80000000
+instance Arbitrary KeyDeriveIndex where
+    arbitrary = fromMaybe (error "Bad key index") . mkKeyIndex <$> choose (0, 0x80000000)
 
 instance MonadTime Gen where
     currentTime = return nowishTimestamp
@@ -113,35 +117,47 @@ runChanPair :: MonadTime m => ArbChannelPair -> [BtcAmount] -> m ChannelPairResu
 runChanPair chanPair paymentAmountList =
     foldM doPayment (toInitResult chanPair) paymentAmountList
 
-mkChanParams :: Gen (ChanParams, (HC.PrvKeyC, HC.PrvKeyC))
+mkChanParams :: Gen (ChanParams, (HC.PrvKeyC, HC.PrvKeyC, HC.XPubKey))
 mkChanParams = do
     -- sender key pair
     ArbitraryPubKeyC sendPriv sendPK <- arbitrary
     -- receiver key pair
-    ArbitraryPubKeyC recvPriv recvPK <- arbitrary
+--     ArbitraryPubKeyC recvPriv recvPK <- arbitrary
+    kdi <- arbitrary
+    ArbitraryXPrvKey recvXPrv <- arbitrary
+    let (recvPriv, recvPK) = subKey recvXPrv kdi
 --     ArbitraryXPubKey recvPriv recvPK <- arbitrary
     -- TODO: Use a future expiration date for now
     lockTime <- fromMaybe (error "Bad lockTime") . parseLockTime <$> choose (1795556940, maxBound)
     return (MkChanParams
-                (MkSendPubKey sendPK) (MkRecvPubKey recvPK) lockTime,
-           (sendPriv, recvPriv))
+                (MkSendPubKey sendPK) (MkRecvPubKey $ HC.xPubKey recvPK) lockTime,
+           (sendPriv, recvPriv, recvPK))
+
+subKey :: HC.XPrvKey -> KeyDeriveIndex -> (HC.PrvKeyC, HC.XPubKey)
+subKey prv kdi = do
+    let hardSub = HC.hardSubKey prv (word32Index kdi)
+    let mkKeyPair k = (HC.xPrvKey k, HC.deriveXPubKey k)
+    mkKeyPair hardSub
+
 
 mkChanPair :: Gen (ArbChannelPair, SignedPayment)
 mkChanPair = arbitrary >>= mkChanPairInitAmount
 
 mkChanPairInitAmount :: BtcAmount -> Gen (ArbChannelPair, SignedPayment)
 mkChanPairInitAmount initPayAmount = do
-    (cp, (sendPriv, recvPriv)) <- mkChanParams
+    (cp, (sendPriv, recvPriv, recvXPub)) <- mkChanParams
     fti <- arbitrary
     sendChanE <- channelWithInitialPayment sendPriv cp fti (getFundingAddress cp) initPayAmount
     let (sendChan,initPayment) = either (error . show) id sendChanE
     recvChanE <- channelFromInitialPayment cp fti initPayment
+    let mkExtRPC chan = fromMaybe (error "mkExtendedKeyRPC failed")
+                                  $ mkExtendedKeyRPC chan recvXPub
     case recvChanE of
         Left e -> error (show e)
         Right (initRecvAmount,recvChan) -> return
              (ArbChannelPair
                                   --TODO: Cap initial payment amount
-                sendChan recvChan initRecvAmount initRecvAmount initPayment recvPriv
+                sendChan (mkExtRPC recvChan) initRecvAmount initRecvAmount initPayment recvPriv
              , initPayment)
 
 

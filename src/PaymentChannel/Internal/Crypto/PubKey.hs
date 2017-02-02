@@ -6,6 +6,7 @@ module PaymentChannel.Internal.Crypto.PubKey
 ,   HasSendPubKey(..)
 ,   HasRecvPubKey(..)
 ,   KeyDeriveIndex
+,   mkKeyIndex, word32Index
 ,   HasKeyIndex(..)
 ) where
 
@@ -48,6 +49,14 @@ class HasRecvPubKey a where
 -- |Key index for a BIP32 root key
 newtype KeyDeriveIndex = KeyDeriveIndex Word32
     deriving (Eq, Show, Serialize, Ord, Num, Enum, Real, Integral, FromJSON, ToJSON, NFData)
+
+word32Index :: KeyDeriveIndex -> Word32
+word32Index (KeyDeriveIndex i) = i
+
+mkKeyIndex :: Word32 -> Maybe KeyDeriveIndex
+mkKeyIndex i
+    | i >= 0 && i < 0x80000000 = Just $ KeyDeriveIndex i
+    | otherwise = Nothing
 
 class HasKeyIndex a where
     getKeyIndex :: a -> KeyDeriveIndex

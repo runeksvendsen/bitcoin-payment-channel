@@ -72,7 +72,7 @@ tests =
             [ testProperty "Payment"
                 (jsonSerDeser :: Payment BtcSig -> Bool)
             , testProperty "ServerPayChan"
-                (jsonSerDeser :: ServerPayChan -> Bool)
+                (jsonSerDeser :: ServerPayChanX -> Bool)
             ]
         , testGroup "Binary"
             [ testProperty "Payment"
