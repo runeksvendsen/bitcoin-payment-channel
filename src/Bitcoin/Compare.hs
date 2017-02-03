@@ -19,24 +19,24 @@ data ValDiff =
     Increase BtcAmount
   | Decrease BtcAmount
   | NoChange
-        deriving (Eq, Show, Generic, NFData)
+        deriving (Eq, Show, Generic, NFData, ToJSON, FromJSON, Serialize)
 
 data TxMismatch r =
     TxVersionMismatch Word32 Word32
   | TxLocktimeMismatch (Maybe LockTimeDate) (Maybe LockTimeDate)
   | TxInMismatch (InMismatch r)
   | TxOutMisMatch OutMismatch
-        deriving (Eq, Show, Generic, NFData)
+        deriving (Eq, Show, Generic, NFData, ToJSON, FromJSON, Serialize)
 
 data InMismatch r =
     InPrevOutMismatch HT.OutPoint HT.OutPoint
   | InRdmScrMismatch r r
   | InSequenceMismatch Word32 Word32
-        deriving (Eq, Show, Generic, NFData)
+        deriving (Eq, Show, Generic, NFData, ToJSON, FromJSON, Serialize)
 
 data OutMismatch =
     OutAddressMismatch HC.Address HC.Address
-        deriving (Eq, Show, Generic, NFData)
+        deriving (Eq, Show, Generic, NFData, ToJSON, FromJSON, Serialize)
 
 
 -- | Compare two transactions, ignoring output amounts and signature data, and return either

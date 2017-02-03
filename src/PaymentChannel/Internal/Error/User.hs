@@ -21,7 +21,7 @@ data PayChanError =
   |  ChannelExpired                 -- ^ Channel has expired or is too close to expiration date
   |  StatusError HTTPError          -- ^ Channel not ready for payment. 409=try again; 400=don't do that; 410=channel gone.
   |  RBPCPError  ParseError         -- ^ Failed to parse RBPCP payment
-        deriving (Eq, Generic, NFData)
+        deriving (Eq, Generic, NFData, ToJSON, FromJSON, Serialize)
 
 instance Show PayChanError where
     show SigVerifyFailed = "Signature verification failed"

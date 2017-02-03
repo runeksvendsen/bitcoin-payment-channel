@@ -21,7 +21,7 @@ import qualified Data.List.NonEmpty             as NE
 data ParseError =
     BadRedeemScript String
   | BtcError BtcError
-    deriving (Eq, Generic, NFData)
+        deriving (Eq, Generic, NFData, ToJSON, FromJSON, Serialize)
 
 toPaymentData :: SigSinglePair (P2SH ChanParams) BtcSig -> PaymentData
 toPaymentData (SigSinglePair input output) =

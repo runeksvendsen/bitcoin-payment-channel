@@ -7,4 +7,4 @@ import Bitcoin.Util
 data BtcError =
     InsufficientFunds   { eAmountMissing    :: BtcAmount }
   | DustOutput          { eDustLimit        :: BtcAmount }
-        deriving (Eq, Show, Typeable, Generic, NFData)
+        deriving (Eq, Show, Typeable, Generic, NFData, ToJSON, FromJSON, Serialize)
