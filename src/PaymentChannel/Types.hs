@@ -44,8 +44,7 @@ module PaymentChannel.Types
   , PayChanError(..)
 
     -- *Bitcoin
-  , BtcAmount
-  , BtcLockTime(..)
+  , module X
   , module Bitcoin.Fee
 
     -- *Crypto
@@ -70,6 +69,7 @@ import PaymentChannel.Internal.Metadata.Util
 import PaymentChannel.Internal.Serialization ()
 import PaymentChannel.Internal.Class.Value     (HasValue(..))
 import Bitcoin.SpendCond.Util
+import Bitcoin.Types as X
 
 import qualified PaymentChannel.Internal.Receiver.Util as S
 import qualified PaymentChannel.Internal.ChanScript as Script

@@ -16,6 +16,7 @@ import Bitcoin.SpendCond.Cond
 -- import PaymentChannel.Internal.Payment.Types ()
 import qualified Network.Haskoin.Transaction    as HT
 import qualified Data.List.NonEmpty             as NE
+import PaymentChannel.Internal.Crypto.PubKey
 
 
 data ParseError =
