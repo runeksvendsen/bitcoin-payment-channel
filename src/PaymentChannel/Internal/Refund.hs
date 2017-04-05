@@ -10,8 +10,8 @@ import qualified Network.Haskoin.Crypto as HC
 
 
 
-type RefundTx = BtcTx (P2SH ChanParams) RefundScriptSig
-type UnsignedRefundTx = UnsignedBtcTx (P2SH ChanParams)
+type RefundTx = BtcTx ScriptType RefundScriptSig
+type UnsignedRefundTx = UnsignedBtcTx ScriptType
 
 instance TransformSigData RefundScriptSig () ChanParams where
     mkSigData _ sig _ = RefundScriptSig sig

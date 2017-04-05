@@ -15,7 +15,7 @@ import Bitcoin.Types
 import Bitcoin.Fee
 import PaymentChannel.Types                    (fundingAddress)
 import PaymentChannel.Internal.Class.Value     (HasValue(..))
-import PaymentChannel.Internal.Error.Server
+import PaymentChannel.Internal.Error.Internal
 
 import qualified Network.Haskoin.Transaction as HT
 import qualified Network.Haskoin.Crypto as HC
@@ -24,7 +24,7 @@ import qualified Data.List.NonEmpty     as NE
 
 
 
-type SignedTx = BtcTx (P2SH ChanParams) PaymentScriptSig
+type SignedTx = BtcTx ScriptType PaymentScriptSig
 
 
 mkUnsignedSettleData ::

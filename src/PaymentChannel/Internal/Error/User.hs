@@ -4,6 +4,7 @@ module PaymentChannel.Internal.Error.User where
 
 import PaymentChannel.RBPCP.Parse
 import PaymentChannel.Internal.Error.Status     (HTTPError)
+import PaymentChannel.Internal.Receiver.Open    (OpenError)
 import Bitcoin.Compare
 import PaymentChannel.Internal.Types
 import PaymentChannel.Internal.Util
@@ -19,8 +20,9 @@ data PayChanError =
   |  PaymentError (TxMismatch ChanParams)
   |  ClosingPaymentBadValue         -- ^ The closing payment only changes the payment transaction change address. Sending value is not allowed.
   |  ChannelExpired                 -- ^ Channel has expired or is too close to expiration date
-  |  StatusError HTTPError          -- ^ Channel not ready for payment. 409=try again; 400=don't do that; 410=channel gone.
+  |  StatusError HTTPError          -- ^ Channel not ready for payment. 409=try again; 410=channel gone.
   |  RBPCPError  ParseError         -- ^ Failed to parse RBPCP payment
+  |  OpenError   OpenError          -- ^ Channel-open error
         deriving (Eq, Generic, NFData, ToJSON, FromJSON, Serialize)
 
 instance Show PayChanError where
@@ -44,5 +46,6 @@ instance Show PayChanError where
         "unexpected redeemScript. expected: " ++ cs (serHex scr)
     show (PaymentError e) = "unexpected error: " ++ show e
     show (RBPCPError pe) = "failed to parse payment: " ++ show pe
+    show (OpenError oe) = "open error: " ++ show oe
 
 -- instance Serialize PayChanError -- Generic PayChanError instance

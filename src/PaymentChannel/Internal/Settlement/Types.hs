@@ -26,7 +26,7 @@ data RefundScriptSig = RefundScriptSig
    }
 
 
-instance HasLockTimeDate (P2SH ChanParams) where
+instance HasLockTimeDate ScriptType where
     getLockTimeDate = cpLockTime . getCond
 
 instance SpendFulfillment RefundScriptSig ChanParams where
@@ -50,4 +50,4 @@ data SettleInfo = SettleInfo
 
 
 
-type ClientSignedTx = BtcTx (P2SH ChanParams) BtcSig
+type ClientSignedTx = BtcTx ScriptType BtcSig

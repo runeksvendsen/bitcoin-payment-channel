@@ -9,11 +9,11 @@ import qualified Data.Serialize     as Bin
 import qualified Data.Aeson.Types   as JSON
 
 -- |Objects from which a Bitcoin fee can be calculated,
---   given a transaction (yeah you need to create a tx twice).
+--   given a transaction
 class HasFee a where
     absoluteFee :: TxByteSize -> a -> BtcAmount
 
--- |For compatibility
+-- |Constant fee
 instance HasFee BtcAmount where
     absoluteFee _ = id    -- Same as constant fee
 

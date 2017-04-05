@@ -4,11 +4,10 @@ module PaymentChannel.Internal.Receiver.Types
 (
   module PaymentChannel.Internal.Receiver.Types
 , module PaymentChannel.Internal.Types
-, module PaymentChannel.Internal.State
+, module PaymentChannel.Internal.Metadata.Types
 )
 where
 
-import PaymentChannel.Internal.State
 import PaymentChannel.Internal.Types
 import PaymentChannel.Internal.Metadata.Types
 import PaymentChannel.Internal.Util
@@ -20,7 +19,7 @@ type ServerPayChan = ServerPayChanI ()
 type ServerPayChanX = ServerPayChanI KeyDeriveIndex
 
 -- |State object for the value receiver. "kd" is used to store
---  information about the receiver key(s) used for this state object.
+--   information about the receiver key(s) used for this state object.
 data ServerPayChanI kd = MkServerPayChan {
     -- |Internal state object
     rpcState    :: PayChanState BtcSig

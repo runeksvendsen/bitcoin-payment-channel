@@ -1,5 +1,5 @@
 name:         bitcoin-payment-channel
-version:      '1.0.1.0'
+version:      '1.1.0.0'
 synopsis:     Instant, two-party Bitcoin payments
 category:     Bitcoin, Finance, Network
 author:       Rune K. Svendsen <runesvend@gmail.com>
@@ -38,6 +38,7 @@ default-extensions:
 - FunctionalDependencies
 - DataKinds
 - ScopedTypeVariables
+- DeriveGeneric
 
 dependencies:
 - base                >=4.7     && <5
@@ -56,13 +57,14 @@ dependencies:
 - tagged              >=0.8     && <1.0
 - semigroups          >=0.17    && <0.19
 - QuickCheck          >=2.8     && <2.10
-- monad-time          ==0.2
+- monad-time          >=0.2     && <1.0
 - deepseq             >=1.3     && <1.5
+- blockchain-restful-address-index-api
 - hspec
 
 library:
   source-dirs: src
-  ghc-options: -W
+  ghc-options: -Wall
   exposed-modules:
   - PaymentChannel
   - PaymentChannel.Types

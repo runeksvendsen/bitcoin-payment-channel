@@ -1,11 +1,7 @@
 module PaymentChannel.Internal.Error
-(
-  module PaymentChannel.Internal.Error.User
-, module PaymentChannel.Internal.Error.Status
-, module PaymentChannel.Internal.Error.Server
-)
+( module X )
 where
 
-import PaymentChannel.Internal.Error.User
-import PaymentChannel.Internal.Error.Status
-import PaymentChannel.Internal.Error.Server
+import PaymentChannel.Internal.Error.User     as X
+import PaymentChannel.Internal.Error.Status   as X
+import PaymentChannel.Internal.Error.Internal as X

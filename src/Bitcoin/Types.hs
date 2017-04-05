@@ -14,8 +14,9 @@ import Bitcoin.Amount   as X
 import Bitcoin.Fee      as X
 import Bitcoin.Util     as X
 import Bitcoin.Error    as X
-import PaymentChannel.Internal.Crypto.PubKey    as X
 import Bitcoin.LockTime.Types    as X
+import PaymentChannel.Internal.Crypto.PubKey    as X
+
 
 import qualified Data.List.NonEmpty     as NE
 import qualified Data.Serialize         as Bin
@@ -241,18 +242,23 @@ instance (Bin.Serialize t, Bin.Serialize sd) => Bin.Serialize (BtcTx t sd) where
 newtype TxOutputScript = TxOutputScript [HS.ScriptOp] deriving Eq
 newtype TxInputScript  = TxInputScript  [HS.ScriptOp] deriving Eq
 newtype WitnessScript  = WitnessScript  [HS.ScriptOp] deriving Eq
+
 class IsScript a where
     mkScript :: HS.Script -> a
     asScript :: a -> HS.Script
+
 instance IsScript TxOutputScript where
     mkScript (HS.Script ops) = TxOutputScript ops
     asScript (TxOutputScript ops) = HS.Script ops
+
 instance IsScript TxInputScript  where
     mkScript (HS.Script ops) = TxInputScript ops
     asScript (TxInputScript ops) = HS.Script ops
+
 instance IsScript WitnessScript  where
     mkScript (HS.Script ops) = WitnessScript ops
     asScript (WitnessScript ops) = HS.Script ops
+
 instance Show TxOutputScript where
     show (TxOutputScript ops) =
         "scriptPubKey: " ++ articulate ops

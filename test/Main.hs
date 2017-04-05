@@ -19,6 +19,7 @@ import Test.QuickCheck                      -- (arbitrary)
 import Test.QuickCheck.Monadic              (monadic, run , assert)
 import Test.QuickCheck.Property             (Property)
 import Control.Monad.Identity (Identity(Identity))
+import Test.Hspec
 
 import Debug.Trace
 {-# ANN module ("HLint: ignore Redundant if"::String) #-}
@@ -43,54 +44,110 @@ recvSettleAddr :: HC.Address
 recvSettleAddr = testAddrLivenet
 
 main :: IO ()
-main = putStrLn "" >> defaultMain tests
+main = hspec $ do
+    paymentSpec
+    conversionSpec
 
-tests :: [Test]
-tests =
-    [ testGroup "Payment"
-        [ testGroup "State"
-            [ testProperty "Sender/receiver match" $
-              testPaymentSessionM checkSendRecvStateMatch
-            , testProperty "Sent amount == received amount" $
-              testPaymentSessionM checkRecvSendAmount
-            ]
-        , testGroup "Settlement tx"
-            [ testProperty "Sender value" $
-                testPaymentSessionM checkSenderValue
-            , testProperty "Receiver value" $
-                testPaymentSessionM checkReceiverValue
-            , testProperty "At least one output" $
-                testPaymentSessionM alwaysOneOutput
-            ]
-        ]
-    , testGroup "Conversion"
-        [ testProperty "RedeemScript"
-            redeemScriptConversion
-        ]
-    , testGroup "Serialization"
-        [ testGroup "JSON"
-            [ testProperty "Payment"
-                (jsonSerDeser :: Payment BtcSig -> Bool)
-            , testProperty "ServerPayChan"
-                (jsonSerDeser :: ServerPayChanX -> Bool)
-            ]
-        , testGroup "Binary"
-            [ testProperty "Payment"
-                (binSerDeser  :: Payment BtcSig -> Bool)
-            , testProperty "PayChanState"
-                (binSerDeser  :: PayChanState BtcSig -> Bool)
-            , testProperty "ChanParams"
-                (binSerDeser  :: ChanParams -> Bool)
-            ]
-        ]
-    ]
+paymentSpec :: Spec
+paymentSpec =
+  describe "Payment" $
+    around withArbChanResult $ do
+      describe "Settlement tx" $ do
+        it "client change output amount equals funding value minus sum of payment values" $ \res -> do
+          let (changeAmount, fundValMinusPaySum, tx) = runTestM $ checkSenderValue res
+          changeAmount `shouldBe` fundValMinusPaySum
+        it "receiver output amount equals sum of payment values" $ \res -> do
+          let (recvOutVal, paySumVal, tx) = runTestM $ checkReceiverValue res
+          recvOutVal `shouldBe` paySumVal
+        it "always has at least one output" $ \res ->
+          runTestM (minOneOutput res) `shouldBe` True
+      describe "State" $ do
+        it "Sender/receiver match"
+          checkSendRecvStateMatch
+        it "Sent amounts == received amounts"
+          recvSendAmountsMatch
 
-redeemScriptConversion :: ChanParams -> Bool
+conversionSpec :: Spec
+conversionSpec = do
+  describe "Conversion works for" $
+    it "RedeemScript" $ generate arbitrary >>=
+      redeemScriptConversion
+  describe "Serialization works for" $ do
+    describe "JSON" $ do
+      it "Payment" $ generate arbitrary >>=
+        (jsonSerDeser :: Payment BtcSig -> IO ())
+      it "ServerPayChan" $ generate arbitrary >>=
+        (jsonSerDeser :: ServerPayChanX -> IO ())
+    describe "Binary" $ do
+      it "Payment" $ generate arbitrary >>=
+        (binSerDeser  :: Payment BtcSig -> IO ())
+      it "PayChanState" $ generate arbitrary >>=
+        (binSerDeser  :: PayChanState BtcSig -> IO ())
+      it "ChanParams" $ generate arbitrary >>=
+        (binSerDeser  :: ChanParams -> IO ())
+
+
+withArbChanResult :: (ChannelPairResult -> IO ()) -> IO ()
+withArbChanResult f = do
+    arbPair <- generate arbitrary
+    amtLst  <- generate arbitrary
+    runChanPair arbPair amtLst >>= f
+
+redeemScriptConversion :: ChanParams -> IO ()
 redeemScriptConversion cp =
-    case fromRedeemScript (getRedeemScript cp) of
-        Left e -> error (show cp ++ "\n\n" ++ show e)
-        Right r -> r == cp || error (show cp ++ "\n\n" ++ show r)
-        -- if r /= cp then error (show cp ++ "\n\n" ++ show r) else True
+    fromRedeemScript (getRedeemScript cp) `shouldBe` Right cp
+
+checkSenderValue :: ChannelPairResult -> TestM (BtcAmount, BtcAmount, HT.Tx)
+checkSenderValue cpr@ChannelPairResult{..} = do
+    settleTx <- mkSettleTx cpr
+    let clientChangeOutIndex = indexOf settleTx (fundingAddress resSendChan)
+        clientChangeAmount = maybe 0 (HT.outValue . (HT.txOut settleTx !!)) clientChangeOutIndex
+    -- Check that the client change amount in the settlement transaction equals the
+    --  channel funding amount minus the sum of all payment amounts.
+    let fundingVal = fundingValue $ pcsPayment (getChanState resRecvChan)
+        fundValMinusPaym = fundingVal - fromIntegral (sum resSentAmounts)
+    return (fromIntegral clientChangeAmount, fundValMinusPaym, settleTx)
+
+checkReceiverValue :: ChannelPairResult -> TestM (BtcAmount, BtcAmount, HT.Tx)
+checkReceiverValue cpr@ChannelPairResult{..} = do
+    settleTx <- mkSettleTx cpr
+    let recvOutIndex = indexOf settleTx recvSettleAddr
+        recvAmount = maybe 0 (HT.outValue . (HT.txOut settleTx !!)) recvOutIndex
+    -- Check receiver amount in settlement transaction with zero fee equals sum
+    -- of all payments.
+    return (fromIntegral recvAmount :: BtcAmount, fromIntegral (sum resRecvdAmounts), settleTx)
+
+minOneOutput :: ChannelPairResult -> TestM Bool
+minOneOutput cpr = not . null . HT.txOut <$> mkSettleTx cpr
+
+checkSendRecvStateMatch :: ChannelPairResult -> IO ()
+checkSendRecvStateMatch ChannelPairResult{..} =
+    getChanState resSendChan `shouldBe` getChanState resRecvChan
+
+recvSendAmountsMatch :: ChannelPairResult -> IO ()
+recvSendAmountsMatch ChannelPairResult{..} =
+    resSentAmounts `shouldBe` resRecvdAmounts
+
+
+
+jsonSerDeser :: (Show a, Eq a, JSON.FromJSON a, JSON.ToJSON a) => a -> IO ()
+jsonSerDeser fp =
+    JSON.decode (JSON.encode fp) `shouldBe` Just fp
+
+binSerDeser :: (Typeable a, Show a, Eq a, Bin.Serialize a) => a -> IO ()
+binSerDeser fp =
+    deserEither (Bin.encode fp) `shouldBe` Right fp
+
+
+testPaymentSessionM ::
+    (ChannelPairResult -> TestM Bool)
+    -> ArbChannelPair
+    -> [BtcAmount]
+    -> Property
+testPaymentSessionM testFunc arbChanPair payLst =
+    monadic runTestM $
+        run (runChanPair arbChanPair payLst) >>= run . testFunc >>= assert
+
 
 indexOf :: HT.Tx -> HC.Address -> Maybe Int
 indexOf tx addr = listToMaybe $ catMaybes $ zipWith f [0..] (HT.txOut tx)
@@ -106,88 +163,3 @@ mkSettleTx ChannelPairResult{..} = do
             resRecvChan recvSettleAddr
             (const $ return $ recvPrvKey resInitPair) (SatoshisPerByte 0) KeepDust
     return $ either (error . show) id settleTxE
-
-checkSenderValue :: ChannelPairResult -> TestM Bool
-checkSenderValue cpr@ChannelPairResult{..} = do
-    settleTx <- mkSettleTx cpr
-    let clientChangeOutIndex = indexOf settleTx (fundingAddress resSendChan)
-        clientChangeAmount = maybe 0 (HT.outValue . (HT.txOut settleTx !!)) clientChangeOutIndex
-    -- Check that the client change amount in the settlement transaction equals the
-    --  channel funding amount minus the sum of all payment amounts.
-    let fundingVal = fundingValue $ pcsPayment (getChanState resRecvChan)
-        fundValMinusPaym = fundingVal - fromIntegral (sum resSentAmounts)
-    return $ fromIntegral clientChangeAmount == fundValMinusPaym
-
-checkReceiverValue :: ChannelPairResult -> TestM Bool
-checkReceiverValue cpr@ChannelPairResult{..} = do
-    settleTx <- mkSettleTx cpr
-    let recvOutIndex = indexOf settleTx recvSettleAddr
-        recvAmount = maybe 0 (HT.outValue . (HT.txOut settleTx !!)) recvOutIndex
-    -- Check receiver amount in settlement transaction with zero fee equals sum
-    -- of all payments.
-    return $ (fromIntegral recvAmount :: BtcAmount) == fromIntegral (sum resRecvdAmounts)
-
-alwaysOneOutput :: ChannelPairResult -> TestM Bool
-alwaysOneOutput cpr = not . null . HT.txOut <$> mkSettleTx cpr
-
-checkSendRecvStateMatch :: ChannelPairResult -> TestM Bool
-checkSendRecvStateMatch ChannelPairResult{..} =
-    return $ getChanState resSendChan == getChanState resRecvChan
-
-checkRecvSendAmount :: ChannelPairResult -> TestM Bool
-checkRecvSendAmount ChannelPairResult{..} =
-    return $ if sum resSentAmounts == sum resRecvdAmounts then
-        True else error $ show (resSentAmounts, resRecvdAmounts)
-
-checkSpendCondTx :: ChannelPairResult -> TestM Bool
-checkSpendCondTx cpr@ChannelPairResult{..} = do
-    tx <- mkSettleTx cpr
-    let rdmScr = pairRedeemScript $ pcsPayment $ spcState resSendChan
-    let ins = getPrevIn tx rdmScr :: [InputG (Pay2 (ScriptHash (Witness (Cond ChanParams)))) ()]
-    return $ show ins `trace` True
-
-testPaymentSessionM ::
-    (ChannelPairResult -> TestM Bool)
-    -> ArbChannelPair
-    -> [BtcAmount]
-    -> Property
-testPaymentSessionM testFunc arbChanPair payLst =
-    monadic runTestM $
-        run (runChanPair arbChanPair payLst) >>= run . testFunc >>= assert
-
-
--- testPaymentSessionM' ::
---     (ChannelPairResult -> TestM Property)
---     -> ArbChannelPair
---     -> Property
--- testPaymentSessionM' testFunc arbChanPair =
---     monadic runTestM $
---         run (runChanPair arbChanPair) >>= run . testFunc
-
-
-jsonSerDeser :: (Show a, Eq a, JSON.FromJSON a, JSON.ToJSON a) => a -> Bool
-jsonSerDeser fp =
-    maybe False checkEquals decodedObj
-        where decodedObj = JSON.decode $ JSON.encode fp
-              checkEquals serDeserVal =
-                if serDeserVal /= fp then
-                        error $ "Ser/deser mismatch.\nOriginal: " ++
-                                show fp ++ "\nCopy: " ++ show decodedObj
-                    else
-                        True
-
-binSerDeser :: (Typeable a, Show a, Eq a, Bin.Serialize a) => a -> Bool
-binSerDeser fp =
-    checkEquals decodeRes
-        where bs = Bin.encode fp
-              decodeRes = deserEither bs
-              checkEquals serDeserRes = case serDeserRes of
-                    Left e      -> error $ "Serialize/deserialize error: " ++ show e
-                    Right res   ->
-                            if res /= fp then
-                                error $ "Ser/deser mismatch.\nOriginal: " ++ show fp ++
-                                        "\nCopy: " ++ show res
-                            else
-                                True
-
-

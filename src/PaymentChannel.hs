@@ -46,8 +46,7 @@ With 'ChanParams' and 'FundingTxInfo',
 
 The receiver will now create its own channel state object, 'ServerPayChan', using
  'channelFromInitialPayment'.
- 'channelFromInitialPayment' takes the same 'ChanParams' and 'FundingTxInfo'
- as was provided by the sender, and, in addition, the first channel 'Payment', received from the sender.
+ 'channelFromInitialPayment' takes [TODO].
 
 Now the payment channel is open and ready for transmitting value. A new 'Payment' is created by
  the sender with 'createPayment', which yields a new payment, that increases the total value transmitted
@@ -127,15 +126,16 @@ where
 import PaymentChannel.Internal.Payment
 import PaymentChannel.RBPCP.Parse
 import PaymentChannel.Internal.Receiver.Util
+import PaymentChannel.Internal.Receiver.Open            (initialServerState)
 
 import PaymentChannel.Internal.Util
 import PaymentChannel.Internal.Error
-import qualified PaymentChannel.Internal.Receiver.Util as S
+import qualified PaymentChannel.Internal.Receiver.Util  as S
 import PaymentChannel.Internal.Metadata.Util
-import PaymentChannel.Internal.Settlement       (getSignedSettlementTx)
-import PaymentChannel.Internal.Refund (mkRefundTx)
+import PaymentChannel.Internal.Settlement               (getSignedSettlementTx)
+import PaymentChannel.Internal.Refund                   (mkRefundTx)
 
-import PaymentChannel.Util (getFundingAddress)
+import PaymentChannel.Util                              (getFundingAddress)
 import PaymentChannel.Types
 import Control.Monad.Time
 
@@ -206,8 +206,8 @@ cappedCreatePayment cpc amt =
 -- 'ChanParams'. Receiver should be aware of Bitcoin network time drift and the
 -- unpreditable nature of finding new blocks.
 getRefundBitcoinTx
-    :: Monad m =>
-    HC.PrvKeyC
+    :: Monad m
+    => HC.PrvKeyC
     -> ChanParams
     -> FundingTxInfo
     -> HC.Address           -- ^ Refund address
@@ -225,21 +225,17 @@ getRefundBitcoinTx prvKey cp fti refundAddr txFee =
 -- A channel is initialized with various information
 -- about the payment channel, as well as the first channel payment
 -- produced by the sender.
-channelFromInitialPayment :: MonadTime m =>
-       ChanParams           -- ^ Specifies channel sender and receiver, plus channel expiration date
-    -> FundingTxInfo        -- ^ Holds information about the Bitcoin transaction used to fund the channel
-    -> SignedPayment        -- ^ Initial channel payment
+channelFromInitialPayment ::
+       MonadTime m
+    => HT.Tx
+    -> PaymentData
     -> m (Either PayChanError (BtcAmount, ServerPayChan)) -- ^Error or: value_received plus state object
-channelFromInitialPayment cp fundInf payment =
-    let
-        unsignedPayment = mkUnsignedPayment cp fundInf (getP2SHFundingAddress cp)
-        signedPayment   = spMapSigData (const $ getSigData payment) unsignedPayment
-        metadata = Metadata () 0 [] (valueOf payment) ReadyForPayment
-        -- Helpers
-        mkPayChanState sp = MkPayChanState sp (sigDataHash payment)
-        mkServChan sp = MkServerPayChan (mkPayChanState sp) metadata
-    in
-        acceptPayment (mkServChan signedPayment) (toPaymentData payment)
+channelFromInitialPayment tx paymentData =
+    either
+      (return . Left)
+      (`acceptPayment` paymentData)
+      (fmapL OpenError $ initialServerState tx paymentData)
+
 
 
 -- |Register, on the receiving side, a payment made by 'createPayment' on the sending side.

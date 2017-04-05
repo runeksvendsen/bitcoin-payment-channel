@@ -5,6 +5,7 @@ compiler-check: match-exact
 
 packages:
 - '.'
+- '/Users/rune/IdeaProjects/blockchain-restful-address-index/blockchain-restful-address-index-api'
 - location:
     git: https://github.com/runeksvendsen/haskoin.git
     commit: 9add83fd4aa8bc960a15a1d24e6e831981a9f8a4

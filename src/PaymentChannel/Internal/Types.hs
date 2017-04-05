@@ -40,7 +40,10 @@ import           GHC.Generics               (Generic)
 import           Data.Maybe                 (fromMaybe)
 import Control.Monad.Time
 
-type Payment = SigSinglePair (P2SH ChanParams)
+
+-- | The Bitcoin transaction script type we're using
+type ScriptType = P2SH ChanParams
+type Payment = SigSinglePair ScriptType
 type SignedPayment   = Payment BtcSig
 type UnsignedPayment = Payment ()
 

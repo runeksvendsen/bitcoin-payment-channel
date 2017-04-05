@@ -1,4 +1,4 @@
-module PaymentChannel.Internal.Error.Server where
+module PaymentChannel.Internal.Error.Internal where
 
 import Bitcoin.Types
 

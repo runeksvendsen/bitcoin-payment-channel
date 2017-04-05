@@ -67,7 +67,8 @@ type P2WSH c   = Pay2 (Witness (Cond c))
 -- | P2WSH inside P2SH (for compatibility with old wallet clients)
 type P2SHWit c = Pay2 (ScriptHash (Witness (Cond c)))
 
-
+mkP2sh :: c -> P2SH c
+mkP2sh = Pay2 . ScriptHash . Cond
 
 class IsWrapper c (wrap :: * -> *) where
     unwrap :: wrap c -> c

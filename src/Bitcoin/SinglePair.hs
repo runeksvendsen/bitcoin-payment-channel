@@ -72,11 +72,21 @@ sigDataHash = hashSigData . getSigData
 pairRedeemScript :: HasSpendCond r t => SigSinglePair t a -> r
 pairRedeemScript SigSinglePair{..} = inputCondScript singleInput
 
-fundingValue :: SigSinglePair t BtcSig -> BtcAmount
+fundingValue :: SigSinglePair t a -> BtcAmount
 fundingValue SigSinglePair{..} = btcInValue singleInput
 
 clientChangeVal :: SigSinglePair t BtcSig -> BtcAmount
 clientChangeVal SigSinglePair{..} = nonDusty (btcAmount singleOutput)
+
+resetClientChangeVal :: SigSinglePair t a -> Either BtcError (SigSinglePair t a)
+resetClientChangeVal ssp@SigSinglePair{..} =
+    mkNew <$> mkNonDusty (fundingValue ssp)
+  where
+    mkNew fundVal =
+        ssp { singleOutput =
+                 singleOutput { btcAmount = fundVal }
+            }
+
 
 clientChangeAddr :: SigSinglePair t BtcSig -> HC.Address
 clientChangeAddr SigSinglePair{..} = btcAddress singleOutput
