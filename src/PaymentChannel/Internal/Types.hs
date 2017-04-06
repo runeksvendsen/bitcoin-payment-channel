@@ -10,7 +10,7 @@ module PaymentChannel.Internal.Types
   , module Network.Haskoin.Script
   , module Data.List.NonEmpty
   , module Control.Monad.Time
-  , Word32, Word64
+  , Word32, Word64, NFData
 ) where
 
 import PaymentChannel.Internal.Config           as X
@@ -21,7 +21,7 @@ import PaymentChannel.Internal.Crypto.PubKey    as X
 import Bitcoin.SinglePair as X
 import Bitcoin.SpendCond.Cond as X
 import Bitcoin.LockTime.Util as X
-
+import Control.DeepSeq        (NFData)
 
 
 import           Network.Haskoin.Transaction hiding (signTx)

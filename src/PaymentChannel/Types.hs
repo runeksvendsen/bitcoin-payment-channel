@@ -108,7 +108,6 @@ instance HasPayChanState ClientPayChan where
 instance HasPayChanState (ServerPayChanI s) where
     getPayChanState = rpcState
 
-
 -- |Get various information about an open payment channel.
 class HasPayChanState a => PaymentChannel a where
     -- |Get amount received by receiver/left for sender
