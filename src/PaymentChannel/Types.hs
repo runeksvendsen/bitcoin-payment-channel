@@ -27,7 +27,7 @@ module PaymentChannel.Types
 
     -- *Receiver state
   , ServerPayChan, ServerPayChanI(rpcMetadata)
-  , PayChanStatus(..), MetadataI(..)
+  , PayChanStatus(..), MetadataI(..), OpenError(..)
   , S.getChannelStatus, S.setChannelStatus
   , S.markAsBusy, S.isReadyForPayment
 
@@ -68,6 +68,7 @@ import PaymentChannel.Internal.Receiver.Types
 import PaymentChannel.Internal.Metadata.Util
 import PaymentChannel.Internal.Serialization ()
 import PaymentChannel.Internal.Class.Value     (HasValue(..))
+import PaymentChannel.Internal.Receiver.Open   (OpenError(..))
 import Bitcoin.SpendCond.Util
 import Bitcoin.Types as X
 

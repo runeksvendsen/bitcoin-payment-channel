@@ -104,6 +104,7 @@ module PaymentChannel
     -- **State creation
     channelWithInitialPayment,
     channelFromInitialPayment,
+    setMetadata,
 
     -- *Payment
     createPayment, cappedCreatePayment,
@@ -229,11 +230,11 @@ channelFromInitialPayment ::
        MonadTime m
     => HT.Tx
     -> PaymentData
-    -> m (Either PayChanError (BtcAmount, ServerPayChan)) -- ^Error or: value_received plus state object
+    -> m (Either PayChanError (ServerPayChan, BtcAmount)) -- ^Error or: value_received plus state object
 channelFromInitialPayment tx paymentData =
     either
       (return . Left)
-      (`acceptPayment` paymentData)
+      (acceptPayment paymentData)
       (fmapL OpenError $ initialServerState tx paymentData)
 
 
@@ -242,13 +243,13 @@ channelFromInitialPayment tx paymentData =
 -- Returns error if either the signature or payment amount is invalid, and otherwise
 -- the amount received with this 'Payment' and a new state object.
 acceptPayment :: MonadTime m =>
-       ServerPayChanI a    -- ^Receiver state object
-    -> PaymentData         -- ^Payment to verify and register
-    -> m (Either PayChanError (BtcAmount, ServerPayChanI a)) -- ^Value received plus new receiver state object
-acceptPayment rpc@MkServerPayChan{..} paymentData =
+       PaymentData         -- ^Payment to verify and register
+    -> ServerPayChanI a    -- ^Receiver state object
+    -> m (Either PayChanError (ServerPayChanI a, BtcAmount)) -- ^Value received plus new receiver state object
+acceptPayment paymentData rpc@MkServerPayChan{..} =
     either (return . Left) checkPayment (getPayment paymentData)
   where
-    mkReturnVal p val = (val, updateMetadata $ updState rpc p)
+    mkReturnVal p val = (updateMetadata $ updState rpc p, val)
     checkPayment p = do
             valRecvdE <- paymentValueIncrease (pcsPayment rpcState) p
             return $ mkReturnVal p <$> valRecvdE

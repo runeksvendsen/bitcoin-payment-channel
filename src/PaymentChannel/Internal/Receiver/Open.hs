@@ -16,7 +16,7 @@ import qualified Network.Haskoin.Transaction    as HT
 
 data OpenError
   = NoSuchOutput Word32 HT.TxHash
-  | ResourcePaymentMismatch HT.Tx HT.TxHash
+  | ResourcePaymentMismatch HT.Tx HT.TxHash   -- Redirect
   | IrrelevantOutput Word32 HT.TxHash ChanParams
   | FundingTxError ParseError
   | FundingTxDustOut BtcAmount
@@ -70,5 +70,6 @@ instance Show OpenError where
     show (FundingTxError pe) = "funding tx error: " ++ show pe
     show (FundingTxDustOut dl) = unwords
         ["funding output below dust limit of", show dl]
+
 
 showOut h i = show i ++ ":" ++ cs (encode h)

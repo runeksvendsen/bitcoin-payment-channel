@@ -119,10 +119,10 @@ toInitResult initPair@(ArbChannelPair spc rpc payAmt rcvAmt pay _) =
 doPayment :: MonadTime m => ChannelPairResult -> BtcAmount -> m ChannelPairResult
 doPayment (ChannelPairResult initPair spc rpc sendList recvList payLst) amount = do
     (newSpc, pmn, amountSent) <- cappedCreatePayment spc amount
-    eitherRpc <- ("doPayment send: " ++ show amountSent) `debugTrace` acceptPayment rpc (toPaymentData pmn)
+    eitherRpc <- ("doPayment send: " ++ show amountSent) `debugTrace` acceptPayment (toPaymentData pmn) rpc
     case eitherRpc of
         Left e -> error (show e)
-        Right (recvAmount, newRpc) -> return $ ("doPayment recv: " ++ show recvAmount) `debugTrace`
+        Right (newRpc, recvAmount) -> return $ ("doPayment recv: " ++ show recvAmount) `debugTrace`
             ChannelPairResult initPair newSpc newRpc
                 (amountSent : sendList)
                 (recvAmount : recvList)
@@ -174,7 +174,7 @@ mkChanPairInitAmount initPayAmount = do
                                   $ mkExtendedKeyRPC chan recvXPub
     case recvChanE of
         Left e -> error (show e)
-        Right (initRecvAmount, recvChan) -> return $
+        Right (recvChan, initRecvAmount) -> return $
              ("mkChanPair: " ++ show (initPayAmount, initRecvAmount)) `debugTrace`
                  (ArbChannelPair
                     sendChan (mkExtRPC recvChan) initPayAmount initRecvAmount initPayment recvPriv

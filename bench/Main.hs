@@ -20,6 +20,6 @@ main = do
   defaultMain
     [ bench "Create payment" $ nfIO ( either (error . show) id <$> mkPayment 2 )
     , bench "Verify payment" $ nfIO
-        ( either (error . show) id <$> Pay.acceptPayment (Pay.recvChan arbPair) (Pay.toPaymentData payment) )
+        ( either (error . show) id <$> Pay.acceptPayment (Pay.toPaymentData payment) (Pay.recvChan arbPair) )
     , bench (show payCount ++ " rounds of create+verify payment") $ nfIO multiMkVerify
     ]

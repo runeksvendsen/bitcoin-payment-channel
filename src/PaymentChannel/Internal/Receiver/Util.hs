@@ -46,6 +46,13 @@ mkDummyExtendedRPC = mkExtendedKeyRPCUnsafe 0
 metaKeyIndex :: ServerPayChanI KeyDeriveIndex -> KeyDeriveIndex
 metaKeyIndex = mdKeyData . rpcMetadata
 
+-- | Server/receiver: set pubkey metadata
+setMetadata :: a -> ServerPayChanI b -> ServerPayChanI a
+setMetadata kd sp@MkServerPayChan{..} =
+    sp { rpcMetadata =
+            rpcMetadata { mdKeyData = kd }
+       }
+
 
 -- Status
 setChannelStatus :: PayChanStatus -> ServerPayChanI a -> ServerPayChanI a
