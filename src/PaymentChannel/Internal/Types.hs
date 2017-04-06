@@ -32,8 +32,10 @@ import           Network.Haskoin.Script
 import qualified Network.Haskoin.Transaction as HT
 import qualified Network.Haskoin.Crypto as HC
 import qualified Network.Haskoin.Script as HS
-import qualified Data.ByteString as B
-import qualified Data.ByteString.Base16 as B16
+
+import qualified Data.Serialize             as Bin
+import qualified Data.ByteString            as B
+import qualified Data.ByteString.Base16     as B16
 import           Data.Word
 import           Data.List.NonEmpty         (NonEmpty(..))
 import           GHC.Generics               (Generic)
@@ -54,18 +56,22 @@ instance HasLockTimeDate (Payment a) where
     getLockTimeDate = cpLockTime . pairRedeemScript
 
 data PayChanState sigData = MkPayChanState
-    { pcsPayment    :: Payment sigData
-    -- | SHA256 hash signature data  of the opening channel payment (not including 'SigHash' flag).
-    --   Used as a shared client/server secret to
-    --    prevent denial-of-service attacks.
-    --   The resource,
-    --    that the client delivers payments to, may be publicly
-    --    accesible. Using this secret as part of the resource
-    --    identifier for the channel makes it very hard for outsiders
-    --    to guess valid resource identifiers, from looking at
-    --    in-blockchain data.
-    , pcsToken      :: HC.Hash256
+    { pcsPayment  :: Payment sigData
+    -- | SHA256 hash of opening-channel-payment signature data ('BtcSig') (including 'SigHash' flag).
+    --   Used as a shared client/server secret to prevent denial-of-service attacks.
+    --   The resource, that the client delivers payments to, may be publicly
+    --    accesible. Using this secret as part of the resource identifier for
+    --    the channel makes it very hard for outsiders to guess valid resource
+    --    identifiers from looking at in-blockchain data.
+    , pcsSecret   :: SharedSecret
     } deriving (Eq, Show, Typeable, Generic, Serialize, ToJSON, FromJSON, NFData)
+
+newtype SharedSecret = MkSharedSecret { ssHash :: HC.Hash256 }
+    deriving (Eq, Show, Typeable, Generic, Serialize, ToJSON, FromJSON, NFData)
+
+fromInitialPayment :: SigSinglePair t BtcSig -> SharedSecret
+fromInitialPayment  =
+    MkSharedSecret . HC.hash256 . Bin.encode . getSigData
 
 instance HasSendPubKey (PayChanState a) where getSendPubKey = getSendPubKey . pcsPayment
 instance HasRecvPubKey (PayChanState a) where getRecvPubKey = getRecvPubKey . pcsPayment
@@ -102,8 +108,6 @@ instance Serialize FundingTxInfo where
 instance ToJSON FundingTxInfo
 instance FromJSON FundingTxInfo
 
-ftiOutPoint :: FundingTxInfo -> HT.OutPoint
-ftiOutPoint CFundingTxInfo{..} = HT.OutPoint ftiHash ftiOutIndex
 
 instance ToJSON HC.Hash256 where
     toJSON = String . cs . B16.encode . HC.getHash256

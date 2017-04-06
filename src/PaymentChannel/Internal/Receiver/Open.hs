@@ -48,7 +48,7 @@ brandNewState signedPaym = do
     return $ MkServerPayChan (mkChanState newSp) metadata
   where
     metadata       = Metadata () 0 [] 0 ReadyForPayment
-    mkChanState sp = MkPayChanState sp (sigDataHash sp)
+    mkChanState sp = MkPayChanState sp (fromInitialPayment sp)
 
 
 instance Show OpenError where

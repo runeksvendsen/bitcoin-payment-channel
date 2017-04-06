@@ -17,6 +17,7 @@ module PaymentChannel.Types
   , ChanParams(..)
   , PaymentChannel(..), PayChan
   , PaymentChannelRecv(..)
+  , SharedSecret
   , fundingAddress
   , clientChangeAddress
   , availableChannelVal

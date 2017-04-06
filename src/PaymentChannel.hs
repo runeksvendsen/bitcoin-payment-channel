@@ -166,7 +166,7 @@ channelWithInitialPayment :: Monad m =>
        -- ^ Client state and first payment. Error if the channel funding value
        --    can't cover the specified payment value.
 channelWithInitialPayment prvKey cp fundInf sendAddr payVal =
-    let mkPayChanState sp = MkPayChanState sp (sigDataHash sp)
+    let mkPayChanState sp = MkPayChanState sp (fromInitialPayment sp)
         mkClientChan sp = (MkClientPayChan (mkPayChanState sp) prvKey, sp)
     in
         fmap mkClientChan <$> createPaymentOfValue

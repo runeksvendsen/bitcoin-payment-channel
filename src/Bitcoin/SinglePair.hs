@@ -66,9 +66,6 @@ toClientSignedTx spL = foldr addInOut (toBtcTx $ NE.last spL) (NE.init spL)
 getSigData :: SigSinglePair t sd -> sd
 getSigData = btcSigData . singleInput
 
-sigDataHash :: SigSinglePair t BtcSig -> HC.Hash256
-sigDataHash = hashSigData . getSigData
-
 pairRedeemScript :: HasSpendCond r t => SigSinglePair t a -> r
 pairRedeemScript SigSinglePair{..} = inputCondScript singleInput
 

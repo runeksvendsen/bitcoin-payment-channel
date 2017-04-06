@@ -276,6 +276,4 @@ articulate ops = if null ops then "(empty)" else unwords (map show ops)
 type PubKey = HC.PubKeyC
 
 
-hashSigData :: BtcSig -> HC.Hash256
-hashSigData MkBtcSig{..} = HC.hash256 (Bin.encode bsSig)
 
