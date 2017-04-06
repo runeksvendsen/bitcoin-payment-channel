@@ -17,7 +17,7 @@ module PaymentChannel.Types
   , ChanParams(..)
   , PaymentChannel(..), PayChan
   , PaymentChannelRecv(..)
-  , SharedSecret
+  , SharedSecret, HasSharedSecret(..)
   , fundingAddress
   , clientChangeAddress
   , availableChannelVal
@@ -85,29 +85,11 @@ import qualified  Network.Haskoin.Crypto as HC
 class HasPayChanState a where
     getPayChanState :: a -> PayChanState BtcSig
 
--- getChannelFunding :: HasPayChanState a => a -> HT.OutPoint
--- getChannelFunding = S.pcsFundingSource . getPayChanState
---
--- getExpirationDate :: HasPayChanState a => a -> BtcLockTime
--- getExpirationDate = S.pcsExpirationDate . getPayChanState
-
 getFundingAmount  :: HasPayChanState a => a -> BtcAmount
 getFundingAmount = fundingValue . pcsPayment . getPayChanState
 
--- getPaymentCount :: HasPayChanState a => a -> Word64
--- getPaymentCount = pcsPayCount . getPayChanState
-
 fundingAddress :: HasPayChanState a => a -> HC.Address
 fundingAddress = Script.getP2SHFundingAddress . pairRedeemScript . pcsPayment . getPayChanState
-
--- getNewestPayment :: HasPayChanState a => a -> Payment
--- getNewestPayment pcs = S.pcsGetPayment (getPayChanState pcs)
-
--- getNewestSig  :: HasPayChanState a => a -> HC.Signature
--- getNewestSig = bsSig . paySignature . getNewestPayment
-
--- senderChangeValue :: HasPayChanState a => a -> BtcAmount
--- senderChangeValue = pcsClientChangeVal . getPayChanState
 
 clientChangeAddress :: HasPayChanState a => a -> HC.Address
 clientChangeAddress = clientChangeAddr . pcsPayment . getPayChanState
@@ -115,14 +97,6 @@ clientChangeAddress = clientChangeAddr . pcsPayment . getPayChanState
 -- | Channel value left to send (subtracts dust limit from total available amount)
 availableChannelVal :: HasPayChanState a => a -> BtcAmount
 availableChannelVal a = clientChangeVal (pcsPayment $ getPayChanState a) - configDustLimit
-
--- -- |Returns 'True' if all available channel value has been transferred, 'False' otherwise
--- chanIsExhausted  :: HasPayChanState a => a -> Bool
--- chanIsExhausted = S.channelIsExhausted . getPayChanState
-
--- -- |Return True if channel expires earlier than given expiration date
--- expiresBefore :: HasPayChanState a => BtcLockTime -> a -> Bool
--- expiresBefore expDate chan = getExpirationDate chan < expDate
 
 -- | Legacy
 getChanState :: HasPayChanState a => a -> PayChanState BtcSig
@@ -162,6 +136,12 @@ instance PaymentChannelRecv (ServerPayChanI (MetadataI a)) where
     clientTotalValueSent = metaTotalValXfer . rpcMetadata
 
 
+class HasSharedSecret a where
+    getSecret :: a -> SharedSecret
+
+instance HasSharedSecret (PayChanState a)   where getSecret = pcsSecret
+instance HasSharedSecret (ServerPayChanI s) where getSecret = getSecret . rpcState
+instance HasSharedSecret ClientPayChan      where getSecret = getSecret . spcState
 
 -- |Short-hand
 class PaymentChannel a => PayChan a
