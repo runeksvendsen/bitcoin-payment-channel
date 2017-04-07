@@ -73,6 +73,12 @@ fromInitialPayment :: SigSinglePair t BtcSig -> SharedSecret
 fromInitialPayment  =
     MkSharedSecret . HC.hash256 . Bin.encode . getSigData
 
+fromHash :: HC.Hash256 -> SharedSecret
+fromHash = MkSharedSecret
+
+toHash :: SharedSecret -> HC.Hash256
+toHash = ssHash
+
 instance HasSendPubKey (PayChanState a) where getSendPubKey = getSendPubKey . pcsPayment
 instance HasRecvPubKey (PayChanState a) where getRecvPubKey = getRecvPubKey . pcsPayment
 

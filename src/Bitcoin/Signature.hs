@@ -36,15 +36,22 @@ signTx signFunc tx@BtcTx{..} = signReplaceInputs signFunc tx
 -- | Sign transaction with added inputs and change output
 signSettleTx :: forall t r ss oldSd m.
               ( Monad m
-              , HasSpendCond r t, SpendFulfillment ss r, TransformSigData ss oldSd r, SignatureScript t ss
+              , HasSpendCond r t
+              , SpendFulfillment ss r
+              , TransformSigData ss oldSd r
+              , SignatureScript t ss
               ) =>
           (KeyDeriveIndex -> m HC.PrvKeyC)
        -> ChangeOut
        -> BtcTx t oldSd
        -> m (Either BtcError (BtcTx t ss))
-signSettleTx signFunc chgOut tx@BtcTx{..} = mkRelativeFeeTxM (btcTxFee chgOut) mkTx
+signSettleTx signFunc chgOut tx@BtcTx{..} = mkRelFeeFunc mkTx
         where mkTx fee = signReplaceInputs signFunc (txWithChange fee)
               txWithChange fee = setTxRawFee fee $ setChangeOut chgOut tx
+              mkRelFeeFunc = maybe  -- if 'btcTxFee' is absent, we use 'btcAbsFee_'
+                    (mkRelativeFeeTxM (btcAbsFee_ chgOut))
+                    mkRelativeFeeTxM
+                    (btcTxFee chgOut)
 
 signReplaceInputs :: forall t r ss oldSd m.
           ( Monad m
@@ -118,8 +125,8 @@ txSize = calcTxSize . toHaskoinTx
 
 mkRelativeFeeTxM
     :: (Monad m, HasFee fee, SignatureScript t ss, HasSpendCond r t, SpendFulfillment ss r)
-    => fee                                          -- ^Desired (per-byte) transaction fee
-    -> ( BtcAmount -> m (Either e (BtcTx t ss)) )   -- ^Produces desired Bitcoin tx with given fee
+    => fee                                          -- ^ Desired transaction fee
+    -> ( BtcAmount -> m (Either e (BtcTx t ss)) )   -- ^ Produces desired Bitcoin tx with given fee
     -> m (Either e (BtcTx t ss))
 mkRelativeFeeTxM fee mkTxFunc =
     mkTxFunc (0 :: BtcAmount) >>= \txE ->

@@ -79,7 +79,7 @@ instance Eq t => Ord (SigSinglePair t BtcSig) where
 
 data ChangeOut = ChangeOut
     { btcChangeAddr :: HC.Address
-    , btcTxFee      :: SatoshisPerByte
+    , btcTxFee      :: Maybe SatoshisPerByte  -- ^ if Just: use per-byte fee. if Nothing: use btcAbsFee_
     , btcDustPolicy :: DustPolicy
       -- | For internal use.
     , btcAbsFee_    :: BtcAmount
@@ -161,8 +161,14 @@ mkNoSigTxIn op val t = MkInputG op val () t maxBound defaultSigHashFlag 0
 mkBtcOut :: HC.Address -> NonDusty BtcAmount -> BtcOut
 mkBtcOut = BtcOut
 
-mkChangeOut :: HC.Address -> SatoshisPerByte -> DustPolicy -> ChangeOut
-mkChangeOut chgAdr fee dp = ChangeOut chgAdr fee dp 0
+class HasFee fee => ChangeOutFee fee where
+    mkChangeOut :: HC.Address -> fee -> DustPolicy -> ChangeOut
+
+instance ChangeOutFee SatoshisPerByte where
+    mkChangeOut chgAdr sbp dp = ChangeOut chgAdr (Just sbp) dp 0
+
+instance ChangeOutFee BtcAmount where
+    mkChangeOut chgAdr val dp = ChangeOut chgAdr Nothing dp val
 
 txAddOuts :: [BtcOut] -> BtcTx r a -> BtcTx r a
 txAddOuts outs tx = tx { btcOuts = btcOuts tx ++ outs }
@@ -191,7 +197,6 @@ availableVal BtcTx{..} =
         outVal = sum $ map (nonDusty . btcAmount) btcOuts
 
 
-
 setSignFlag :: HS.SigHash -> InputG t a -> InputG t a
 setSignFlag sh inp = inp { btcSignFlag = sh }
 
@@ -207,11 +212,11 @@ disableLockTime tx = tx { btcLock = Nothing }
 setKeyIndex :: KeyDeriveIndex -> InputG t a -> InputG t a
 setKeyIndex kdi bin = bin { btcKeyIndex = kdi }
 
-setFee :: BtcAmount -> ChangeOut -> ChangeOut
-setFee fee co = co { btcAbsFee_ = fee }
+setAbsFee :: BtcAmount -> ChangeOut -> ChangeOut
+setAbsFee fee co = co { btcAbsFee_ = fee }
 
 setTxRawFee :: BtcAmount -> BtcTx r a -> BtcTx r a
-setTxRawFee fee tx@BtcTx{..} = tx { btcChgOut = setFee fee <$> btcChgOut }
+setTxRawFee fee tx@BtcTx{..} = tx { btcChgOut = setAbsFee fee <$> btcChgOut }
 
 
 -- Util

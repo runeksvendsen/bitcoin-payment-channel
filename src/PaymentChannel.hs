@@ -257,40 +257,19 @@ acceptPayment paymentData rpc@MkServerPayChan{..} =
             >> fmapL RBPCPError (fromPaymentData (getFundingAmount rpc) pd)
 
 
-
--- |Same as 'acceptPayment' but accept only a payment of zero value
---  with client-chosen change address. Used to produce the settlement
---  transaction that returns unspent funds to the client.
--- acceptClosingPayment ::
---        ServerPayChanI a    -- ^Receiver state object
---     -> SignedPayment              -- ^Payment to verify and register
---     -> Either PayChanError (ServerPayChanI a) -- ^ Receiver state object
--- acceptClosingPayment (MkServerPayChan state m) fp =
---     acceptPayment futureTimeStamp newAddressState fp >>=
---         \(amtRecv, newState) -> case amtRecv of
---             0 -> Right newState
---             _ -> Left ClosingPaymentBadValue
---     where newAddressState = MkServerPayChan
---             { rpcState    = S.setClientChangeAddress state (fpChangeAddr fp)
---             , rpcMetadata = m
---             }
---
---           -- When receiving a payment of zero value, which only modifies the
---           -- client change address, we don't care about verifying that the channel
---           -- hasn't expired yet (which it may well have, since the client wants its
---           -- money back)
---           futureTimeStamp = UTCTime (ModifiedJulianDay 94183) 0     -- 100 years into the future from now
-
 -- |The value transmitted over the channel is settled when this transaction is in the Blockchain.
 -- The receiver will want to make sure a transaction produced by this function
 -- is included in a Bitcoin block before the refund transaction becomes valid (see 'getRefundBitcoinTx').
 -- The sender can only close the channel before expiration by requesting this transaction
 -- from the receiver and publishing it to the Bitcoin network.
-getSettlementBitcoinTx :: Monad m =>
+getSettlementBitcoinTx ::
+     ( Monad m
+     , ChangeOutFee fee
+     ) =>
        ServerPayChanI a                 -- ^ Receiver state object
     -> HC.Address                       -- ^ Receiver destination address. Funds sent over the channel will be sent to this address, the rest back to the client change address (an argument to 'channelWithInitialPaymentOf').
     -> (KeyDeriveIndex -> m HC.PrvKeyC) -- ^ Function which produces a signature which verifies against 'cpReceiverPubKey'
-    -> SatoshisPerByte                  -- ^ Bitcoin transaction fee
+    -> fee                  -- ^ Bitcoin transaction fee
     -> DustPolicy                       -- ^ Whether to keep or drop receiver change output if below dust limit
     -> m (Either ReceiverError HT.Tx)   -- ^ Settling Bitcoin transaction
 getSettlementBitcoinTx rpc recvAdr signFunc txFee dp =

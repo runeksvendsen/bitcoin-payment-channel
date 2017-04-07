@@ -188,6 +188,8 @@ arbitraryFundingTx cp val = do
     let newTx = HT.createTx (HT.txVersion tx) (HT.txIn tx) newOuts (HT.txLockTime tx)
     return (fromIntegral idx :: Word32, newTx)
 
+-- | Insert an element into a list at an arbitrary position
+arbitraryInsert :: forall a. [a] -> a -> Gen (Int, [a])
 arbitraryInsert lst a = do
     idx <- choose (0, length lst)
     let (preLst,postLst) = splitAt idx lst
