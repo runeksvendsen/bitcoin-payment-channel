@@ -180,6 +180,23 @@ mkChanPairInitAmount initPayAmount = do
                     sendChan (mkExtRPC recvChan) initPayAmount initRecvAmount initPayment recvPriv
                  , initPayment)
 
+-- Arbitrary range
+instance Arbitrary (BtcAmount,BtcAmount) where
+    arbitrary = do
+        arbMin <- arbitrary
+        arbMax <- choose (fromIntegral arbMin, maxCoins)
+        return (arbMin, fromIntegral arbMax)
+
+genRunChanPair :: Word -> (BtcAmount,BtcAmount) -> BtcAmount -> IO ChannelPairResult
+genRunChanPair numPayments (rangeMin,rangeMax) initAmount = do
+    amountList <- fmap (map fromIntegral) <$> generate $
+        vectorOf (fromIntegral numPayments) (choose (conv rangeMin, conv rangeMax) :: Gen Word64)
+    (arbPair,_) <- generate $ mkChanPairInitAmount initAmount
+    runChanPair arbPair amountList
+  where
+    conv :: (Integral a, Num b) => a -> b
+    conv = fromIntegral
+
 arbitraryFundingTx cp val = do
     ArbitraryTx tx <- arbitrary
     let mkP2shOut = Bin.encode . HS.encodeOutput . HS.PayScriptHash
