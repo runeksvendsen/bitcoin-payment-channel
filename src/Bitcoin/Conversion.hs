@@ -8,6 +8,7 @@ where
 
 import Bitcoin.SpendCond.Cond
 import Bitcoin.Types
+import Bitcoin.Util
 
 import qualified Data.List.NonEmpty         as NE
 import qualified Data.ByteString            as B

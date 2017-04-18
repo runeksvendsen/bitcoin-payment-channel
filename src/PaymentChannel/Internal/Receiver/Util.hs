@@ -17,7 +17,7 @@ import qualified Network.Haskoin.Crypto as HC
 
 
 
-updState :: ServerPayChanI a -> SignedPayment -> ServerPayChanI a
+updState :: ServerPayChanG kd sd -> SignedPayment -> ServerPayChanG kd BtcSig
 updState rpc p =
     rpc { rpcState = replacePayment (rpcState rpc) p }
   where
@@ -25,7 +25,7 @@ updState rpc p =
 
 -- |Create a 'ServerPayChanX', which has an associated BIP32 key index, from a
 --  'ServerPayChan'
-mkExtendedKeyRPC :: ServerPayChanI a -> HC.XPubKey -> Maybe ServerPayChanX
+mkExtendedKeyRPC :: ServerPayChanI kd -> HC.XPubKey -> Maybe ServerPayChanX
 mkExtendedKeyRPC rpc@(MkServerPayChan pcs _) xpk =
     -- Check that it's the right pubkey first
     if xPubKey xpk == getPubKey (getRecvPubKey pcs) then
@@ -33,50 +33,61 @@ mkExtendedKeyRPC rpc@(MkServerPayChan pcs _) xpk =
         else
             Nothing
 
-mkExtendedKeyRPCUnsafe :: Word32 -> ServerPayChanI a -> ServerPayChanX
+mkExtendedKeyRPCUnsafe :: Word32 -> ServerPayChanI kd -> ServerPayChanX
 mkExtendedKeyRPCUnsafe i rpc =
     rpc {
         rpcMetadata =
             Metadata (fromIntegral i) 0 [] (valueOf $ rpcState rpc) ReadyForPayment
         }
 
-mkDummyExtendedRPC :: ServerPayChanI a -> ServerPayChanX
+mkDummyExtendedRPC :: ServerPayChanI kd -> ServerPayChanX
 mkDummyExtendedRPC = mkExtendedKeyRPCUnsafe 0
 
 metaKeyIndex :: ServerPayChanI KeyDeriveIndex -> KeyDeriveIndex
 metaKeyIndex = mdKeyData . rpcMetadata
 
 -- | Server/receiver: set pubkey metadata
-setMetadata :: a -> ServerPayChanI b -> ServerPayChanI a
-setMetadata kd sp@MkServerPayChan{..} =
+setMetadata :: ServerPayChanG a sd -> b -> ServerPayChanG b sd
+setMetadata sp@MkServerPayChan{..} kd =
     sp { rpcMetadata =
             rpcMetadata { mdKeyData = kd }
        }
 
 
 -- Status
-setChannelStatus :: PayChanStatus -> ServerPayChanI a -> ServerPayChanI a
+setChannelStatus :: PayChanStatus -> ServerPayChanG kd sd -> ServerPayChanG kd sd
 setChannelStatus s pcs@MkServerPayChan{ rpcMetadata = meta } =
     pcs { rpcMetadata = metaSetStatus s meta }
 
-getChannelStatus :: ServerPayChanI a -> PayChanStatus
+getChannelStatus :: ServerPayChanG kd sd -> PayChanStatus
 getChannelStatus MkServerPayChan{ rpcMetadata = meta } =
     metaGetStatus meta
 
-markAsBusy :: ServerPayChanI a -> ServerPayChanI a
+markAsBusy :: ServerPayChanG kd sd -> ServerPayChanG kd sd
 markAsBusy = setChannelStatus PaymentInProgress
 
-isReadyForPayment :: ServerPayChanI a -> Bool
+isReadyForPayment :: ServerPayChanG kd sd -> Bool
 isReadyForPayment =
     (== ReadyForPayment) . getChannelStatus
 
-checkChannelStatus :: ServerPayChanI a -> Either PayChanError (ServerPayChanI a)
+checkChannelStatus :: ServerPayChanG kd sd -> Either PayChanError (ServerPayChanG kd sd)
 checkChannelStatus rpc =
     maybe
     (Right rpc)
     (Left . StatusError)
     (checkReadyForPayment $ getChannelStatus rpc)
 
+getClosingPayment :: ServerPayChanI kd -> Maybe SignedPayment
+getClosingPayment spc =
+    case getChannelStatus spc of
+        ChannelClosed p -> Just p
+        _               -> Nothing
+
+{-
+_setClientChangeAddress :: ServerPayChanI kd -> HC.Address -> ServerPayChanI kd
+_setClientChangeAddress rpc@MkServerPayChan{..} =
+    undefined
+ -}
 
 -- Metadata
 calcNewData :: MetadataI a -> PayChanState BtcSig -> MetadataI a
@@ -85,6 +96,8 @@ calcNewData md@Metadata{ mdUnsettledValue = oldValRecvd, mdPayCount = oldCount }
     where checkedVal  = if newValRecvd < oldValRecvd then error "BUG: Value lost :(" else newValRecvd
           newValRecvd = valueOf pcs
 
-updateMetadata :: ServerPayChanI a -> ServerPayChanI a
+updateMetadata :: ServerPayChanI kd -> ServerPayChanI kd
 updateMetadata rpc@MkServerPayChan{..} =
     rpc { rpcMetadata = calcNewData rpcMetadata rpcState }
+
+

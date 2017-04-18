@@ -11,7 +11,8 @@ import qualified Network.Haskoin.Crypto as HC
 import qualified Network.Haskoin.Transaction as HT
 
 
-newMetaAfterSettle :: ServerPayChanI a -> MetadataI a
+{-
+newMetaAfterSettle :: ServerPayChanI kd -> MetadataI a
 newMetaAfterSettle rpc@MkServerPayChan{rpcMetadata = prevMd} =
     prevMd
         { mdSettledValue   = Settle.infoFromState rpc : mdSettledValue prevMd :: [Settle.SettleInfo]
@@ -21,16 +22,18 @@ newMetaAfterSettle rpc@MkServerPayChan{rpcMetadata = prevMd} =
 
 -- |What would the status of the payment channel be
 --   if the settlement transaction were published right now?
-statusAfterSettlement :: ServerPayChanI a -> PayChanStatus
+statusAfterSettlement :: ServerPayChanI kd -> PayChanStatus
 statusAfterSettlement rpc@MkServerPayChan{rpcState = pcs} =
     if changeAddress pcs /= fundingAddress rpc then     -- channelIsExhausted
-        ChanClosed
+        ChannelClosed
     else
         ReadyForPayment
   where
     changeAddress = clientChangeAddr . pcsPayment
 
--- settleChanState :: SignedBtcTx ChanParams -> ServerPayChanI a -> ServerPayChanI a
+-}
+
+-- settleChanState :: SignedBtcTx ChanParams -> ServerPayChanI kd -> ServerPayChanI kd
 -- settleChanState tx rpc@MkServerPayChan{rpcState = pcs} =
 --     undefined
 --         where

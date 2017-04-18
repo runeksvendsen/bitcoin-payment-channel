@@ -49,8 +49,8 @@ signSettleTx signFunc chgOut tx@BtcTx{..} = mkRelFeeFunc mkTx
         where mkTx fee = signReplaceInputs signFunc (txWithChange fee)
               txWithChange fee = setTxRawFee fee $ setChangeOut chgOut tx
               mkRelFeeFunc = maybe  -- if 'btcTxFee' is absent, we use 'btcAbsFee_'
-                    (mkRelativeFeeTxM (btcAbsFee_ chgOut))
-                    mkRelativeFeeTxM
+                    (mkRelativeFeeTxM tx (btcAbsFee_ chgOut))
+                    (mkRelativeFeeTxM tx)
                     (btcTxFee chgOut)
 
 signReplaceInputs :: forall t r ss oldSd m.
@@ -125,15 +125,16 @@ txSize = calcTxSize . toHaskoinTx
 
 mkRelativeFeeTxM
     :: (Monad m, HasFee fee, SignatureScript t ss, HasSpendCond r t, SpendFulfillment ss r)
-    => fee                                          -- ^ Desired transaction fee
+    => BtcTx t sigData
+    -> fee                                          -- ^ Desired transaction fee
     -> ( BtcAmount -> m (Either e (BtcTx t ss)) )   -- ^ Produces desired Bitcoin tx with given fee
     -> m (Either e (BtcTx t ss))
-mkRelativeFeeTxM fee mkTxFunc =
+mkRelativeFeeTxM tx fee mkTxFunc =
     mkTxFunc (0 :: BtcAmount) >>= \txE ->
         case txE of
             Right tx -> mkTxSizeFee tx
             left     -> return left
     where
-        mkTxSizeFee tx = mkTxFunc $ absoluteFee (txSize tx) fee
+        mkTxSizeFee tx = mkTxFunc $ absoluteFee (fromIntegral $ availableVal tx) (txSize tx) fee
 
 

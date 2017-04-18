@@ -17,5 +17,5 @@ import qualified Data.List.NonEmpty     as NE
 
 
 
-infoFromState :: ServerPayChanI a -> SettleInfo
+infoFromState :: ServerPayChanG kd sd -> SettleInfo
 infoFromState rpc = error "STUB" -- SettleInfo (error "STUB") (mdPayCount $ rpcMetadata rpc)

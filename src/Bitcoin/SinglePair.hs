@@ -72,12 +72,12 @@ pairRedeemScript SigSinglePair{..} = inputCondScript singleInput
 fundingValue :: SigSinglePair t a -> BtcAmount
 fundingValue SigSinglePair{..} = btcInValue singleInput
 
-clientChangeVal :: SigSinglePair t BtcSig -> BtcAmount
+clientChangeVal :: SigSinglePair t a -> BtcAmount
 clientChangeVal SigSinglePair{..} = nonDusty (btcAmount singleOutput)
 
-resetClientChangeVal :: SigSinglePair t a -> Either BtcError (SigSinglePair t a)
+resetClientChangeVal :: SigSinglePair t BtcSig -> Either BtcError (SigSinglePair t InvalidSig)
 resetClientChangeVal ssp@SigSinglePair{..} =
-    mkNew <$> mkNonDusty (fundingValue ssp)
+    mapSigData fromBtcSig . mkNew <$> mkNonDusty (fundingValue ssp)
   where
     mkNew fundVal =
         ssp { singleOutput =
@@ -85,14 +85,20 @@ resetClientChangeVal ssp@SigSinglePair{..} =
             }
 
 
-clientChangeAddr :: SigSinglePair t BtcSig -> HC.Address
+clientChangeAddr :: SigSinglePair t a -> HC.Address
 clientChangeAddr SigSinglePair{..} = btcAddress singleOutput
 
-clearSig :: SigSinglePair t BtcSig -> SigSinglePair t ()
-clearSig = spMapSigData $ const ()
+class SetClientChangeAddr (s :: * -> *) where
+    _setClientChangeAddr :: s BtcSig -> HC.Address -> s InvalidSig
 
-spMapSigData :: (a -> b) -> SigSinglePair t a -> SigSinglePair t b
-spMapSigData f sp@SigSinglePair{..} = sp { singleInput = mapSigData f singleInput }
+instance SetClientChangeAddr (SigSinglePair t) where
+    _setClientChangeAddr ssp@SigSinglePair{..} addr =
+        mapSigData fromBtcSig $ ssp { singleOutput =
+                 singleOutput { btcAddress = addr }
+            }
+
+clearSig :: SigSinglePair t a -> SigSinglePair t ()
+clearSig = mapSigData $ const ()
 
 
 -- | After the lockTime -- specified in the funding output in the blockchain --

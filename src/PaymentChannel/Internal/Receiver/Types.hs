@@ -20,16 +20,43 @@ type ServerPayChanX = ServerPayChanI KeyDeriveIndex
 
 -- |State object for the value receiver. "kd" is used to store
 --   information about the receiver key(s) used for this state object.
-data ServerPayChanI kd = MkServerPayChan {
+data ServerPayChanG kd sd = MkServerPayChan {
     -- |Internal state object
-    rpcState    :: PayChanState BtcSig
+    rpcState    :: PayChanState sd
   , rpcMetadata :: MetadataI kd
 } deriving (Eq, Show, Typeable, Generic, Serialize, NFData)
 
-instance HasSendPubKey (ServerPayChanI a) where getSendPubKey = getSendPubKey . rpcState
-instance HasRecvPubKey (ServerPayChanI a) where getRecvPubKey = getRecvPubKey . rpcState
+type ServerPayChanI kd = ServerPayChanG kd BtcSig
+
+dummyFromClientState :: ClientPayChan -> ServerPayChanI ()
+dummyFromClientState MkClientPayChan{..} =
+    MkServerPayChan spcState initialMetadata
 
 
+data ClosedServerChanI kd = MkClosedServerChan
+    { cscState          :: ServerPayChanG kd BtcSig
+    , cscClosingPayment :: SignedPayment
+    } deriving (Eq, Show, Typeable, Generic, Serialize, NFData)
+
+type ClosedServerChanX = ClosedServerChanI KeyDeriveIndex
+
+getClosedState :: ClosedServerChanI kd -> ServerPayChanI kd
+getClosedState = cscState
+
+instance HasSendPubKey (ServerPayChanG kd sd) where getSendPubKey = getSendPubKey . rpcState
+instance HasRecvPubKey (ServerPayChanG kd sd) where getRecvPubKey = getRecvPubKey . rpcState
+
+instance HasSigData (ServerPayChanG kd) where
+    mapSigData f spc@MkServerPayChan{..} =
+         spc { rpcState =
+                 mapSigData f rpcState
+             }
+
+instance SetClientChangeAddr (ServerPayChanG kd) where
+    _setClientChangeAddr spc@MkServerPayChan{..} addr =
+        spc { rpcState =
+                _setClientChangeAddr rpcState addr
+            }
 
 instance ToJSON d => ToJSON (ServerPayChanI d) where
     toJSON rpc = object
@@ -42,5 +69,4 @@ instance FromJSON d => FromJSON (ServerPayChanI d) where
         MkServerPayChan <$>
             o .: "state" <*>
             o .: "metadata"
-
 

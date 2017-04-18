@@ -3,7 +3,7 @@ module PaymentChannel.RBPCP.Parse
 (
   fromPaymentData
 , toPaymentData
-, RBPCP.PaymentData
+, RBPCP.PaymentData(..)
 , ParseError(..)
 , parseRedeemScript
 )

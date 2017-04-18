@@ -6,7 +6,7 @@ module PaymentChannel.Internal.Crypto.PubKey
 ,   HasSendPubKey(..)
 ,   HasRecvPubKey(..)
 ,   KeyDeriveIndex
-,   mkKeyIndex, word32Index
+,   mkKeyIndex, word32Index, word31Index
 ,   HasKeyIndex(..)
 ) where
 
@@ -52,6 +52,10 @@ newtype KeyDeriveIndex = KeyDeriveIndex Word32
 
 word32Index :: KeyDeriveIndex -> Word32
 word32Index (KeyDeriveIndex i) = i
+
+-- | Ignore most significant bit
+word31Index :: KeyDeriveIndex -> Word32
+word31Index (KeyDeriveIndex i) = i `mod` round (2**31 :: Double)
 
 mkKeyIndex :: Word32 -> Maybe KeyDeriveIndex
 mkKeyIndex i

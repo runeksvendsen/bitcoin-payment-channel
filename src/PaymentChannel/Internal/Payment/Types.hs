@@ -8,6 +8,7 @@ where
 
 import PaymentChannel.Internal.Types
 import Bitcoin.Types
+import Bitcoin.Util
 import Bitcoin.SinglePair
 import Bitcoin.SpendCond.Cond
 import Bitcoin.Signature

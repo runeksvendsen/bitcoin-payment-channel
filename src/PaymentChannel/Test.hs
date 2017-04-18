@@ -13,10 +13,13 @@ import PaymentChannel.Util      as X
 import PaymentChannel.Internal.Receiver.Types as X
 import PaymentChannel.Internal.ChanScript as X
 import PaymentChannel.Internal.Config
+import PaymentChannel.Internal.Receiver.Key  as X
 
 import qualified Network.Haskoin.Crypto as HC
 import qualified Network.Haskoin.Transaction as HT
 import qualified Network.Haskoin.Script as HS
+import           Network.Haskoin.Crypto      (DerivPathI(..))
+
 import qualified Data.Serialize         as Bin
 import           Network.Haskoin.Test
 import           Data.Time.Clock                 (UTCTime(..))
@@ -42,8 +45,14 @@ data ArbChannelPair = ArbChannelPair
     , initPayAmount     :: BtcAmount
     , initRecvAmount    :: BtcAmount
     , initPayment       :: SignedPayment
-    , recvPrvKey        :: HC.PrvKeyC
+    , recvPrvKey        :: TestRecvKey
     } deriving (Generic, NFData)
+
+data TestRecvKey = TestRecvKey RootKey (External ChildPair) KeyDeriveIndex
+      deriving (Generic, NFData)
+
+testPrvKeyC :: TestRecvKey -> HC.PrvKeyC
+testPrvKeyC (TestRecvKey _ pair kdi) = subKey pair kdi
 
 data ChannelPairResult = ChannelPairResult
     { resInitPair       :: ArbChannelPair
@@ -74,14 +83,6 @@ instance Arbitrary (PayChanState BtcSig) where
 instance Arbitrary ChanParams where
     arbitrary = fmap fst mkChanParams
 
---instance Arbitrary FundingTxInfo where
---    arbitrary = do
---        ArbitraryTxHash h <- arbitrary
---        i <- arbitrary
---        amt <- choose (fromIntegral mIN_CHANNEL_SIZE, maxCoins)
---        let fundAmount = either (error "Dust math fail") id $ mkNonDusty (fromIntegral amt :: BtcAmount)
---        return $ CFundingTxInfo h i fundAmount
-
 instance Arbitrary BtcAmount where
     arbitrary = fromIntegral <$> choose (0, maxCoins)
 
@@ -102,9 +103,10 @@ instance Arbitrary NonZeroBitcoinAmount where
 instance Arbitrary (Payment BtcSig) where
     arbitrary = snd <$> mkChanPair
 
--- Hard sub keys have an index of, at most, 0x80000000
+-- Soft child keys have an index of less than 0x80000000
 instance Arbitrary KeyDeriveIndex where
-    arbitrary = fromMaybe (error "Bad key index") . mkKeyIndex <$> choose (0, 0x80000000)
+    arbitrary =
+        fromMaybe (error "Bad key index") . mkKeyIndex <$> choose (0, 0x80000000 - 1)
 
 instance MonadTime Gen where
     currentTime = return nowishTimestamp
@@ -118,7 +120,7 @@ toInitResult initPair@(ArbChannelPair spc rpc payAmt rcvAmt pay _) =
 -- |Fold a payment of specified value into a 'ChannelPairResult'
 doPayment :: MonadTime m => ChannelPairResult -> BtcAmount -> m ChannelPairResult
 doPayment (ChannelPairResult initPair spc rpc sendList recvList payLst) amount = do
-    (newSpc, pmn, amountSent) <- cappedCreatePayment spc amount
+    let (newSpc, pmn, amountSent) = createPayment spc (Capped amount)
     eitherRpc <- ("doPayment send: " ++ show amountSent) `debugTrace` acceptPayment (toPaymentData pmn) rpc
     case eitherRpc of
         Left e -> error (show e)
@@ -133,35 +135,34 @@ runChanPair chanPair paymentAmountList =
     ("runChanPair lst: " ++ show paymentAmountList) `debugTrace`
     foldM doPayment (toInitResult chanPair) paymentAmountList
 
-mkChanParams :: Gen (ChanParams, (HC.PrvKeyC, HC.PrvKeyC, HC.XPubKey))
-mkChanParams = do
+mkChanParams = arbitrary >>= fromRecvRootKey
+
+fromRecvRootKey :: RootKey -> Gen (ChanParams, (HC.PrvKeyC, TestRecvKey))
+fromRecvRootKey recvRoot = do
     -- sender key pair
     ArbitraryPubKeyC sendPriv sendPK <- arbitrary
     -- receiver key pair
---     ArbitraryPubKeyC recvPriv recvPK <- arbitrary
-    kdi <- arbitrary
-    ArbitraryXPrvKey recvXPrv <- arbitrary
-    let (recvPriv, recvPK) = subKey recvXPrv kdi
---     ArbitraryXPubKey recvPriv recvPK <- arbitrary
+    keyDerivIdx <- arbitrary
+    let childPair = mkChild recvRoot :: External ChildPair
+        recvPK    = subKey childPair keyDerivIdx
     -- TODO: Use a future expiration date for now
     lockTime <- fromMaybe (error "Bad lockTime") . parseLockTime <$> choose (1795556940, maxBound)
     return (MkChanParams
                 (MkSendPubKey sendPK) (MkRecvPubKey $ HC.xPubKey recvPK) lockTime,
-           (sendPriv, recvPriv, recvPK))
-
-subKey :: HC.XPrvKey -> KeyDeriveIndex -> (HC.PrvKeyC, HC.XPubKey)
-subKey prv kdi = do
-    let hardSub = HC.hardSubKey prv (word32Index kdi)
-    let mkKeyPair k = (HC.xPrvKey k, HC.deriveXPubKey k)
-    mkKeyPair hardSub
+           (sendPriv, TestRecvKey recvRoot childPair keyDerivIdx))
 
 
 mkChanPair :: Gen (ArbChannelPair, SignedPayment)
 mkChanPair = arbitrary >>= mkChanPairInitAmount
 
+--fromOpenAmountRecvPrv :: HC.XPrvKey -> BtcAmount -> Gen (ArbChannelPair, SignedPayment)
+--fromOpenAmountRecvPrv xPrv =
+
 mkChanPairInitAmount :: BtcAmount -> Gen (ArbChannelPair, SignedPayment)
 mkChanPairInitAmount initPayAmount = do
-    (cp, (sendPriv, recvPriv, recvXPub)) <- mkChanParams
+--    (cp, (sendPriv, recvPriv, recvXPub)) <- mkChanParams
+    (cp, (sendPriv, recvKey@(TestRecvKey _ childPair keyDerivIdx))) <- mkChanParams
+    let recvXPub = subKey childPair keyDerivIdx
     fundingVal <- arbitraryNonDusty $ max mIN_CHANNEL_SIZE (initPayAmount + configDustLimit)
     (vout,tx)  <- arbitraryFundingTx cp (nonDusty fundingVal)
     let fti = ("fundingVal: " ++ show fundingVal) `debugTrace` CFundingTxInfo (HT.txHash tx) vout fundingVal
@@ -177,7 +178,7 @@ mkChanPairInitAmount initPayAmount = do
         Right (recvChan, initRecvAmount) -> return $
              ("mkChanPair: " ++ show (initPayAmount, initRecvAmount)) `debugTrace`
                  (ArbChannelPair
-                    sendChan (mkExtRPC recvChan) initPayAmount initRecvAmount initPayment recvPriv
+                    sendChan (mkExtRPC recvChan) initPayAmount initRecvAmount initPayment recvKey
                  , initPayment)
 
 -- Arbitrary range
@@ -189,8 +190,8 @@ instance Arbitrary (BtcAmount,BtcAmount) where
 
 genRunChanPair :: Word -> (BtcAmount,BtcAmount) -> BtcAmount -> IO ChannelPairResult
 genRunChanPair numPayments (rangeMin,rangeMax) initAmount = do
-    amountList <- fmap (map fromIntegral) <$> generate $
-        vectorOf (fromIntegral numPayments) (choose (conv rangeMin, conv rangeMax) :: Gen Word64)
+    amountList <- fmap (map conv) <$> generate $
+        vectorOf (conv numPayments) (choose (conv rangeMin, conv rangeMax) :: Gen Word64)
     (arbPair,_) <- generate $ mkChanPairInitAmount initAmount
     runChanPair arbPair amountList
   where
@@ -216,3 +217,18 @@ arbitraryInsert lst a = do
 -- TODO: We don't bother testing expiration time for now
 nowishTimestamp :: UTCTime
 nowishTimestamp = UTCTime (ModifiedJulianDay 50000) 0
+
+-- Key stuff
+instance Arbitrary RootKey where
+    arbitrary = (\(ArbitraryXPrvKey k) -> fromRootPrv k) <$> arbitrary
+
+createAcceptClosingPayment
+    :: ChangeOutFee fee
+    => HC.Address
+    -> fee
+    -> ChannelPairResult
+    -> Either PayChanError ClosedServerChanX
+createAcceptClosingPayment addr fee ChannelPairResult{..} =
+    resultFromThePast $ acceptClosingPayment (toPaymentData closingPayment) resRecvChan
+  where
+    (_,closingPayment,_) = createClosingPayment resSendChan addr fee

@@ -1,6 +1,7 @@
 module Bitcoin.SpendCond.Util
 ( getPrevIns
 , singlePrevIn
+, module Bitcoin.Util
 )
 where
 

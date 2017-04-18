@@ -18,7 +18,6 @@ data PayChanError =
   |  BadSigHashFlag HS.SigHash HS.SigHash     -- ^ Unexpected 'SigHash' flag. Expected: SIGHASH_SINGLE|ANYONECANPAY.
   |  BadPaymentValue BtcAmount                -- ^ Payment assigns less value to server than previous payment. Client change value is greater by the specified 'BtcAmount'.
   |  PaymentError (TxMismatch ChanParams)
-  |  ClosingPaymentBadValue                   -- ^ The closing payment only changes the payment transaction change address. Sending value is not allowed.
   |  ChannelExpired                           -- ^ Channel has expired or is too close to expiration date
   |  StatusError HTTPError                    -- ^ Channel not ready for payment. 409=try again; 410=channel gone.
   |  RBPCPError  ParseError                   -- ^ Failed to parse RBPCP payment
@@ -34,8 +33,6 @@ instance Show PayChanError where
         ". expected: " ++ show sh2
     show (BadPaymentValue valDiff) =
         "out-of-order payment (assigns " ++ show valDiff ++ " less value to receiver)"
-    show ClosingPaymentBadValue = "payment not of zero value." ++
-        "cannot receive value in closing payment."
     show ChannelExpired =
         "channel too close to expiration date"
     show (StatusError he) = unwords

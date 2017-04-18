@@ -60,9 +60,9 @@ valueDiff oldTx newTx =
 
 inputDiff :: (HasSpendCond r t, Eq t, Eq r) => InputG t a -> InputG t a -> Either (InMismatch r) ()
 inputDiff oldIn newIn =
-       compareProp oldIn newIn btcPrevOut   InPrevOutMismatch
-    >> compareProp oldIn newIn inputCondScript InRdmScrMismatch
-    >> compareProp oldIn newIn btcSequence  InSequenceMismatch
+       compareProp oldIn newIn btcPrevOut       InPrevOutMismatch
+    >> compareProp oldIn newIn inputCondScript  InRdmScrMismatch
+    >> compareProp oldIn newIn btcSequence      InSequenceMismatch
     >> return ()
 
 outputDiff :: BtcOut -> BtcOut -> Either OutMismatch (HC.Address,ValDiff)

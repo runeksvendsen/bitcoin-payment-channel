@@ -24,7 +24,7 @@ data OpenError
 
 -- | Derive the initial (zero-value) server state from
 --    the funding transaction and "initial payment"-'PaymentData'
-initialServerState :: HT.Tx -> RBPCP.PaymentData -> Either OpenError (ServerPayChanI ())
+initialServerState :: HT.Tx -> RBPCP.PaymentData -> Either OpenError (ServerPayChanG () InvalidSig)
 initialServerState tx pd@RBPCP.PaymentData{..}
   | i <- paymentDataFundingVout
   , indexMax <- length (HT.txOut tx) - 1
@@ -41,15 +41,13 @@ initialServerState tx pd@RBPCP.PaymentData{..}
                 fmapL FundingTxError (fromPaymentData (btcInValue inp) pd)
                   >>= brandNewState
 
-brandNewState :: SignedPayment -> Either OpenError (ServerPayChanI ())
+brandNewState :: SignedPayment -> Either OpenError (ServerPayChanG () InvalidSig)
 brandNewState signedPaym = do
     let setErr = fmapL (const $ FundingTxDustOut configDustLimit)
     newSp <- setErr $ resetClientChangeVal signedPaym
-    return $ MkServerPayChan (mkChanState newSp) metadata
+    return $ MkServerPayChan (mkChanState newSp) initialMetadata
   where
-    metadata       = Metadata () 0 [] 0 ReadyForPayment
-    mkChanState sp = MkPayChanState sp (fromInitialPayment sp)
-
+    mkChanState sp = MkPayChanState sp (fromInitialPayment signedPaym)
 
 instance Show OpenError where
     show (NoSuchOutput i h) = unwords

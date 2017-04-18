@@ -11,24 +11,25 @@ import qualified Data.Aeson.Types   as JSON
 -- |Objects from which a Bitcoin fee can be calculated,
 --   given a transaction
 class HasFee a where
-    absoluteFee :: TxByteSize -> a -> BtcAmount
+    absoluteFee :: BtcAmount -> TxByteSize -> a -> BtcAmount
 
 -- |Constant fee
 instance HasFee BtcAmount where
-    absoluteFee _ = id    -- Same as constant fee
+    absoluteFee _ _ = id    -- Same as constant fee
 
 data Constant = Constant BtcAmount
 instance HasFee Constant where
-    absoluteFee _ (Constant amt) = amt
+    absoluteFee _ _ (Constant amt) = amt
 
 type TxByteSize = Word
 -- |Specify a fee as satoshis per byte
 newtype SatoshisPerByte = SatoshisPerByte BtcAmount -- ^Fee in satoshis per byte
     deriving (Eq, Show, Ord, Num, Enum, Real, Integral, Bin.Serialize, JSON.ToJSON, JSON.FromJSON, NFData)
 instance HasFee SatoshisPerByte where
-    absoluteFee txByteSize (SatoshisPerByte satoshisPerByte) =
+    absoluteFee _ txByteSize (SatoshisPerByte satoshisPerByte) =
         fromIntegral txByteSize * satoshisPerByte
 
+{-
 mkRelativeFeeTx
     :: HasFee fee
     => fee                          -- ^Desired (per-byte) transaction fee
@@ -40,6 +41,4 @@ mkRelativeFeeTx fee mkTxFunc =
         pass2Tx = mkTxSizeFee pass1Tx
         pass1Tx = mkTxFunc (0 :: BtcAmount)
         mkTxSizeFee tx = mkTxFunc $ absoluteFee (calcTxSize tx) fee
-
-
-
+-}

@@ -1,4 +1,4 @@
-{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE ScopedTypeVariables, GeneralizedNewtypeDeriving #-}
 
 module PaymentChannel.Internal.Util
 (
@@ -50,6 +50,23 @@ import           Control.Monad              as Ctrl (forM, mapM, (>=>), (<=<))
 import           GHC.Generics               (Generic)
 import           Data.Typeable              (Typeable, typeOf)
 import qualified Network.Haskoin.Crypto     as HC
+
+-- MonadPast
+import Data.Time.Clock.POSIX
+import Control.Monad.Time
+import Data.Functor.Identity
+
+newtype MonadPast a = MonadPast (Identity a)
+    deriving (Functor, Applicative, Monad)
+
+instance MonadTime MonadPast where
+    currentTime = MonadPast $ Identity $ posixSecondsToUTCTime $ realToFrac 0
+
+-- | A 'MonadTime' result as if it were Jan 1 1970
+resultFromThePast :: MonadPast a -> a
+resultFromThePast (MonadPast (Identity a)) = a
+-- MonadPast
+
 
 toInt :: (Integral a, Num b) => a -> b
 toInt = fromIntegral

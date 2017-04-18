@@ -20,14 +20,17 @@ data MetadataI kd = Metadata
     , mdChannelStatus   :: PayChanStatus
     } deriving (Eq, Typeable, Show, Generic, NFData)
 
+initialMetadata :: MetadataI ()
+initialMetadata = Metadata () 0 [] 0 ReadyForPayment
+
 type MetadataIdx = MetadataI KeyDeriveIndex
 
 data PayChanStatus =
     ReadyForPayment
   | PaymentInProgress
   | SettlementInProgress
-  | ChanClosed
-    deriving (Eq, Typeable, Show, Read, Generic, Serialize, NFData)
+  | ChannelClosed SignedPayment  -- ^ The closing channel payment
+    deriving (Eq, Typeable, Show, Generic, ToJSON, FromJSON, Serialize, NFData)
 
 instance Serialize a => Serialize (MetadataI a) where
     put Metadata{..} =
@@ -38,15 +41,13 @@ instance Serialize a => Serialize (MetadataI a) where
         >> put mdChannelStatus
     get = Metadata <$> get <*> get <*> get <*> get <*> get
 
-
 -- Generic
 instance ToJSON a   => ToJSON (MetadataI a)
 instance FromJSON a => FromJSON (MetadataI a)
 
 
-instance ToJSON PayChanStatus where
-    toJSON = String . cs . show
+-- instance ToJSON PayChanStatus where
+--     toJSON = String . cs . show
 
-instance FromJSON PayChanStatus where
-    parseJSON = withText "PayChanStatus" (return . read . cs)
-
+--instance FromJSON PayChanStatus where
+--    parseJSON = withText "PayChanStatus" $ \txt -> -- (return . read . cs)

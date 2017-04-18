@@ -24,4 +24,4 @@ checkReadyForPayment :: PayChanStatus -> Maybe HTTPError
 checkReadyForPayment ReadyForPayment        = Nothing
 checkReadyForPayment PaymentInProgress      = Just $ HTTPError 400 "Channel busy (payment in progress)"
 checkReadyForPayment SettlementInProgress   = Just $ HTTPError 409 "Settlement in progress"
-checkReadyForPayment ChanClosed             = Just $ HTTPError 410 "Channel closed"
+checkReadyForPayment (ChannelClosed _)      = Just $ HTTPError 410 "Channel closed"

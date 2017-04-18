@@ -7,6 +7,7 @@ import           Bitcoin.SpendCond.Util
 
 import qualified Network.Haskoin.Transaction    as HT
 import qualified Network.Haskoin.Crypto         as HC
+import qualified Network.Haskoin.Test           as HC -- (ArbitraryHash256(..))
 import qualified Data.Aeson                     as JSON
 import qualified Data.Serialize                 as Bin
 import           Data.Typeable
@@ -47,6 +48,7 @@ main :: IO ()
 main = hspec $ do
     paymentSpec
     conversionSpec
+    keySpec
 
 paymentSpec :: Spec
 paymentSpec =
@@ -66,6 +68,11 @@ paymentSpec =
           checkSendRecvStateMatch
         it "Sent amounts == received amounts"
           recvSendAmountsMatch
+      describe "Channel close" $
+        it "Can produce & accept arbitrary closing payment with sane fee" $ \res -> do
+          HC.ArbitraryAddress arbAddr <- generate arbitrary
+          txFee <- fromIntegral <$> generate (choose (0 :: Word64, 10000))
+          createAcceptClosingPayment arbAddr (txFee :: SatoshisPerByte) res `shouldSatisfy` isRight
 
 conversionSpec :: Spec
 conversionSpec = do
@@ -85,6 +92,35 @@ conversionSpec = do
         (binSerDeser  :: PayChanState BtcSig -> IO ())
       it "ChanParams" $ generate arbitrary >>=
         (binSerDeser  :: ChanParams -> IO ())
+
+keySpec :: Spec
+keySpec  = do
+  describe "External ChildPub/ChildPair" $
+    it "derive same pubkeys & created signatures verify" $ do
+      rootKey  <- generate arbitrary
+      keyIndex <- generate arbitrary
+      let pair :: External ChildPair
+          pair = mkChild rootKey
+          pub :: External ChildPub
+          pub  = mkChild rootKey
+      (subKey pair keyIndex :: HC.XPubKey) `shouldBe` (subKey pub keyIndex :: HC.XPubKey)
+      HC.ArbitraryHash256 h256 <- generate arbitrary
+      -- External pair/pub compare
+      HC.signMsg h256 (subKey pair keyIndex :: HC.PrvKeyC) `shouldSatisfy`
+          (\sig -> HC.verifySig h256 sig (subKey pub keyIndex :: HC.PubKeyC))
+      -- External pair/pair compare
+      HC.signMsg h256 (subKey pair keyIndex :: HC.PrvKeyC) `shouldSatisfy`
+          (\sig -> HC.verifySig h256 sig (subKey pair keyIndex :: HC.PubKeyC))
+  describe "Internal ChildPair" $
+    it "created signatures verify" $ do
+      rootKey  <- generate arbitrary
+      keyIndex <- generate arbitrary
+      let pair :: Internal ChildPair
+          pair = mkChild rootKey
+      HC.ArbitraryHash256 h256 <- generate arbitrary
+      -- Internal pair/pair compare
+      HC.signMsg h256 (subKey pair keyIndex :: HC.PrvKeyC) `shouldSatisfy`
+          (\sig -> HC.verifySig h256 sig (subKey pair keyIndex :: HC.PubKeyC))
 
 
 withArbChanResult :: (ChannelPairResult -> IO ()) -> IO ()
@@ -161,5 +197,5 @@ mkSettleTx :: Monad m =>
 mkSettleTx ChannelPairResult{..} = do
     settleTxE <- getSettlementBitcoinTx
             resRecvChan recvSettleAddr
-            (const $ return $ recvPrvKey resInitPair) (SatoshisPerByte 0) KeepDust
+            (const $ return $ testPrvKeyC $ recvPrvKey resInitPair) (SatoshisPerByte 0) KeepDust
     return $ either (error . show) id settleTxE

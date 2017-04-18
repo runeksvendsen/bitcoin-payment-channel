@@ -93,7 +93,7 @@ __/IMPORTANT:/__ /Channel setup is risk free because the sender can derive a ref
  /be cautious./
 
 -}
-
+{-# LANGUAGE DeriveAnyClass #-}
 module PaymentChannel
 (
     -- *Initialization
@@ -107,14 +107,18 @@ module PaymentChannel
     setMetadata,
 
     -- *Payment
-    createPayment, cappedCreatePayment,
+    createPayment, Capped(..),
     acceptPayment,
+    ClosedServerChanX, getClosedState,
 
     -- *Settlement
+    getRefundBitcoinTx,
+    createClosingPayment,
+    acceptClosingPayment,
+    getSettlementBitcoinTx,
+    closedGetSettlementTx,
     DustPolicy(..),
     ChangeOutFee,
-    getSettlementBitcoinTx,
-    getRefundBitcoinTx,
 
     -- *Types
     module PaymentChannel.Types,
@@ -130,15 +134,20 @@ import PaymentChannel.Internal.Receiver.Util
 import PaymentChannel.Internal.Receiver.Open            (initialServerState)
 
 import PaymentChannel.Internal.Util
+import Bitcoin.Util                                     (calcTxSize)
 import PaymentChannel.Internal.Error
 import qualified PaymentChannel.Internal.Receiver.Util  as S
 import PaymentChannel.Internal.Metadata.Util
-import PaymentChannel.Internal.Settlement               (getSignedSettlementTx)
+import PaymentChannel.Internal.Settlement
 import PaymentChannel.Internal.Refund                   (mkRefundTx)
 
 import PaymentChannel.Util                              (getFundingAddress)
 import PaymentChannel.Types
 import Control.Monad.Time
+
+import Control.Exception                                (throw)
+import Data.Tagged
+import Data.Functor.Identity                            (Identity(..))
 
 import qualified  Network.Haskoin.Crypto        as HC
 import qualified  Network.Haskoin.Transaction   as HT
@@ -173,34 +182,58 @@ channelWithInitialPayment prvKey cp fundInf sendAddr payVal =
             prvKey (mkUnsignedPayment cp fundInf sendAddr) payVal
 
 -- |Create new payment of specified value, along with updated state containing this payment.
-createPayment :: Monad m =>
-       ClientPayChanI BtcSig
+createPayment :: forall value ret.
+       PaymentValueSpec value ret BtcSig
+    => ClientPayChanI BtcSig
     -- ^ Sender state object
-    -> BtcAmount
+    -> value
     -- ^ Amount to send (the actual payment amount is capped, so no invalid payment is created)
-    -> m (Either BtcError (ClientPayChanI BtcSig, SignedPayment))
+    -> ret
     -- ^ Updated sender state & payment
-createPayment cpc@MkClientPayChan{..} payVal =
-    createPaymentOfValue spcPrvKey (clearSig $ pcsPayment spcState) payVal >>=
-        either (return . Left) returnResult
-            where updateState pcs p = pcs { pcsPayment = p }
-                  returnResult payment = return $ Right
-                        (cpc { spcState = updateState spcState payment }, payment)
+createPayment = createPaymentInternal
 
--- | Same as 'createPayment', but cap the supplied payment amount such that
---    a valid payment is always created (perhaps of zero value).
-cappedCreatePayment :: Monad m =>
-       ClientPayChanI BtcSig
-    -> BtcAmount
-    -> m (ClientPayChanI BtcSig, SignedPayment, BtcAmount)
-    -- ^ (state, payment, actual payment amount)
-cappedCreatePayment cpc amt =
-    createPayment cpc cappedAmount >>=
-    \resE -> case resE of
-        Right (newState,payment) -> return (newState, payment, cappedAmount)
-        Left e -> error $ "I fail at math" ++ show e
+-- |Create new payment of specified value, along with updated state containing this payment.
+createPaymentInternal :: forall value ret sd.
+       PaymentValueSpec value ret sd
+    => ClientPayChanI sd
+    -- ^ Sender state object
+    -> value
+    -- ^ Amount to send (the actual payment amount is capped, so no invalid payment is created)
+    -> ret
+    -- ^ Updated sender state & payment
+createPaymentInternal cpc@MkClientPayChan{..} payVal =
+    let
+        (Identity paymentE) = createPaymentOfValue
+              spcPrvKey (clearSig $ pcsPayment spcState) (paymentValue cpc payVal)
+        updateState pcs p = pcs { pcsPayment = p }
+        addUpdatedState p = (cpc { spcState = updateState spcState p }, p)
+    in
+        mkReturnVal (Tagged $ paymentValue cpc payVal :: Tagged (value,sd) BtcAmount) (addUpdatedState <$> paymentE)
+
+
+createClosingPayment
+    :: (ChangeOutFee fee, HasFee fee ) -- , PaymentValueSpec fee ret)
+    => ClientPayChanI BtcSig
+    -> HC.Address
+    -> fee
+    -> (ClientPayChanI BtcSig, SignedPayment, BtcAmount)
+createClosingPayment clientState changeAddress fee =
+    createPayment newState (Capped $ absoluteFee 0 (dummySettleTxSize newState actualAmount) fee)
   where
-    cappedAmount = min (availableChannelVal cpc) amt
+    (newState, _, actualAmount) = createPaymentInternal
+          newChangeAddrState (Capped $ absoluteFee 0 (dummySettleTxSize fakeSigNewAddrState (0 :: BtcAmount)) fee)
+
+    dummySettleTxSize cpc' fee' = calcTxSize $ dummyClientSettleTx cpc' fee'
+    newChangeAddrState = _setClientChangeAddr clientState changeAddress
+    -- ### Dummy
+    fakeSigNewAddrState = mapSigData _invalidBtcSig newChangeAddrState
+    handleSettleRet (Identity (Right dummySettleTx)) = dummySettleTx
+    handleSettleRet (Identity _) = error "woops"
+    dummyAddress = HC.PubKeyAddress "0000000000000000000000000000000000000000"
+    dummyClientSettleTx :: ChangeOutFee txFee => ClientPayChan -> txFee -> HT.Tx
+    dummyClientSettleTx  cpc txFee = handleSettleRet $ getSettlementBitcoinTx
+                          (dummyFromClientState cpc) dummyAddress (const $ return $ spcPrvKey cpc) txFee DropDust
+
 
 -- |Produces a Bitcoin transaction which sends all channel funds back to the sender.
 -- Will not be accepted by the Bitcoin network until the expiration time specified in
@@ -234,27 +267,73 @@ channelFromInitialPayment ::
 channelFromInitialPayment tx paymentData =
     either
       (return . Left)
-      (acceptPayment paymentData)
+      (acceptPaymentInternal paymentData)
       (fmapL OpenError $ initialServerState tx paymentData)
 
-
-
--- |Register, on the receiving side, a payment made by 'createPayment' on the sending side.
--- Returns error if either the signature or payment amount is invalid, and otherwise
--- the amount received with this 'Payment' and a new state object.
+-- | Register, on the receiving side, a payment made by 'createPayment' on the sending side.
+--   Returns error if either the signature or payment amount is invalid, and otherwise
+--    the amount received with this 'Payment' and a new state object.
+-- | NB: Throws 'BadSignatureInState' on invalid old/in-state payment.
 acceptPayment :: MonadTime m =>
+       PaymentData          -- ^Payment to verify and register
+    -> ServerPayChanI kd    -- ^Receiver state object
+    -> m (Either PayChanError (ServerPayChanI kd, BtcAmount)) -- ^Value received plus new receiver state object
+acceptPayment = acceptPaymentInternal
+
+acceptPaymentInternal ::
+      ( MonadTime m
+      , StateSignature sd
+      ) =>
+       PaymentData            -- ^Payment to verify and register
+    -> ServerPayChanG kd sd   -- ^Receiver state object
+    -> m (Either PayChanError (ServerPayChanI kd, BtcAmount)) -- ^Value received plus new receiver state object
+acceptPaymentInternal paymentData rpc =
+    either (return . Left) (acceptPaymentIgnoreStatus paymentData) (S.checkChannelStatus rpc)
+
+-- | Accept the payment that closes the payment channel.
+--   The payment accepted here is allowed to have a different client change address
+--    from that found in the state.
+-- | NB: Throws 'BadSignatureInState' on invalid old/in-state payment.
+acceptClosingPayment :: MonadTime m =>
        PaymentData         -- ^Payment to verify and register
-    -> ServerPayChanI a    -- ^Receiver state object
-    -> m (Either PayChanError (ServerPayChanI a, BtcAmount)) -- ^Value received plus new receiver state object
-acceptPayment paymentData rpc@MkServerPayChan{..} =
+    -> ServerPayChanI kd    -- ^Receiver state object
+    -> m (Either PayChanError (ClosedServerChanI kd))
+acceptClosingPayment paymentData oldState =
+    fmap handleResult <$> acceptClosingPaymentInternal paymentData oldState
+  where
+    mkNewStatus newState = ChannelClosed $ getPayment newState
+    getPayment = pcsPayment . rpcState
+    handleResult (newState, _) = MkClosedServerChan
+            (setChannelStatus (mkNewStatus newState) oldState)
+            (getPayment newState)
+
+acceptPaymentIgnoreStatus ::
+      ( MonadTime m
+      , StateSignature sd
+      ) =>
+       PaymentData              -- ^Payment to verify and register
+    -> ServerPayChanG kd sd     -- ^Receiver state object
+    -> m (Either PayChanError (ServerPayChanG kd BtcSig, BtcAmount)) -- ^Value received plus new receiver state object
+acceptPaymentIgnoreStatus paymentData rpc@MkServerPayChan{..} =
     either (return . Left) checkPayment (getPayment paymentData)
   where
-    mkReturnVal p val = (updateMetadata $ updState rpc p, val)
+    getPayment pd = fmapL RBPCPError (fromPaymentData (getFundingAmount rpc) pd)
+    mkReturnValue p val = (updateMetadata $ updState rpc p, val)
     checkPayment p = do
             valRecvdE <- paymentValueIncrease (pcsPayment rpcState) p
-            return $ mkReturnVal p <$> valRecvdE
-    getPayment pd = S.checkChannelStatus rpc
-            >> fmapL RBPCPError (fromPaymentData (getFundingAmount rpc) pd)
+            return $ mkReturnValue p <$> valRecvdE
+
+acceptClosingPaymentInternal ::
+      ( MonadTime m
+      -- , StateSignature sd
+      ) =>
+       PaymentData        -- ^Payment to verify and register
+    -> ServerPayChanI kd   -- ^Receiver state object
+    -> m (Either PayChanError (ServerPayChanI kd, BtcAmount))
+acceptClosingPaymentInternal paymentData oldState =
+    acceptPaymentIgnoreStatus paymentData newChangeAddrState
+  where
+    newChangeAddrState = _setClientChangeAddr oldState (paymentDataChangeAddress paymentData)
 
 
 -- |The value transmitted over the channel is settled when this transaction is in the Blockchain.
@@ -265,8 +344,9 @@ acceptPayment paymentData rpc@MkServerPayChan{..} =
 getSettlementBitcoinTx ::
      ( Monad m
      , ChangeOutFee fee
+     , HasKeyDeriveIndex kd
      ) =>
-       ServerPayChanI a                 -- ^ Receiver state object
+       ServerPayChanI kd                 -- ^ Receiver state object
     -> HC.Address                       -- ^ Receiver destination address. Funds sent over the channel will be sent to this address, the rest back to the client change address (an argument to 'channelWithInitialPaymentOf').
     -> (KeyDeriveIndex -> m HC.PrvKeyC) -- ^ Function which produces a signature which verifies against 'cpReceiverPubKey'
     -> fee                              -- ^ Bitcoin transaction fee
@@ -276,3 +356,18 @@ getSettlementBitcoinTx rpc recvAdr signFunc txFee dp =
     fmap toHaskoinTx <$>
         getSignedSettlementTx rpc signFunc (mkChangeOut recvAdr txFee dp)
 
+-- |Get the settlement tx for a 'ClosedServerChanI', where the closing payment
+--   pays the Bitcoin transaction fee
+closedGetSettlementTx ::
+       ( Monad m
+       , HasKeyDeriveIndex a
+       )
+    => ClosedServerChanI a              -- ^ Produced by 'acceptClosingPayment'
+    -> HC.Address                       -- ^ Receiver destination address. Funds sent over the channel will be sent to this address, the rest back to the client change address (an argument to 'channelWithInitialPaymentOf').
+    -> (KeyDeriveIndex -> m HC.PrvKeyC) -- ^ Function which produces a signature which verifies against 'cpReceiverPubKey'
+    -> DustPolicy                       -- ^ Whether to keep or drop receiver change output if below dust limit
+    -> m (Either ReceiverError HT.Tx)   -- ^ Settling Bitcoin transaction
+closedGetSettlementTx MkClosedServerChan{..} recvAdr signFunc dp = do
+    let resE  = resultFromThePast $ acceptClosingPaymentInternal (toPaymentData cscClosingPayment) cscState
+        (settleState,txFee) = either (throw . BadClosedServerChan) id resE
+    getSettlementBitcoinTx settleState recvAdr signFunc txFee dp

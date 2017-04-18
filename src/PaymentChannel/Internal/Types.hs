@@ -82,6 +82,18 @@ toHash = ssHash
 instance HasSendPubKey (PayChanState a) where getSendPubKey = getSendPubKey . pcsPayment
 instance HasRecvPubKey (PayChanState a) where getRecvPubKey = getRecvPubKey . pcsPayment
 
+instance HasSigData PayChanState where
+    mapSigData f pcs@MkPayChanState{..} =
+        pcs { pcsPayment =
+                mapSigData f pcsPayment
+            }
+
+instance SetClientChangeAddr PayChanState where
+    _setClientChangeAddr pcs@MkPayChanState{..} addr =
+        pcs { pcsPayment =
+                _setClientChangeAddr pcsPayment addr
+            }
+
 type EmptyClientPayChan = ClientPayChanI ()
 type ClientPayChan = ClientPayChanI BtcSig
 
@@ -96,6 +108,18 @@ data ClientPayChanI sigData = MkClientPayChan
 instance HasSendPubKey (ClientPayChanI a) where getSendPubKey = getSendPubKey . spcState
 instance HasRecvPubKey (ClientPayChanI a) where getRecvPubKey = getRecvPubKey . spcState
 
+instance HasSigData ClientPayChanI where 
+    mapSigData f cpc@MkClientPayChan{..} = 
+           cpc { spcState =
+                   mapSigData f spcState
+               }
+
+instance SetClientChangeAddr ClientPayChanI where
+    _setClientChangeAddr cpc@MkClientPayChan{..} addr = 
+        cpc { spcState =
+                _setClientChangeAddr spcState addr
+            }
+    
 -- |Holds information about the Bitcoin transaction used to fund
 -- the channel
 data FundingTxInfo = CFundingTxInfo {

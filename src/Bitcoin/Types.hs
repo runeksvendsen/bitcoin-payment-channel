@@ -1,9 +1,9 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE KindSignatures, DeriveAnyClass, DeriveFunctor #-}
 module Bitcoin.Types
-(
-  module Bitcoin.Types
+( module Bitcoin.Types
 , module X
+, Default(..)
 )
 
 where
@@ -12,11 +12,10 @@ import Bitcoin.Orphans  as X ()
 import Bitcoin.Dust     as X
 import Bitcoin.Amount   as X
 import Bitcoin.Fee      as X
-import Bitcoin.Util     as X
 import Bitcoin.Error    as X
 import Bitcoin.LockTime.Types    as X
 import PaymentChannel.Internal.Crypto.PubKey    as X
-
+import Bitcoin.Util
 
 import qualified Data.List.NonEmpty     as NE
 import qualified Data.Serialize         as Bin
@@ -26,6 +25,7 @@ import qualified Network.Haskoin.Script as HS
 import qualified Network.Haskoin.Crypto as HC
 import           Data.Word              (Word32)
 import           Control.DeepSeq        (NFData)
+import           Data.Default.Class     (Default(..))
 
 
 data BtcTx inType sigData = BtcTx
@@ -88,6 +88,8 @@ data ChangeOut = ChangeOut
 data DustPolicy = KeepDust | DropDust
     deriving (Eq, Show, Typeable, Generic, Bin.Serialize, JSON.ToJSON, JSON.FromJSON, NFData)
 
+instance Default DustPolicy where def = DropDust
+
 type UnsignedBtcTx t = BtcTx t ()
 type UnsignedBtcIn t = InputG t ()
 
@@ -108,6 +110,11 @@ instance FromJSON BtcSig where
             (o .: "signature_data" >>= withText "SigDataHex"  deserHex) <*>
             (o .: "sighash_flag"   >>= withText "HashFlagHex" deserHex)
 
+newtype InvalidSig = MkInvalidSig HS.SigHash
+    deriving (Eq, Show, Typeable, Generic, Bin.Serialize, NFData)
+    
+fromBtcSig :: BtcSig -> InvalidSig
+fromBtcSig = MkInvalidSig . bsSigFlag
 
 
 -- Ignore signFlag and keyIndex (metadata)
@@ -126,7 +133,7 @@ data IgnoreSigData a = IgnoreSigData a deriving (Show, Functor)
 
 instance Eq inType => Eq (IgnoreSigData (BtcTx inType BtcSig)) where
     IgnoreSigData tx1 == IgnoreSigData tx2 =
-            txMapSigData IgnoreSigData tx1 == txMapSigData IgnoreSigData tx2
+            mapSigData IgnoreSigData tx1 == mapSigData IgnoreSigData tx2
 
 
 -- | Types that can be converted to/from a 'BtcTx',
@@ -175,16 +182,23 @@ txAddOuts outs tx = tx { btcOuts = btcOuts tx ++ outs }
 
 
 -- Util
-mapSigData :: (a -> b) -> InputG t a -> InputG t b
-mapSigData f bin = bin { btcSigData = f $ btcSigData bin }
+class HasSigData (t :: * -> *) where
+    mapSigData :: (a -> b) -> t a -> t b
+
+instance HasSigData (InputG t) where 
+    mapSigData f bin = bin { btcSigData = f $ btcSigData bin }
 
 mapInputType :: (ta -> tb) -> InputG ta a -> InputG tb a
 mapInputType f bin = bin { btcInType = f $ btcInType bin }
 
-txMapSigData :: (a -> b) -> BtcTx t a -> BtcTx t b
-txMapSigData f tx@BtcTx{..} =
-    tx { btcIns = NE.map mapIn btcIns }
-        where mapIn = mapSigData f
+instance HasSigData (BtcTx t) where 
+    mapSigData f tx@BtcTx{..} =
+        tx { btcIns = NE.map mapIn btcIns }
+            where mapIn = mapSigData f
+
+instance HasSigData (SigSinglePair t) where 
+    mapSigData f sp@SigSinglePair{..} = sp { singleInput = mapSigData f singleInput }
+
 
 setSequence :: Word32 -> InputG t a -> InputG t a
 setSequence s bin = bin { btcSequence = s }

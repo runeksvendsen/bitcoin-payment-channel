@@ -35,19 +35,27 @@ mkUnsignedSettleData rpcL extraOuts =
     txAddOuts extraOuts $ toClientSignedTx payLst
         where payLst = NE.map (pcsPayment . rpcState) rpcL
 
+class HasKeyDeriveIndex kd where     
+    mkExtendedSettleRPC :: ServerPayChanI kd -> ServerPayChanI KeyDeriveIndex     
+
+instance HasKeyDeriveIndex KeyDeriveIndex where      
+    mkExtendedSettleRPC = id
+
+instance HasKeyDeriveIndex () where     
+    mkExtendedSettleRPC = mkDummyExtendedRPC
 
 getSignedSettlementTx ::
-       Monad m
+       (Monad m, HasKeyDeriveIndex kd)
     => ServerPayChanI kd
     -> (KeyDeriveIndex -> m HC.PrvKeyC) -- ^ Server/receiver's signing key.
     -> ChangeOut
     -> m (Either ReceiverError SignedTx)
 getSignedSettlementTx rpc signFunc chgOut =
     let
-        dummyExtRPC = mkDummyExtendedRPC rpc :| []
+        dummyExtRPC = mkExtendedSettleRPC rpc :| []
         settleData  = mkUnsignedSettleData dummyExtRPC []
     in
-        fmapL SettleError <$> signSettleTx signFunc chgOut settleData
+        fmapL SettleSigningError <$> signSettleTx signFunc chgOut settleData
 
 
 

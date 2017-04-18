@@ -1,31 +1,64 @@
 module PaymentChannel.Internal.Payment.Verify
-(
-  paymentValueIncrease
+( paymentValueIncrease
+, StateSignature
+, _invalidBtcSig
 )
 where
 
 import PaymentChannel.Internal.Payment.Types as Export
 import PaymentChannel.Internal.Error.User
+import PaymentChannel.Internal.Error.Internal         (ReceiverError(BadSignatureInState))
 import Bitcoin.Compare
+
+import Control.Exception                              (throw)
+import Control.Monad                                  (unless)
 import Debug.Trace
 
 
-paymentValueIncrease :: MonadTime m =>
-       Payment BtcSig
-    -> Payment BtcSig
+-- | When we don't have a valid signature for the 'Payment' in the state
+--    its signature data will be an 'InvalidSig'. Conversion
+--    to a BtcSig is for backwards compatibility with 'payValIncrease' etc.
+class StateSignature a where
+    checkStateSig  :: Payment a -> Either VerifyError ()
+    _btcSigPossiblyFake :: Payment a -> Payment BtcSig    -- ^ For backwards compatibilty with 'payValIncrease' (which doesn't look at signature data)
+
+instance StateSignature BtcSig where
+    checkStateSig = singlePairVerifySig 
+    _btcSigPossiblyFake = id
+
+instance StateSignature InvalidSig where
+    checkStateSig = const $ Right () 
+    _btcSigPossiblyFake = mapSigData _invalidBtcSig
+        
+-- | WARNING: Produces invalid 'BtcSig'
+_invalidBtcSig :: InvalidSig -> BtcSig
+_invalidBtcSig (MkInvalidSig sh) = MkBtcSig dummySig sh
+
+-- | Throws 'BadSignatureInState' on invalid old/in-state payment
+paymentValueIncrease :: 
+       ( MonadTime m
+       , StateSignature stateSigData
+       ) =>
+       Payment stateSigData   -- ^ In-state payment
+    -> Payment BtcSig         -- ^ New payment
     -> m (Either PayChanError BtcAmount)
-paymentValueIncrease sp1 sp2 = do
-    fundingLocked <- fundingIsLocked sp2
-    if fundingLocked then return checkedPayVal else return $ Left ChannelExpired
+paymentValueIncrease inStatePayment newPayment = do
+    fundingLocked <- fundingIsLocked newPayment
+    return $ 
+        if fundingLocked 
+            then checkedPayVal inStatePayment newPayment 
+            else Left ChannelExpired
   where
-    checkedPayVal = do
-            valRecvd <- payValIncrease sp1 sp2
-            _ <- fmapL (const SigVerifyFailed) (singlePairVerifySig sp2)
+    checkedPayVal statePayment payment = do
+            valRecvd <- payValIncrease (_btcSigPossiblyFake statePayment) payment
+            fmapL (const $ throw BadSignatureInState) (checkStateSig statePayment)
+            _ <- fmapL (const SigVerifyFailed) (singlePairVerifySig payment)
             return valRecvd
 
+
 payValIncrease ::
-       Payment BtcSig
-    -> Payment BtcSig
+       Payment BtcSig    -- ^ Old, in-state payment
+    -> Payment BtcSig    -- ^ New payment
     -> Either PayChanError BtcAmount
 payValIncrease sp1 sp2 =
     comparePayments sp1 sp2 >>=
