@@ -132,6 +132,7 @@ import PaymentChannel.Internal.Payment
 import PaymentChannel.RBPCP.Parse
 import PaymentChannel.Internal.Receiver.Util
 import PaymentChannel.Internal.Receiver.Open            (initialServerState)
+
 import Bitcoin.Util                                     (calcTxSize)
 import PaymentChannel.Internal.Error
 import qualified PaymentChannel.Internal.Receiver.Util  as S

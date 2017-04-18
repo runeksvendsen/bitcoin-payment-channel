@@ -2,21 +2,14 @@
 module Main where
 
 import           PaymentChannel.Test
-import           PaymentChannel.Util
-import           Bitcoin.SpendCond.Util
 
 import qualified Network.Haskoin.Transaction    as HT
 import qualified Network.Haskoin.Crypto         as HC
-import qualified Network.Haskoin.Test           as HC -- (ArbitraryHash256(..))
+import qualified Network.Haskoin.Test           as HC
 import qualified Data.Aeson                     as JSON
 import qualified Data.Serialize                 as Bin
-import           Data.Typeable
-import           Data.Maybe
-import           Data.Either
 
-import Test.Framework                       (Test, testGroup, defaultMain)
-import Test.Framework.Providers.QuickCheck2 (testProperty)
-import Test.QuickCheck                      -- (arbitrary)
+import Test.QuickCheck
 import Test.QuickCheck.Monadic              (monadic, run , assert)
 import Test.QuickCheck.Property             (Property)
 import Control.Monad.Identity (Identity(Identity))
@@ -56,10 +49,10 @@ paymentSpec =
     around withArbChanResult $ do
       describe "Settlement tx" $ do
         it "client change output amount equals funding value minus sum of payment values" $ \res -> do
-          let (changeAmount, fundValMinusPaySum, tx) = runTestM $ checkSenderValue res
+          let (changeAmount, fundValMinusPaySum, _) = runTestM $ checkSenderValue res
           changeAmount `shouldBe` fundValMinusPaySum
         it "receiver output amount equals sum of payment values" $ \res -> do
-          let (recvOutVal, paySumVal, tx) = runTestM $ checkReceiverValue res
+          let (recvOutVal, paySumVal, _) = runTestM $ checkReceiverValue res
           recvOutVal `shouldBe` paySumVal
         it "always has at least one output" $ \res ->
           runTestM (minOneOutput res) `shouldBe` True
@@ -72,7 +65,14 @@ paymentSpec =
         it "Can produce & accept arbitrary closing payment with sane fee" $ \res -> do
           HC.ArbitraryAddress arbAddr <- generate arbitrary
           txFee <- fromIntegral <$> generate (choose (0 :: Word64, 10000))
-          createAcceptClosingPayment arbAddr (txFee :: SatoshisPerByte) res `shouldSatisfy` isRight
+          let closedStateE = createAcceptClosingPayment arbAddr (txFee :: SatoshisPerByte) res
+          closedStateE `shouldSatisfy` isRight
+          let Right closedState = closedStateE
+          HC.ArbitraryAddress arbServerAddr <- generate arbitrary
+          HC.ArbitraryPrvKeyC prvKey <- generate arbitrary
+          let Identity settleTxE = closedGetSettlementTx
+                closedState arbServerAddr (const $ return prvKey) DropDust
+          settleTxE `shouldSatisfy` isRight
 
 conversionSpec :: Spec
 conversionSpec = do
