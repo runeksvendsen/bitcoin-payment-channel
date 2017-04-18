@@ -132,29 +132,24 @@ import PaymentChannel.Internal.Payment
 import PaymentChannel.RBPCP.Parse
 import PaymentChannel.Internal.Receiver.Util
 import PaymentChannel.Internal.Receiver.Open            (initialServerState)
-
-import PaymentChannel.Internal.Util
 import Bitcoin.Util                                     (calcTxSize)
 import PaymentChannel.Internal.Error
 import qualified PaymentChannel.Internal.Receiver.Util  as S
-import PaymentChannel.Internal.Metadata.Util
 import PaymentChannel.Internal.Settlement
 import PaymentChannel.Internal.Refund                   (mkRefundTx)
 
 import PaymentChannel.Util                              (getFundingAddress)
 import PaymentChannel.Types
-import Control.Monad.Time
 
 import Control.Exception                                (throw)
-import Data.Tagged
 import Data.Functor.Identity                            (Identity(..))
 
 import qualified  Network.Haskoin.Crypto        as HC
 import qualified  Network.Haskoin.Transaction   as HT
-import            Data.Time.Clock                 (UTCTime(..))
-import            Data.Time.Calendar              (Day(..))
-
-import Bitcoin.Compare
+{-# SPECIALIZE createPaymentInternal :: ClientPayChanI BtcSig -> BtcAmount -> Either BtcError (ClientPayChan, SignedPayment) #-}
+{-# SPECIALIZE createPaymentInternal :: ClientPayChanI BtcSig -> Capped BtcAmount -> (ClientPayChan, SignedPayment, BtcAmount) #-}
+{-# SPECIALIZE acceptPaymentInternal :: MonadTime m => PaymentData -> ServerPayChan -> m (Either PayChanError (ServerPayChan, BtcAmount)) #-}
+{-# SPECIALIZE acceptPaymentInternal :: MonadTime m => PaymentData -> ServerPayChanX -> m (Either PayChanError (ServerPayChanX, BtcAmount)) #-}
 
 
 channelWithInitialPayment :: Monad m =>

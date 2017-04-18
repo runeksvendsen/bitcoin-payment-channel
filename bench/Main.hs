@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP #-}
+{-# LANGUAGE CPP, BangPatterns #-}
 module Main where
 
 import qualified PaymentChannel.Test as Pay
@@ -14,11 +14,12 @@ payCount = 1000 :: Integer
 main :: IO ()
 main = do
   (arbPair,_)   <- fmap head $ sample' $ Pay.mkChanPairInitAmount 0
-  let mkPayment = Pay.createPayment (Pay.sendChan arbPair)
-  (_,payment)   <- either (fail . show) return =<< mkPayment 1
+  let mkCappedPayment :: Pay.BtcAmount -> (Pay.ClientPayChan, Pay.SignedPayment, Pay.BtcAmount)
+      mkCappedPayment  = Pay.createPayment (Pay.sendChan arbPair) . Pay.Capped
+      (_,!payment,_) = mkCappedPayment 1
   let multiMkVerify = Pay.runChanPair arbPair (fromIntegral <$> [1..payCount])
   defaultMain
-    [ bench "Create payment" $ nfIO ( either (error . show) id <$> mkPayment 2 )
+    [ bench "Create payment" $ nf mkCappedPayment 1
     , bench "Verify payment" $ nfIO
         ( either (error . show) id <$> Pay.acceptPayment (Pay.toPaymentData payment) (Pay.recvChan arbPair) )
     , bench (show payCount ++ " rounds of create+verify payment") $ nfIO multiMkVerify

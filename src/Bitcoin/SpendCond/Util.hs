@@ -36,7 +36,6 @@ getPrevIns tx rdmScr =
     _checkMatch idx (hash,val) = if hash == _scrHash then Just (idx,val) else Nothing
     _scrHash = hash160 $ conditionScript rdmScr
 
-
 singlePrevIn :: (Show r, SpendCondition r) => HT.Tx -> r -> Word32 -> Maybe (InputG (P2SH r) ())
 singlePrevIn tx scr i =
     let inputOfInterest = (== i) . HT.outPointIndex . btcPrevOut in
