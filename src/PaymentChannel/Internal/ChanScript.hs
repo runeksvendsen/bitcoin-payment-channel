@@ -101,8 +101,7 @@ encodeScriptLocktime =
 decodeScriptLocktime :: forall lt. BtcLockTime lt => ScriptOp -> Either String lt
 decodeScriptLocktime op =
     maybe (Left "LockTime: Failed to decode script integer")
-        (maybe (Left "LockTIme: Failed to parse lockTime") Right . parseLockTime . fromIntegral)
-        . HI.cltvDecodeInt . B.unpack
+        (fmapL show . parseLockTime . fromIntegral) . HI.cltvDecodeInt . B.unpack
         =<< getPushBS op
   where
     -- TODO: Temporary. See https://github.com/haskoin/haskoin/issues/287

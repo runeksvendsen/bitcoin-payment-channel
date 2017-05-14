@@ -9,6 +9,7 @@ module PaymentChannel.Internal.Receiver.Key
 , pairPub
 , ChildPub
 , fromPair
+, fromXPub
 , IsChildKey(..)
 , HasSubKey(..)
 )
@@ -43,11 +44,14 @@ newtype ChildPub  = ChildPub  { pubPub    :: HC.XPubKey }
 fromPair :: ChildPair -> ChildPub
 fromPair = ChildPub . pairPub'
 
+fromXPub :: HC.XPubKey -> External ChildPub
+fromXPub = External . ChildPub
+
 class PairPub a where
     pairPub :: a -> HC.XPubKey
 instance PairPub (External ChildPair) where   pairPub = pairPub' . getExternal
 instance PairPub (Internal ChildPair) where   pairPub = pairPub' . getInternal
-
+instance PairPub (External ChildPub) where    pairPub = pubPub . getExternal
 
 class IsChildKey (t :: * -> *) k where
     mkChild :: RootKey -> t k

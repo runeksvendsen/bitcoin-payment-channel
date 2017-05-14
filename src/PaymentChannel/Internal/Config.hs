@@ -17,7 +17,7 @@ toSeconds :: Num a => Hour -> a
 toSeconds = fromIntegral . (* 3600) . Tag.unTagged
 
 configSettlePeriod :: Hour
-configSettlePeriod = 10
+configSettlePeriod = 12
 
 getSettlePeriod = configSettlePeriod
 getDustLimit = configDustLimit

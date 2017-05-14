@@ -38,10 +38,14 @@ data ClosedServerChanI kd = MkClosedServerChan
     , cscClosingPayment :: SignedPayment
     } deriving (Eq, Show, Typeable, Generic, Serialize, NFData)
 
+type ClosedServerChan = ClosedServerChanI ()
 type ClosedServerChanX = ClosedServerChanI KeyDeriveIndex
 
 getClosedState :: ClosedServerChanI kd -> ServerPayChanI kd
 getClosedState = cscState
+
+getClosedPayment :: ClosedServerChanI kd -> SignedPayment
+getClosedPayment = cscClosingPayment
 
 instance HasSendPubKey (ServerPayChanG kd sd) where getSendPubKey = getSendPubKey . rpcState
 instance HasRecvPubKey (ServerPayChanG kd sd) where getRecvPubKey = getRecvPubKey . rpcState

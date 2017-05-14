@@ -4,6 +4,7 @@ module Bitcoin.LockTime.Types
   BtcLockTime(..)
 , LockTimeDate(..)
 , LockTimeBlockHeight(..)
+, LockTimeParseError(..)
 , fromDate
 )
 where
@@ -17,8 +18,17 @@ import Data.Time.Format ()    -- instance Show UTCTime
 
 -- |Data type representing a Bitcoin LockTime, which specifies a point in time.
 class BtcLockTime a where
-    parseLockTime :: Word32 -> Maybe a
+    parseLockTime :: Word32 -> Either LockTimeParseError a
     toWord32      :: a -> Word32
+
+data LockTimeParseError =
+    DateParseFail
+  | BlockHeightParseFail
+      deriving (Eq, Generic, NFData, ToJSON, FromJSON, Serialize)
+
+instance Show LockTimeParseError where
+    show DateParseFail        = "failed to parse unix timestamp from uint32 lockTime"
+    show BlockHeightParseFail = "failed to parse block height from uint32 lockTime"
 
 -- |Specifies a point in time using a timestamp with 1-second accuracy (till 2106-02-07)
 data LockTimeDate = LockTimeDate Word32
@@ -31,12 +41,14 @@ data LockTimeBlockHeight = LockTimeBlockHeight Word32
 instance BtcLockTime LockTimeBlockHeight where
     toWord32 (LockTimeBlockHeight w) = w
     parseLockTime tstamp
-            | tstamp > 0 && tstamp < 500000000 = Just $ LockTimeBlockHeight tstamp
-            | otherwise = Nothing
+            | tstamp > 0 && tstamp < 500000000 = 
+                Right $ LockTimeBlockHeight tstamp
+            | otherwise = 
+                Left BlockHeightParseFail
 
 instance BtcLockTime LockTimeDate where
     toWord32 (LockTimeDate w) = w
-    parseLockTime = fromDate . posixSecondsToUTCTime . fromIntegral
+    parseLockTime = maybe (Left DateParseFail) Right . fromDate . posixSecondsToUTCTime . fromIntegral
 
 
 -- | Convert a 'Data.Time.Clock.UTCTime' to a 'LockTimeDate'.
@@ -62,7 +74,7 @@ instance FromJSON LockTimeDate where
 
 parseJSONLockTime :: forall a. BtcLockTime a => Scientific -> Parser a
 parseJSONLockTime sci =
-    (parseLockTime <$> parseJSONWord sci) >>= maybe (fail "invalid locktime") return
+    (parseLockTime <$> parseJSONWord sci) >>= either (fail . show) return
 
 encodeJSONLockTime :: BtcLockTime a => a -> Value
 encodeJSONLockTime blt = Number $ scientific (fromIntegral $ toWord32 blt) 0
@@ -83,4 +95,4 @@ instance Serialize LockTimeDate where
 
 parseBinLockTime :: forall a. BtcLockTime a => Get a
 parseBinLockTime = getWord32le >>=
-    maybe (fail "invalid locktime") return . parseLockTime
+    either (fail . show) return . parseLockTime

@@ -24,12 +24,14 @@ mkUnsignedPayment cp CFundingTxInfo{..} refundAddr =
                             (nonDusty ftiOutValue)
                             (Pay2 $ ScriptHash $ Cond cp)
 
-createPaymentOfValue :: ( Monad m, Show t
-                        , TransformSigData BtcSig () r
-                        , SignatureScript t BtcSig
-                        , SpendFulfillment BtcSig r
-                        , HasSpendCond r t
-                        ) =>
+createPaymentOfValue ::
+    ( Monad m
+    , TransformSigData BtcSig () r
+    , SignatureScript t BtcSig
+    , SpendFulfillment BtcSig r
+    , HasSpendCond r t
+    , Show t
+    ) =>
        HC.PrvKeyC
     -> SigSinglePair t ()
     -> BtcAmount

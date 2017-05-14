@@ -30,8 +30,8 @@ initialServerState tx pd@RBPCP.PaymentData{..}
   , indexMax <- length (HT.txOut tx) - 1
   , i > fromIntegral indexMax =
       Left $ NoSuchOutput i (HT.txHash tx)
-  | paymentDataFundingTxid /= HT.txHash tx =
-      Left $ ResourcePaymentMismatch tx paymentDataFundingTxid
+  | RBPCP.btcTxId paymentDataFundingTxid /= HT.txHash tx =
+      Left $ ResourcePaymentMismatch tx (RBPCP.btcTxId paymentDataFundingTxid)
   | otherwise = do
       rdmScr <- fmapL FundingTxError $ parseRedeemScript pd
       case singlePrevIn tx rdmScr paymentDataFundingVout of

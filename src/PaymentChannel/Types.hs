@@ -31,7 +31,7 @@ module PaymentChannel.Types
   , PayChanStatus(..), MetadataI(..), OpenError(..)
   , S.getChannelStatus, S.setChannelStatus
   , S.markAsBusy, S.isReadyForPayment
-
+  
     -- *Receiver state (with pubkey metadata)
   , ServerPayChanX
   , S.mkExtendedKeyRPC, S.metaKeyIndex
@@ -41,8 +41,12 @@ module PaymentChannel.Types
     -- *Payment
   , SignedPayment
 
+    -- *Receiver settlement
+  , ClosedServerChanI, ClosedServerChan, ClosedServerChanX
+  , getClosedState, cscClosingPayment 
+
     -- **Error
-  , PayChanError(..)
+  , PayChanError(..), IsPayChanError(..)
 
     -- *Bitcoin
   , module X
@@ -59,7 +63,6 @@ module PaymentChannel.Types
   , fromDate
   , getChanState
   , clientChangeVal
---  , usesBlockHeight, dummyPayment
 
     -- *Config settings
   , getSettlePeriod, getDustLimit
@@ -80,7 +83,7 @@ import PaymentChannel.Internal.Receiver.Key
 
 import qualified PaymentChannel.Internal.Receiver.Util as S
 import qualified PaymentChannel.Internal.ChanScript as Script
-import PaymentChannel.Internal.Error (PayChanError(..))
+import PaymentChannel.Internal.Error 
 import Bitcoin.Fee
 import Data.Tagged
 
@@ -127,17 +130,16 @@ class HasSignedPayChanState a => PaymentChannel a where
     -- |Get amount received by receiver/left for sender
     valueToMe :: a -> BtcAmount
     -- |For internal use
-    _setChannelState :: a -> PayChanState BtcSig -> a
+    getStatePayment :: a -> SignedPayment
 
--- clientChangeVal
 
 instance PaymentChannel ClientPayChan where
     valueToMe = clientChangeVal . pcsPayment . spcState
-    _setChannelState spc s = spc { spcState = s }
+    getStatePayment = pcsPayment . spcState
 
 instance PaymentChannel (ServerPayChanI s) where
     valueToMe (MkServerPayChan s _) = valueOf s
-    _setChannelState rpc s = rpc { rpcState = s }
+    getStatePayment = pcsPayment . rpcState
 
 
 -- |Payment channel state objects with metadata information
@@ -152,9 +154,9 @@ instance PaymentChannelRecv (ServerPayChanI (MetadataI a)) where
 class HasSharedSecret a where
     getSecret :: a -> SharedSecret
 
-instance HasSharedSecret (PayChanState a)   where getSecret = pcsSecret
-instance HasSharedSecret (ServerPayChanG sd s) where getSecret = getSecret . rpcState
-instance HasSharedSecret ClientPayChan      where getSecret = getSecret . spcState
+instance HasSharedSecret (PayChanState a)       where getSecret = pcsSecret
+instance HasSharedSecret (ServerPayChanG sd s)  where getSecret = getSecret . rpcState
+instance HasSharedSecret ClientPayChan          where getSecret = getSecret . spcState
 
 -- |Short-hand
 class PaymentChannel a => PayChan a

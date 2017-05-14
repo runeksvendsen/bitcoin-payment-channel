@@ -146,7 +146,7 @@ fromRecvRootKey recvRoot = do
     let childPair = mkChild recvRoot :: External ChildPair
         recvPK    = subKey childPair keyDerivIdx
     -- TODO: Use a future expiration date for now
-    lockTime <- fromMaybe (error "Bad lockTime") . parseLockTime <$> choose (1795556940, maxBound)
+    lockTime <- either (error "Bad lockTime") id . parseLockTime <$> choose (1795556940, maxBound)
     return (MkChanParams
                 (MkSendPubKey sendPK) (MkRecvPubKey $ HC.xPubKey recvPK) lockTime,
            (sendPriv, TestRecvKey recvRoot childPair keyDerivIdx))
@@ -198,6 +198,11 @@ genRunChanPair numPayments (rangeMin,rangeMax) initAmount = do
     conv :: (Integral a, Num b) => a -> b
     conv = fromIntegral
 
+-- | Funding transaction with a funding output at an arbitrary output index
+arbitraryFundingTx
+    :: ChanParams
+    -> BtcAmount
+    -> Gen (Word32, Tx) -- ^ Output index of funding output plus transaction
 arbitraryFundingTx cp val = do
     ArbitraryTx tx <- arbitrary
     let mkP2shOut = Bin.encode . HS.encodeOutput . HS.PayScriptHash

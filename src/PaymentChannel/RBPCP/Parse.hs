@@ -25,7 +25,7 @@ toPaymentData :: SigSinglePair ScriptType BtcSig -> PaymentData
 toPaymentData (SigSinglePair input output) =
     PaymentData
         { paymentDataRedeemScript   = JsonHex . getRedeemScript . getCond . btcInType $ input
-        , paymentDataFundingTxid    = HT.outPointHash  . btcPrevOut $ input
+        , paymentDataFundingTxid    = RBPCP.BtcTxId . HT.outPointHash  . btcPrevOut $ input
         , paymentDataFundingVout    = HT.outPointIndex . btcPrevOut $ input
         , paymentDataSignatureData  = JsonHex .  bsSig . btcSigData $ input
         , paymentDataSighashFlag    = JsonHex .  bsSigFlag . btcSigData $ input
@@ -44,7 +44,7 @@ paymentDataIn fundVal pd@PaymentData{..} =
     parseRedeemScript pd >>= Right . mapSigData (const paySig) . mkInput
   where
     mkInput r = mkNoSigTxIn prevOut fundVal (Pay2 (ScriptHash (Cond r)))
-    prevOut = HT.OutPoint paymentDataFundingTxid paymentDataFundingVout
+    prevOut = HT.OutPoint (RBPCP.btcTxId paymentDataFundingTxid) paymentDataFundingVout
     -- TODO: strict DER/signature parsing
     paySig = MkBtcSig (fromHex paymentDataSignatureData)
                       (fromHex paymentDataSighashFlag)
@@ -62,4 +62,4 @@ paymentDataOut PaymentData{..} =
 
 instance Show ParseError where
     show (BadRedeemScript str) = "bad redeemScript: " ++ show str
-    show (BtcError e) = "Invalid Bitcoin transaction: " ++ show e
+    show (BtcError e) = "invalid Bitcoin transaction: " ++ show e

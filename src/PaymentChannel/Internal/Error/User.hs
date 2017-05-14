@@ -6,6 +6,7 @@ import PaymentChannel.RBPCP.Parse
 import PaymentChannel.Internal.Error.Status     (HTTPError)
 import PaymentChannel.Internal.Receiver.Open    (OpenError)
 import Bitcoin.Compare
+import Bitcoin.LockTime.Types                   (LockTimeParseError)
 import PaymentChannel.Internal.Types
 import PaymentChannel.Internal.Util
 import GHC.Generics
@@ -15,6 +16,7 @@ import qualified Network.Haskoin.Script     as HS
 
 data PayChanError =
      SigVerifyFailed                          -- ^ Signature verification failed
+  |  LockTimeParseError LockTimeParseError
   |  BadSigHashFlag HS.SigHash HS.SigHash     -- ^ Unexpected 'SigHash' flag. Expected: SIGHASH_SINGLE|ANYONECANPAY.
   |  BadPaymentValue BtcAmount                -- ^ Payment assigns less value to server than previous payment. Client change value is greater by the specified 'BtcAmount'.
   |  PaymentError (TxMismatch ChanParams)
@@ -24,10 +26,29 @@ data PayChanError =
   |  OpenError   OpenError                    -- ^ Channel-open error
         deriving (Eq, Generic, NFData, ToJSON, FromJSON, Serialize)
 
+
+class IsPayChanError e where
+    mkChanErr :: e -> PayChanError
+
+instance IsPayChanError LockTimeParseError where
+    mkChanErr = LockTimeParseError
+
+instance IsPayChanError HTTPError where
+    mkChanErr = StatusError
+
+instance IsPayChanError ParseError where
+    mkChanErr = RBPCPError
+    
+instance IsPayChanError OpenError where
+    mkChanErr = OpenError
+    
+  
 instance Exception PayChanError
+
 
 instance Show PayChanError where
     show SigVerifyFailed = "signature verification failed"
+    show (LockTimeParseError e) = show e
     show (BadSigHashFlag sh1 sh2) =
         "unexpected SIGHASH flag: " ++ show sh1 ++
         ". expected: " ++ show sh2

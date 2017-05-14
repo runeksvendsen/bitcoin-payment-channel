@@ -147,10 +147,6 @@ import Data.Functor.Identity                            (Identity(..))
 
 import qualified  Network.Haskoin.Crypto        as HC
 import qualified  Network.Haskoin.Transaction   as HT
-{-# SPECIALIZE createPaymentInternal :: ClientPayChanI BtcSig -> BtcAmount -> Either BtcError (ClientPayChan, SignedPayment) #-}
-{-# SPECIALIZE createPaymentInternal :: ClientPayChanI BtcSig -> Capped BtcAmount -> (ClientPayChan, SignedPayment, BtcAmount) #-}
-{-# SPECIALIZE acceptPaymentInternal :: MonadTime m => PaymentData -> ServerPayChan -> m (Either PayChanError (ServerPayChan, BtcAmount)) #-}
-{-# SPECIALIZE acceptPaymentInternal :: MonadTime m => PaymentData -> ServerPayChanX -> m (Either PayChanError (ServerPayChanX, BtcAmount)) #-}
 
 
 channelWithInitialPayment :: Monad m =>
@@ -183,7 +179,7 @@ createPayment :: forall value ret.
     => ClientPayChanI BtcSig
     -- ^ Sender state object
     -> value
-    -- ^ Amount to send (the actual payment amount is capped, so no invalid payment is created)
+    -- ^ Amount to send (capped or uncapped)
     -> ret
     -- ^ Updated sender state & payment
 createPayment = createPaymentInternal
@@ -204,8 +200,8 @@ createPaymentInternal cpc@MkClientPayChan{..} payVal =
         updateState pcs p = pcs { pcsPayment = p }
         addUpdatedState p = (cpc { spcState = updateState spcState p }, p)
     in
-        mkReturnVal (Tagged $ paymentValue cpc payVal :: Tagged (value,sd) BtcAmount) (addUpdatedState <$> paymentE)
-
+        mkReturnVal (Tagged $ paymentValue cpc payVal :: Tagged (value,sd) BtcAmount)
+                    (addUpdatedState <$> paymentE)
 
 createClosingPayment
     :: (ChangeOutFee fee, HasFee fee ) -- , PaymentValueSpec fee ret)
@@ -367,3 +363,8 @@ closedGetSettlementTx MkClosedServerChan{..} recvAdr signFunc dp = do
     let resE  = resultFromThePast $ acceptClosingPaymentInternal (toPaymentData cscClosingPayment) cscState
         (settleState,txFee) = either (throw . BadClosedServerChan) id resE
     getSettlementBitcoinTx settleState recvAdr signFunc txFee dp
+
+{-# SPECIALIZE createPaymentInternal :: ClientPayChanI BtcSig -> BtcAmount -> Either BtcError (ClientPayChan, SignedPayment) #-}
+{-# SPECIALIZE createPaymentInternal :: ClientPayChanI BtcSig -> Capped BtcAmount -> (ClientPayChan, SignedPayment, BtcAmount) #-}
+{-# SPECIALIZE acceptPaymentInternal :: MonadTime m => PaymentData -> ServerPayChan -> m (Either PayChanError (ServerPayChan, BtcAmount)) #-}
+{-# SPECIALIZE acceptPaymentInternal :: MonadTime m => PaymentData -> ServerPayChanX -> m (Either PayChanError (ServerPayChanX, BtcAmount)) #-}

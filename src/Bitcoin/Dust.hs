@@ -48,6 +48,6 @@ instance ToJSON (NonDusty BtcAmount) where
 instance FromJSON (NonDusty BtcAmount) where
     parseJSON v = parseJSON v >>= \(amt :: BtcAmount) ->
         case mkNonDusty amt of
-            Left _  -> fail $ "dusty BtcAmount: " ++ show amt
+            Left _    -> fail $ "dusty BtcAmount: " ++ show amt
             Right nda -> return nda
 
