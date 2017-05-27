@@ -64,6 +64,9 @@ dependencies:
 - blockchain-restful-address-index-api
 - hspec
 - data-default-class
+- either
+- transformers
+- mtl
 
 library:
   source-dirs: src

@@ -18,7 +18,7 @@ import qualified Data.ByteString        as B
 -- ### Input interface
 -- #####################
 -- | Script that defines a condition to spend
-class SpendCondition c where
+class Show c => SpendCondition c where
     -- | The script will, depending on transaction type,
     --    be placed either in output, input or witness of transaction
     conditionScript :: c -> Script

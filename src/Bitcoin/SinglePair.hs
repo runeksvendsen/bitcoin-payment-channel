@@ -1,7 +1,6 @@
 {-# LANGUAGE DeriveGeneric #-}
 module Bitcoin.SinglePair
-(
-  module Bitcoin.SinglePair
+( module Bitcoin.SinglePair
 , module X
 )
 where
@@ -75,9 +74,12 @@ fundingValue SigSinglePair{..} = btcInValue singleInput
 clientChangeVal :: SigSinglePair t a -> BtcAmount
 clientChangeVal SigSinglePair{..} = nonDusty (btcAmount singleOutput)
 
-resetClientChangeVal :: SigSinglePair t BtcSig -> Either BtcError (SigSinglePair t InvalidSig)
+resetClientChangeVal ::
+       HasConfDustLimit m
+    => SigSinglePair t BtcSig
+    -> m (Either BtcError (SigSinglePair t InvalidSig))
 resetClientChangeVal ssp@SigSinglePair{..} =
-    mapSigData fromBtcSig . mkNew <$> mkNonDusty (fundingValue ssp)
+    fmap (mapSigData fromBtcSig . mkNew) <$> mkNonDusty (fundingValue ssp)
   where
     mkNew fundVal =
         ssp { singleOutput =
@@ -104,6 +106,14 @@ clearSig = mapSigData $ const ()
 -- | After the lockTime -- specified in the funding output in the blockchain --
 --    has passed, the client/sender can redeem all sent funds. So we make sure
 --    this isn't possible before accepting a payment.
-fundingIsLocked :: (Show t, Show sd, MonadTime m, HasLockTimeDate t) => SigSinglePair t sd -> m Bool
-fundingIsLocked = allInputsLocked . toBtcTx
-
+fundingIsLocked ::
+    ( Show t
+    , Show sd
+    , MonadTime m
+    , HasLockTimeDate t
+    )
+    => Seconds
+    -> SigSinglePair t sd
+    -> m Bool
+fundingIsLocked settlePeriodSeconds =
+    allInputsLocked settlePeriodSeconds . toBtcTx

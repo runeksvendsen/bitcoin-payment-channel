@@ -3,14 +3,13 @@
 module PaymentChannel.Internal.Receiver.Types
 (
   module PaymentChannel.Internal.Receiver.Types
-, module PaymentChannel.Internal.Types
-, module PaymentChannel.Internal.Metadata.Types
+, module X
 )
 where
 
-import PaymentChannel.Internal.Types
-import PaymentChannel.Internal.Metadata.Types
-import PaymentChannel.Internal.Util
+import PaymentChannel.Internal.Types                    as X
+import PaymentChannel.Internal.Metadata.Types           as X
+import PaymentChannel.Internal.Types.MonadConf          as X
 
 
 -- |ServerPayChan without receiver key metadata

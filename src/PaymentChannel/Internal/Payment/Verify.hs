@@ -11,7 +11,6 @@ import PaymentChannel.Internal.Error.Internal         (ReceiverError(BadSignatur
 import Bitcoin.Compare
 
 import Control.Exception                              (throw)
-import Control.Monad                                  (unless)
 import Debug.Trace
 
 
@@ -34,19 +33,20 @@ instance StateSignature InvalidSig where
 _invalidBtcSig :: InvalidSig -> BtcSig
 _invalidBtcSig (MkInvalidSig sh) = MkBtcSig dummySig sh
 
--- | Throws 'BadSignatureInState' on invalid old/in-state payment
+-- | Throws 'BadSignatureInState' on invalid in-state payment signature
 paymentValueIncrease :: 
        ( MonadTime m
        , StateSignature stateSigData
        ) =>
-       Payment stateSigData   -- ^ In-state payment
-    -> Payment BtcSig         -- ^ New payment
+       PayChanState stateSigData  -- ^ State with old payment
+    -> Payment BtcSig             -- ^ New payment
     -> m (Either PayChanError BtcAmount)
-paymentValueIncrease inStatePayment newPayment = do
-    fundingLocked <- fundingIsLocked newPayment
+paymentValueIncrease state newPayment = do
+    let settlePeriod = runConfM (pcsSettings state) confSettlePeriod
+    fundingLocked <- fundingIsLocked (toSeconds settlePeriod) newPayment
     return $ 
         if fundingLocked 
-            then checkedPayVal inStatePayment newPayment 
+            then checkedPayVal (pcsPayment state) newPayment
             else Left ChannelExpired
   where
     checkedPayVal statePayment payment = do
@@ -54,7 +54,6 @@ paymentValueIncrease inStatePayment newPayment = do
             fmapL (const $ throw BadSignatureInState) (checkStateSig statePayment)
             _ <- fmapL (const SigVerifyFailed) (singlePairVerifySig payment)
             return valRecvd
-
 
 payValIncrease ::
        Payment BtcSig    -- ^ Old, in-state payment

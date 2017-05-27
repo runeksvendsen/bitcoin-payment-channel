@@ -1,17 +1,10 @@
 module Bitcoin.LockTime.Util
-(
-  module Bitcoin.LockTime.Util
+( module Bitcoin.LockTime.Util
 , module Bitcoin.LockTime.Types
-, Hour
 )
 where
 
 import Bitcoin.LockTime.Types
-import PaymentChannel.Internal.Config
-import PaymentChannel.Internal.Util
-
-import Data.Word (Word32)
-import Data.Time.Clock
 import Data.Time.Clock.POSIX
 import Data.Time.Format ()    -- instance Show UTCTime
 import Control.Monad.Time
@@ -20,8 +13,14 @@ import Control.Monad.Time
 class HasLockTimeDate a where
     getLockTimeDate :: a -> LockTimeDate
 
-isLocked :: (MonadTime m, HasLockTimeDate a) => a -> m Bool
-isLocked a = do
-    now <- fromIntegral . round . utcTimeToPOSIXSeconds <$> currentTime
-    return $ now + toSeconds configSettlePeriod < toWord32 (getLockTimeDate a)
+type Seconds = Word
 
+isLocked :: (MonadTime m, HasLockTimeDate a)
+    => Seconds    -- ^ No longer locked this number of seconds *before* actual expiration time.
+                  --   Gives this many seconds to publish the settlement transaction before
+                  --     actual lockTime expires.
+    -> a
+    -> m Bool
+isLocked settlePeriodSeconds a = do
+    now :: Integer <- round . utcTimeToPOSIXSeconds <$> currentTime
+    return $ now + fromIntegral settlePeriodSeconds < fromIntegral (toWord32 $ getLockTimeDate a)

@@ -1,53 +1,53 @@
 {-# LANGUAGE DeriveAnyClass, DeriveGeneric #-}
 module Bitcoin.Dust
 (
-  NonDusty
+  NonDustyAmount
+, mkNonDusty
 , nonDusty
 , nullAmount
-, PossiblyDusty(..)
+, HasConfDustLimit(..)
 )
 
 where
 
 import Bitcoin.Amount
-import Bitcoin.Config
 import Bitcoin.Util
 import Bitcoin.Error
 
 
--- |Connot represent an amount/output/transaction that contains "dust"
-data NonDusty a = NonDusty a
+class Monad m => HasConfDustLimit m where
+    confDustLimit :: m BtcAmount
+
+-- | Cannot represent an amount that is less than the "dust limit"
+newtype NonDustyAmount = NonDustyAmount BtcAmount
     deriving (Eq, Show, Typeable, Generic, NFData)
 
-class PossiblyDusty a where
-    mkNonDusty :: a -> Either BtcError (NonDusty a)
+nonDusty :: NonDustyAmount -> BtcAmount
+nonDusty (NonDustyAmount a) = a
 
-nonDusty :: PossiblyDusty a => NonDusty a -> a
-nonDusty (NonDusty a) = a
+nullAmount :: NonDustyAmount
+nullAmount = NonDustyAmount 0
 
-nullAmount = either (error "BUG") id $ mkNonDusty (0 :: BtcAmount)
+mkNonDusty :: HasConfDustLimit m => BtcAmount -> m (Either BtcError NonDustyAmount)
+mkNonDusty amt = do
+    limit <- confDustLimit
+    if amt < limit && amt /= 0
+        then return $ Left  $ DustOutput limit
+        else return $ Right $ NonDustyAmount amt
 
-instance PossiblyDusty BtcAmount where
-    mkNonDusty amt =
-        if amt < configDustLimit && amt /= 0
-            then Left $ DustOutput configDustLimit
-            else Right $ NonDusty amt
+instance Ord NonDustyAmount where
+    compare (NonDustyAmount a1) (NonDustyAmount a2) = compare a1 a2
 
-instance Ord (NonDusty BtcAmount) where
-    compare (NonDusty a1) (NonDusty a2) = compare a1 a2
+instance Serialize NonDustyAmount where
+    put (NonDustyAmount a) = put a
+    get = do
+        a <- get
+        return $ NonDustyAmount a
 
-instance Serialize (NonDusty BtcAmount) where
-    put (NonDusty a) = put a
-    get =
-        (get :: Get BtcAmount) >>=
-        either (error "Dusty BtcAmount") return . mkNonDusty
+instance ToJSON NonDustyAmount where
+    toJSON (NonDustyAmount a) = toJSON a
 
-instance ToJSON (NonDusty BtcAmount) where
-    toJSON (NonDusty a) = toJSON a
-
-instance FromJSON (NonDusty BtcAmount) where
+instance FromJSON NonDustyAmount where
     parseJSON v = parseJSON v >>= \(amt :: BtcAmount) ->
-        case mkNonDusty amt of
-            Left _    -> fail $ "dusty BtcAmount: " ++ show amt
-            Right nda -> return nda
+        return (NonDustyAmount amt)
 

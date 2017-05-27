@@ -58,7 +58,7 @@ data OutputG outType =
 
 data BtcOut = BtcOut
     { btcAddress    :: HC.Address
-    , btcAmount     :: NonDusty BtcAmount
+    , btcAmount     :: NonDustyAmount
     } deriving (Eq, Show, Typeable, Generic, Bin.Serialize, JSON.ToJSON, JSON.FromJSON, NFData)
 
 -- | An input/output pair signed with the SigHash flag SIG_SINGLE|ANYONECANPAY,
@@ -165,7 +165,7 @@ mkBtcTx ins outs = BtcTx defaultTxVersion ins outs Nothing Nothing
 mkNoSigTxIn :: HT.OutPoint -> BtcAmount -> r -> UnsignedBtcIn r
 mkNoSigTxIn op val t = MkInputG op val () t maxBound defaultSigHashFlag 0
 
-mkBtcOut :: HC.Address -> NonDusty BtcAmount -> BtcOut
+mkBtcOut :: HC.Address -> NonDustyAmount -> BtcOut
 mkBtcOut = BtcOut
 
 class HasFee fee => ChangeOutFee fee where

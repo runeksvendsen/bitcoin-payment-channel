@@ -8,8 +8,6 @@ Types used with the interface provided by "PaymentChannel".
 
 -}
 
-{-# LANGUAGE RecordWildCards, TypeSynonymInstances, FlexibleInstances #-}
-
 module PaymentChannel.Types
 (
     -- *Shared sender/receiver types/functions
@@ -20,7 +18,6 @@ module PaymentChannel.Types
   , SharedSecret, HasSharedSecret(..), fromHash, toHash
   , fundingAddress
   , clientChangeAddress
-  , availableChannelVal
   , getFundingAmount
 
     -- *Sender state
@@ -63,11 +60,6 @@ module PaymentChannel.Types
   , fromDate
   , getChanState
   , clientChangeVal
-
-    -- *Config settings
-  , getSettlePeriod, getDustLimit
-
-
 )
 where
 
@@ -85,7 +77,6 @@ import qualified PaymentChannel.Internal.Receiver.Util as S
 import qualified PaymentChannel.Internal.ChanScript as Script
 import PaymentChannel.Internal.Error 
 import Bitcoin.Fee
-import Data.Tagged
 
 import qualified  Network.Haskoin.Crypto as HC
 
@@ -119,10 +110,6 @@ fundingAddress = Script.getP2SHFundingAddress . pairRedeemScript . pcsPayment . 
 
 clientChangeAddress :: HasPayChanState a => a -> HC.Address
 clientChangeAddress = clientChangeAddr . pcsPayment . getPayChanState
-
--- | Channel value left to send (subtracts dust limit from total available amount)
-availableChannelVal :: HasPayChanState a => a -> BtcAmount
-availableChannelVal a = clientChangeVal (pcsPayment $ getPayChanState a) - configDustLimit
 
 
 -- |Get various information about an open payment channel.
@@ -169,9 +156,10 @@ instance HasFee fee => HasFee (Capped fee) where
 
 -- | Capped/non-capped amount-specifications
 class PaymentValueSpec val ret sd | val -> ret where
-    paymentValue :: ClientPayChanI sd
-                 -> val
-                 -> BtcAmount
+    paymentValue :: BtcAmount           -- ^ Dust limit
+                 -> ClientPayChanI sd
+                 -> val                 -- ^ Payment value spec
+                 -> BtcAmount           -- ^ Actual payment amount
 
     mkReturnVal  :: Tagged (val,sd) BtcAmount  -- ^ Actual payment amount
                  -> Either BtcError (ClientPayChan, SignedPayment)
@@ -180,11 +168,11 @@ class PaymentValueSpec val ret sd | val -> ret where
 data Capped val = Capped val
 
 instance PaymentValueSpec BtcAmount (Either BtcError (ClientPayChan, SignedPayment)) a where
-    paymentValue = const id
+    paymentValue _ = const id
     mkReturnVal  = const id
 
 instance PaymentValueSpec (Capped BtcAmount) (ClientPayChan, SignedPayment, BtcAmount) a where
-    paymentValue cpc (Capped amt) =
+    paymentValue configDustLimit cpc (Capped amt) =
         if amt >= valueAvailable
             then valueAvailable
             else min amt (valueAvailable - configDustLimit)

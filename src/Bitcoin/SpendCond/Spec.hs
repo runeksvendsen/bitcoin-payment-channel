@@ -14,6 +14,7 @@ import qualified Network.Haskoin.Script as HS
 
 
 data TestCond    = TestCond     -- ^ Test condition script
+    deriving Show
 data TestFulfill = TestFulfill  -- ^ Test fulfillment/signature script
 
 instance SpendCondition TestCond where

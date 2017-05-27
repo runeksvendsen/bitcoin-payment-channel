@@ -15,12 +15,13 @@ module PaymentChannel.Internal.Types
 
 import PaymentChannel.Internal.Config           as X
 import PaymentChannel.Internal.Util             as X
-import Bitcoin.Types    as X
+import Bitcoin.Types                            as X
 import PaymentChannel.Internal.ChanScript       as X
 import PaymentChannel.Internal.Crypto.PubKey    as X
-import Bitcoin.SinglePair as X
-import Bitcoin.SpendCond.Cond as X
-import Bitcoin.LockTime.Util as X
+import Bitcoin.SinglePair                       as X
+import Bitcoin.SpendCond.Cond                   as X
+import Bitcoin.LockTime.Util                    as X
+import PaymentChannel.Internal.Types.MonadConf  as X
 import Control.DeepSeq        (NFData)
 
 
@@ -31,16 +32,15 @@ import           Network.Haskoin.Crypto hiding (DerivPathI(..), PubKey, hash160,
 import           Network.Haskoin.Script
 import qualified Network.Haskoin.Transaction as HT
 import qualified Network.Haskoin.Crypto as HC
-import qualified Network.Haskoin.Script as HS
 
 import qualified Data.Serialize             as Bin
-import qualified Data.ByteString            as B
 import qualified Data.ByteString.Base16     as B16
 import           Data.Word
 import           Data.List.NonEmpty         (NonEmpty(..))
 import           GHC.Generics               (Generic)
 import           Data.Maybe                 (fromMaybe)
 import Control.Monad.Time
+
 
 
 -- | The Bitcoin transaction script type we're using
@@ -64,6 +64,8 @@ data PayChanState sigData = MkPayChanState
     --    the channel makes it very hard for outsiders to guess valid resource
     --    identifiers from looking at in-blockchain data.
     , pcsSecret   :: SharedSecret
+    -- |Various server-defined config options
+    , pcsSettings :: ServerSettings
     } deriving (Eq, Show, Typeable, Generic, Serialize, ToJSON, FromJSON, NFData)
 
 newtype SharedSecret = MkSharedSecret { ssHash :: HC.Hash256 }
@@ -101,8 +103,8 @@ type ClientPayChan = ClientPayChanI BtcSig
 data ClientPayChanI sigData = MkClientPayChan
     { -- |Internal state object
       spcState    :: PayChanState sigData
-    , -- |Payment-signing function
-      spcPrvKey   :: HC.PrvKeyC
+      -- |Payment-signing private key
+    , spcPrvKey   :: HC.PrvKeyC
     } deriving (Eq, Typeable, Generic, NFData)
 
 instance HasSendPubKey (ClientPayChanI a) where getSendPubKey = getSendPubKey . spcState
@@ -125,7 +127,7 @@ instance SetClientChangeAddr ClientPayChanI where
 data FundingTxInfo = CFundingTxInfo {
     ftiHash         ::  HT.TxHash,              -- ^ Hash of funding transaction.
     ftiOutIndex     ::  Word32,                 -- ^ Index/"vout" of funding output (zero-based index of funding output within list of transaction outputs)
-    ftiOutValue     ::  NonDusty BtcAmount      -- ^ Value of funding output (channel max value).
+    ftiOutValue     ::  NonDustyAmount      -- ^ Value of funding output (channel max value).
 } deriving (Eq, Show, Typeable, Generic)
 
 
@@ -139,11 +141,11 @@ instance ToJSON FundingTxInfo
 instance FromJSON FundingTxInfo
 
 
-instance ToJSON HC.Hash256 where
-    toJSON = String . cs . B16.encode . HC.getHash256
+-- instance ToJSON HC.Hash256 where
+--    toJSON = String . cs . B16.encode . HC.getHash256
 
-instance FromJSON HC.Hash256 where
-    parseJSON = withText "Hash256" (either fail return . decode . fst . B16.decode . cs)
+-- instance FromJSON HC.Hash256 where
+--    parseJSON = withText "Hash256" (either fail return . decode . fst . B16.decode . cs)
 
 instance Show ClientPayChan where
     show (MkClientPayChan s _) =

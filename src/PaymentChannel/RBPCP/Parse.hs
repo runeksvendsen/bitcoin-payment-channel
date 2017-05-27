@@ -33,11 +33,18 @@ toPaymentData (SigSinglePair input output) =
         , paymentDataChangeAddress  = btcAddress output
         }
 
-fromPaymentData :: BtcAmount -> PaymentData -> Either ParseError (SigSinglePair ScriptType BtcSig)
+fromPaymentData ::
+    HasConfDustLimit m
+    => BtcAmount
+    -> PaymentData
+    -> m (Either ParseError (SigSinglePair ScriptType BtcSig))
 fromPaymentData fundVal pd = do
-    input  <- paymentDataIn fundVal pd
-    output <- paymentDataOut pd
-    Right $ SigSinglePair input output
+    let inputE = paymentDataIn fundVal pd
+    outputE <- paymentDataOut pd
+    return $ do
+        input  <- inputE
+        output <- outputE
+        Right $ SigSinglePair input output
 
 paymentDataIn :: BtcAmount -> PaymentData -> Either ParseError (InputG ScriptType BtcSig)
 paymentDataIn fundVal pd@PaymentData{..} =
@@ -53,10 +60,10 @@ parseRedeemScript :: PaymentData -> Either ParseError ChanParams
 parseRedeemScript PaymentData{..} =
     fmapL BadRedeemScript $ fromRedeemScript (fromHex paymentDataRedeemScript)
 
-paymentDataOut :: PaymentData -> Either ParseError BtcOut
+paymentDataOut :: HasConfDustLimit m => PaymentData -> m (Either ParseError BtcOut)
 paymentDataOut PaymentData{..} =
-    mkBtcOut paymentDataChangeAddress <$>
-        fmapL BtcError (mkNonDusty outAmount)
+    fmap (mkBtcOut paymentDataChangeAddress) .
+        fmapL BtcError <$> mkNonDusty outAmount
   where
     outAmount = fromIntegral paymentDataChangeValue :: BtcAmount
 
