@@ -5,7 +5,6 @@ compiler-check: match-exact
 
 packages:
 - '.'
-- '/Users/rune/IdeaProjects/blockchain-restful-address-index/blockchain-restful-address-index-api'
 - location:
     git: https://github.com/haskoin/haskoin.git
     commit: e11ff9b8375ea07bf72420401898f9d607476bb2
@@ -16,7 +15,11 @@ packages:
     - haskoin-wallet
 - location:
     git: https://github.com/runeksvendsen/rbpcp-api.git
-    commit: c4debaa3c4d9bd020b8608e05a04e66133bd474e #2b05a6aff8d5565b9fec8a307d2c0f75b90653ea
+    commit: c4debaa3c4d9bd020b8608e05a04e66133bd474e 
+  extra-dep: true
+- location:
+    git: https://github.com/runeksvendsen/blockchain-restful-address-index-api.git
+    commit: 8961a304e87f3e83caee7c437d4996841f50ede6
   extra-dep: true
 - location:
     git: https://github.com/runeksvendsen/bitcoin-payment-protocol.git
