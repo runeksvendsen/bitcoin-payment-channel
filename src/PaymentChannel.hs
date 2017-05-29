@@ -93,38 +93,38 @@ __/IMPORTANT:/__ /Channel setup is risk free because the sender can derive a ref
  /be cautious./
 
 -}
-{-# LANGUAGE DeriveAnyClass #-}
+
 module PaymentChannel
-(
-    -- *Initialization
+( -- *Initialization
+  hasMinimumDuration
 
-    -- **Funding
-    getFundingAddress,
+-- **Funding
+, getFundingAddress
 
-    -- **State creation
-    channelWithInitialPayment,
-    channelFromInitialPayment,
-    setMetadata,
+-- **State creation
+, channelWithInitialPayment
+, channelFromInitialPayment
+, setMetadata
 
-    -- *Payment
-    createPayment, Capped(..),
-    acceptPayment,
-    ClosedServerChanX, getClosedState,
+-- *Payment
+, createPayment, Capped(..)
+, acceptPayment
+, ClosedServerChanX, getClosedState
 
-    -- *Settlement
-    getRefundBitcoinTx,
-    createClosingPayment,
-    acceptClosingPayment,
-    getSettlementBitcoinTx,
-    closedGetSettlementTx,
-    DustPolicy(..),
-    ChangeOutFee,
+-- *Settlement
+, getRefundBitcoinTx
+, createClosingPayment
+, acceptClosingPayment
+, getSettlementBitcoinTx
+, closedGetSettlementTx
+, DustPolicy(..)
+, ChangeOutFee
 
-    -- *Types
-    module PaymentChannel.Types,
+-- *Types
+, module PaymentChannel.Types
 
-    -- *RESTful Bitcoin Payment Channel Protocol
-    module PaymentChannel.RBPCP.Parse
+  -- *RESTful Bitcoin Payment Channel Protocol
+, module PaymentChannel.RBPCP.Parse
 )
 where
 

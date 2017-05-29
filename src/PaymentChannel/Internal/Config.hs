@@ -1,12 +1,14 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveGeneric, DeriveAnyClass #-}
 module PaymentChannel.Internal.Config
-
+( module PaymentChannel.Internal.Config
+, module PaymentChannel.Internal.Types.Hour
+)
 where
 
 import Bitcoin.Types
-import Data.Word
 import PaymentChannel.Internal.Util
+import PaymentChannel.Internal.Types.Hour
 import qualified RBPCP.Types          as RBPCP
 
 
@@ -19,7 +21,13 @@ class Monad m => HasConfSettlePeriod m where
 -- | Various server-defined settings
 data ServerSettings = ServerSettings
     { serverConfDustLimit     :: BtcAmount
+      -- ^ The server will not accept a payment that leaves the client with less than this amount in change (unless it's exactly zero)
     , serverConfSettlePeriod  :: Hour
+      -- ^ The channel may be closed this number of hours *before* the in-blockchain expiration date
+    , serverConfMinDuration   :: Hour
+      -- ^ Minimum duration of the payment channel
+    , serverConfOpenPrice     :: BtcAmount
+    -- ^ Value of the initial payment needed to open the payment channel
     } deriving (Eq, Show, Typeable, Generic, Serialize, ToJSON, FromJSON, NFData)
 
 fromFundingInfo :: RBPCP.FundingInfo -> ServerSettings
@@ -27,11 +35,5 @@ fromFundingInfo RBPCP.FundingInfo{..} =
     ServerSettings
         (fromIntegral fundingInfoDustLimit)
         (MkHour $ fromIntegral fundingInfoSettlement_period_hours)
-
-newtype Hour = MkHour { numHours :: Word32 }
-    deriving (Eq, Show, Typeable, Generic, Serialize, ToJSON, FromJSON, NFData)
-
-toSeconds :: Num a => Hour -> a
-toSeconds (MkHour i) = fromIntegral $ i * 3600
-
-
+        (MkHour $ fromIntegral fundingInfoMin_duration_hours)
+        (fromIntegral fundingInfoOpenPrice)

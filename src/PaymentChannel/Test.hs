@@ -37,8 +37,12 @@ testDustLimit = 6200
 testSettlePeriod :: Hour
 testSettlePeriod = MkHour 12
 
-testServerConf :: ServerSettings
-testServerConf = ServerSettings testDustLimit testSettlePeriod
+testMinDuration :: Hour
+testMinDuration = MkHour 48
+
+mkTestServerConf :: BtcAmount -> ServerSettings
+mkTestServerConf = ServerSettings
+    testDustLimit testSettlePeriod testMinDuration
 
 
 data ArbChannelPair = ArbChannelPair
@@ -95,7 +99,7 @@ arbitraryNonDusty :: BtcAmount -> Gen NonDustyAmount
 arbitraryNonDusty extraVal = do
   val <- fromIntegral <$> choose (fromIntegral $ testDustLimit + extraVal, maxCoins)
   either (\e -> error $ "Dusty amount: " ++ show val) return $
-      runConfM testServerConf $ mkNonDusty (val :: BtcAmount)
+      runConfM (mkTestServerConf 0) $ mkNonDusty (val :: BtcAmount)
 
 newtype NonZeroBitcoinAmount = NonZeroBitcoinAmount { getAmount :: BtcAmount }
 
@@ -161,6 +165,7 @@ mkChanPair = arbitrary >>= mkChanPairInitAmount
 
 mkChanPairInitAmount :: BtcAmount -> Gen (ArbChannelPair, SignedPayment)
 mkChanPairInitAmount initPayAmount = do
+    let testServerConf = mkTestServerConf initPayAmount
     (cp, (sendPriv, recvKey@(TestRecvKey _ childPair keyDerivIdx))) <- mkChanParams
     let recvXPub = subKey childPair keyDerivIdx
     fundingVal <- arbitraryNonDusty $ max mIN_CHANNEL_SIZE (initPayAmount + testDustLimit)
@@ -174,10 +179,9 @@ mkChanPairInitAmount initPayAmount = do
                                   $ mkExtendedKeyRPC chan recvXPub
     case recvChanE of
         Left e -> error (show e)
-        Right (recvChan, initRecvAmount) -> return $
-             ("mkChanPair: " ++ show (initPayAmount, initRecvAmount)) `debugTrace`
-                 (ArbChannelPair
-                    sendChan (mkExtRPC recvChan) initPayAmount initRecvAmount initPayment recvKey
+        Right recvChan -> return $
+                 ( ArbChannelPair
+                    sendChan (mkExtRPC recvChan) initPayAmount initPayAmount initPayment recvKey
                  , initPayment)
 
 rbpcpFundingInfo ::
@@ -192,8 +196,8 @@ rbpcpFundingInfo ServerSettings{..} cp openPrice =
         (getFundingAddress cp)
         (fromIntegral openPrice)
         0
-        (fromIntegral $ numHours serverConfSettlePeriod)
-        0
+        (fromIntegral serverConfSettlePeriod)
+        (fromIntegral serverConfMinDuration)
 
 {-
 FundingInfo

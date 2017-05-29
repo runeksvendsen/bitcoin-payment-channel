@@ -25,6 +25,9 @@ data ServerPayChanG kd sd = MkServerPayChan {
   , rpcMetadata :: MetadataI kd
 } deriving (Eq, Show, Typeable, Generic, Serialize, NFData)
 
+instance HasLockTimeDate (ServerPayChanG kd sd) where
+    getLockTimeDate = getLockTimeDate . rpcState
+
 type ServerPayChanI kd = ServerPayChanG kd BtcSig
 
 dummyFromClientState :: ClientPayChan -> ServerPayChanI ()

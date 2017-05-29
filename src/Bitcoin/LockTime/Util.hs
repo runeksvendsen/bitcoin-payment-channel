@@ -13,6 +13,9 @@ import Control.Monad.Time
 class HasLockTimeDate a where
     getLockTimeDate :: a -> LockTimeDate
 
+instance HasLockTimeDate LockTimeDate where
+    getLockTimeDate = id
+
 type Seconds = Word
 
 isLocked :: (MonadTime m, HasLockTimeDate a)

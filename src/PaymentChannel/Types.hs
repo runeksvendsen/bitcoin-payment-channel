@@ -20,14 +20,15 @@ module PaymentChannel.Types
   , clientChangeAddress
   , getFundingAmount
 
-    -- *Sender state
+    -- *Sender
   , ClientPayChanI(..)
 
-    -- *Receiver state
+    -- *Receiver
   , ServerPayChan, ServerPayChanG(rpcMetadata)
   , PayChanStatus(..), MetadataI(..), OpenError(..)
   , S.getChannelStatus, S.setChannelStatus
   , S.markAsBusy, S.isReadyForPayment
+  , ServerSettings(..), Hour(..)
   
     -- *Receiver state (with pubkey metadata)
   , ServerPayChanX
@@ -116,18 +117,20 @@ clientChangeAddress = clientChangeAddr . pcsPayment . getPayChanState
 class HasSignedPayChanState a => PaymentChannel a where
     -- |Get amount received by receiver/left for sender
     valueToMe :: a -> BtcAmount
+    -- |Remaining channel value
+    channelValueLeft :: a -> BtcAmount
     -- |For internal use
     getStatePayment :: a -> SignedPayment
 
-
 instance PaymentChannel ClientPayChan where
     valueToMe = clientChangeVal . pcsPayment . spcState
+    channelValueLeft = valueToMe
     getStatePayment = pcsPayment . spcState
 
 instance PaymentChannel (ServerPayChanI s) where
     valueToMe (MkServerPayChan s _) = valueOf s
+    channelValueLeft = clientChangeVal . getStatePayment
     getStatePayment = pcsPayment . rpcState
-
 
 -- |Payment channel state objects with metadata information
 class PaymentChannel a => PaymentChannelRecv a where

@@ -2,15 +2,14 @@
 {-# LANGUAGE DeriveGeneric, DeriveAnyClass, DataKinds #-}
 {-# LANGUAGE TypeSynonymInstances, FlexibleInstances #-}
 module PaymentChannel.Internal.Types
-(
-    module PaymentChannel.Internal.Types
-  , module X
-  , module Network.Haskoin.Transaction
-  , module Network.Haskoin.Crypto
-  , module Network.Haskoin.Script
-  , module Data.List.NonEmpty
-  , module Control.Monad.Time
-  , Word32, Word64, NFData
+( module PaymentChannel.Internal.Types
+, module X
+, module Network.Haskoin.Transaction
+, module Network.Haskoin.Crypto
+, module Network.Haskoin.Script
+, module Data.List.NonEmpty
+, module Control.Monad.Time
+, Word32, Word64, NFData
 ) where
 
 import PaymentChannel.Internal.Config           as X
@@ -22,6 +21,7 @@ import Bitcoin.SinglePair                       as X
 import Bitcoin.SpendCond.Cond                   as X
 import Bitcoin.LockTime.Util                    as X
 import PaymentChannel.Internal.Types.MonadConf  as X
+import PaymentChannel.Internal.Types.ExpectFail as X
 import Control.DeepSeq        (NFData)
 
 
@@ -67,6 +67,9 @@ data PayChanState sigData = MkPayChanState
     -- |Various server-defined config options
     , pcsSettings :: ServerSettings
     } deriving (Eq, Show, Typeable, Generic, Serialize, ToJSON, FromJSON, NFData)
+
+instance HasLockTimeDate (PayChanState a) where
+    getLockTimeDate = getLockTimeDate . pcsPayment
 
 newtype SharedSecret = MkSharedSecret { ssHash :: HC.Hash256 }
     deriving (Eq, Show, Typeable, Generic, Serialize, ToJSON, FromJSON, NFData)

@@ -1,5 +1,6 @@
 module PaymentChannel.Server
-( channelFromInitialPayment
+( hasMinimumDuration
+, channelFromInitialPayment
 , acceptPayment
 , acceptClosingPayment
 , getSettlementBitcoinTx
@@ -17,21 +18,41 @@ import Control.Exception                        (throw)
 
 import qualified  Network.Haskoin.Crypto        as HC
 import qualified  Network.Haskoin.Transaction   as HT
+import Control.Monad.Trans.Either
+-- import Control.Monad.Trans.Class                (lift)
 
+
+hasMinimumDuration ::
+       ( HasLockTimeDate lockTime, MonadTime m )
+    => ServerSettings
+    -> lockTime
+    -> m (Either OpenError ())
+hasMinimumDuration ServerSettings{..} lt = do
+    hasMinDuration <- isLocked (toSeconds $ serverConfSettlePeriod + serverConfMinDuration) lt
+    return $ if hasMinDuration
+        then Right ()
+        else Left $ InsufficientDuration serverConfMinDuration
 
 -- |Create new 'ServerPayChan'
 channelFromInitialPayment ::
        MonadTime m
-    => ServerSettings   -- ^ Derived from the client's 'RBPCP.Types.FundingInfo'
-    -> HT.Tx        -- ^ Funding transaction
-    -> PaymentData  -- ^ Opening payment produced by client
-    -> m (Either PayChanError (ServerPayChan, BtcAmount))
-       -- ^ (state, value_received) (or error)
-channelFromInitialPayment cfg tx paymentData =
-    either
-      (return . Left)
-      (acceptPaymentInternal paymentData)
-      (fmapL OpenError $ initialServerState cfg tx paymentData)
+    => ServerSettings
+       -- ^ Derived from/matches the client's 'RBPCP.Types.FundingInfo'
+    -> HT.Tx
+       -- ^ Funding transaction
+    -> PaymentData
+       -- ^ Opening payment produced by client ('PaymentChannel.Client.channelWithInitialPayment')
+    -> m (Either PayChanError ServerPayChan)
+       -- ^ Server channel state
+channelFromInitialPayment cfg@ServerSettings{..} tx paymentData = runEitherT $ do
+    initialState <- hoistEither $ fmapL OpenError $ initialServerState cfg tx paymentData
+    hoistEither =<< fmapL OpenError <$> hasMinimumDuration cfg initialState
+    hoistEither . checkOpenPrice =<< hoistEither =<< acceptPaymentInternal paymentData initialState
+  where
+    checkOpenPrice (state,val) =
+        if val /= serverConfOpenPrice
+            then Left $ OpenError $ IncorrectInitialPaymentValue $ val `FoundButExpected` serverConfOpenPrice
+            else Right state
 
 -- | Register, on the receiving side, a payment made by 'createPayment' on the sending side.
 --   Returns error if either the signature or payment amount is invalid, and otherwise

@@ -18,6 +18,8 @@ data OpenError
   | ResourcePaymentMismatch HT.Tx HT.TxHash   -- Redirect
   | FundingTxError ParseError
   | FundingTxDustOut BtcAmount
+  | IncorrectInitialPaymentValue (ExpectFail BtcAmount)
+  | InsufficientDuration Hour
       deriving (Eq, Generic, NFData, ToJSON, FromJSON, Serialize)
 
 -- | Derive the initial (zero-value) server state from
@@ -61,5 +63,8 @@ instance Show OpenError where
     show (FundingTxError pe) = "funding tx error: " ++ show pe
     show (FundingTxDustOut dl) = unwords
         ["funding output below dust limit of", show dl]
-
+    show (IncorrectInitialPaymentValue expec) = unwords
+        ["incorrect initial payment-value.", show expec]
+    show (InsufficientDuration minDur) = unwords
+        ["insufficient channel duration. expected at least:", show minDur]
 
