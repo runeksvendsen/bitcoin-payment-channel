@@ -1,6 +1,10 @@
-{-# LANGUAGE OverloadedStrings, RecordWildCards #-}
-{-# LANGUAGE DeriveGeneric, DeriveAnyClass, DataKinds #-}
-{-# LANGUAGE TypeSynonymInstances, FlexibleInstances #-}
+{-# LANGUAGE DataKinds            #-}
+{-# LANGUAGE DeriveAnyClass       #-}
+{-# LANGUAGE DeriveGeneric        #-}
+{-# LANGUAGE FlexibleInstances    #-}
+{-# LANGUAGE OverloadedStrings    #-}
+{-# LANGUAGE RecordWildCards      #-}
+{-# LANGUAGE TypeSynonymInstances #-}
 module PaymentChannel.Internal.Types
 ( module PaymentChannel.Internal.Types
 , module X
@@ -12,33 +16,36 @@ module PaymentChannel.Internal.Types
 , Word32, Word64, NFData
 ) where
 
-import PaymentChannel.Internal.Config           as X
-import PaymentChannel.Internal.Util             as X
-import Bitcoin.Types                            as X
-import PaymentChannel.Internal.ChanScript       as X
-import PaymentChannel.Internal.Crypto.PubKey    as X
-import Bitcoin.SinglePair                       as X
-import Bitcoin.SpendCond.Cond                   as X
-import Bitcoin.LockTime.Util                    as X
-import PaymentChannel.Internal.Types.MonadConf  as X
-import Control.DeepSeq        (NFData)
+import           Bitcoin.LockTime.Util                   as X
+import           Bitcoin.SinglePair                      as X
+import           Bitcoin.SpendCond.Cond                  as X
+import           Bitcoin.Types                           as X
+import           Control.DeepSeq                         (NFData)
+import           PaymentChannel.Internal.ChanScript      as X
+import           PaymentChannel.Internal.Config          as X
+import           PaymentChannel.Internal.Crypto.PubKey   as X
+import           PaymentChannel.Internal.Types.MonadConf as X
+import           PaymentChannel.Internal.Util            as X
 
 
-import           Network.Haskoin.Transaction hiding (signTx)
+import           Network.Haskoin.Transaction             hiding (signTx)
 
-import           Network.Haskoin.Crypto hiding (DerivPathI(..), PubKey, hash160, hash256)
+import           Network.Haskoin.Crypto                  hiding
+                                                          (DerivPathI (..),
+                                                          PubKey, hash160,
+                                                          hash256)
 
+import qualified Network.Haskoin.Crypto                  as HC
 import           Network.Haskoin.Script
-import qualified Network.Haskoin.Transaction as HT
-import qualified Network.Haskoin.Crypto as HC
+import qualified Network.Haskoin.Transaction             as HT
 
-import qualified Data.Serialize             as Bin
-import qualified Data.ByteString.Base16     as B16
+import           Control.Monad.Time
+import qualified Data.ByteString.Base16                  as B16
+import           Data.List.NonEmpty                      (NonEmpty (..))
+import           Data.Maybe                              (fromMaybe)
+import qualified Data.Serialize                          as Bin
 import           Data.Word
-import           Data.List.NonEmpty         (NonEmpty(..))
-import           GHC.Generics               (Generic)
-import           Data.Maybe                 (fromMaybe)
-import Control.Monad.Time
+import           GHC.Generics                            (Generic)
 
 
 
@@ -104,32 +111,32 @@ type ClientPayChan = ClientPayChanI BtcSig
 -- |State object for the value sender
 data ClientPayChanI sigData = MkClientPayChan
     { -- |Internal state object
-      spcState    :: PayChanState sigData
+      spcState  :: PayChanState sigData
       -- |Payment-signing private key
-    , spcPrvKey   :: HC.PrvKeyC
+    , spcPrvKey :: HC.PrvKeyC
     } deriving (Eq, Typeable, Generic, NFData)
 
 instance HasSendPubKey (ClientPayChanI a) where getSendPubKey = getSendPubKey . spcState
 instance HasRecvPubKey (ClientPayChanI a) where getRecvPubKey = getRecvPubKey . spcState
 
-instance HasSigData ClientPayChanI where 
-    mapSigData f cpc@MkClientPayChan{..} = 
+instance HasSigData ClientPayChanI where
+    mapSigData f cpc@MkClientPayChan{..} =
            cpc { spcState =
                    mapSigData f spcState
                }
 
 instance SetClientChangeAddr ClientPayChanI where
-    _setClientChangeAddr cpc@MkClientPayChan{..} addr = 
+    _setClientChangeAddr cpc@MkClientPayChan{..} addr =
         cpc { spcState =
                 _setClientChangeAddr spcState addr
             }
-    
+
 -- |Holds information about the Bitcoin transaction used to fund
 -- the channel
 data FundingTxInfo = CFundingTxInfo {
-    ftiHash         ::  HT.TxHash,              -- ^ Hash of funding transaction.
-    ftiOutIndex     ::  Word32,                 -- ^ Index/"vout" of funding output (zero-based index of funding output within list of transaction outputs)
-    ftiOutValue     ::  NonDustyAmount      -- ^ Value of funding output (channel max value).
+    ftiHash     ::  HT.TxHash,              -- ^ Hash of funding transaction.
+    ftiOutIndex ::  Word32,                 -- ^ Index/"vout" of funding output (zero-based index of funding output within list of transaction outputs)
+    ftiOutValue ::  NonDustyAmount      -- ^ Value of funding output (channel max value).
 } deriving (Eq, Show, Typeable, Generic)
 
 

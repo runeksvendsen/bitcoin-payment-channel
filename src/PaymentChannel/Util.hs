@@ -18,15 +18,15 @@ Ser.parseJSONWord,
 )
 where
 
-import PaymentChannel.Internal.Receiver.Types
-import Bitcoin.Util
-import qualified PaymentChannel.Internal.Serialization.JSON    as Ser
-import qualified PaymentChannel.Internal.ChanScript        as Scr
+import           Bitcoin.Util
+import qualified PaymentChannel.Internal.ChanScript         as Scr
+import           PaymentChannel.Internal.Receiver.Types
+import qualified PaymentChannel.Internal.Serialization.JSON as Ser
 
-import PaymentChannel.Types
+import           PaymentChannel.Types
 --     (ChanParams, FundingTxInfo)
 
-import qualified Network.Haskoin.Crypto as HC
+import qualified Network.Haskoin.Crypto                     as HC
 
 -- | Derive a Bitcoin address, for funding a payment channel, from
 --  'ChanParams'.

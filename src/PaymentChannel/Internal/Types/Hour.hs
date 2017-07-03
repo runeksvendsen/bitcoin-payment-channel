@@ -1,8 +1,8 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 module PaymentChannel.Internal.Types.Hour where
 
-import PaymentChannel.Internal.Util
-import Data.Word
+import           Data.Word
+import           PaymentChannel.Internal.Util
 
 newtype Hour = MkHour { numHours :: Word32 }
     deriving

@@ -18,24 +18,25 @@ module Bitcoin.Internal.Types
 where
 
 
-import Control.DeepSeq        (NFData)
-import Data.Serialize       as Bin
-import Data.Serialize.Get   as BinGet
-import Data.Serialize.Put   as BinPut
-import Data.Aeson           as JSON hiding (Result(..), encode, decode)
-import Data.Aeson.Types     as JSONT hiding (Result(..))
-import Data.Scientific      as Sci
+import           Control.DeepSeq        (NFData)
+import           Data.Aeson             as JSON hiding (Result (..), decode,
+                                                 encode)
+import           Data.Aeson.Types       as JSONT hiding (Result (..))
+import           Data.Scientific        as Sci
+import           Data.Serialize         as Bin
+import           Data.Serialize.Get     as BinGet
+import           Data.Serialize.Put     as BinPut
 
 --import Bitcoin.Internal.Orphans as X ()
-import           Data.Word     as X                 (Word32)
-import           Data.Maybe
+import qualified Data.Aeson.Types       as JSON
+import qualified Data.ByteString        as B
 import           Data.Either
-import           Data.Tagged                    as Tagged hiding (witness)
-import qualified Data.ByteString                as B
-import qualified Data.Aeson.Types               as JSON
-import           Data.Int                   (Int64)
-import           GHC.Generics               (Generic)
+import           Data.Int               (Int64)
+import           Data.Maybe
+import           Data.Tagged            as Tagged hiding (witness)
+import           Data.Word              as X (Word32)
+import           GHC.Generics           (Generic)
 
-import           Data.Typeable              (Typeable)
-import qualified Network.Haskoin.Crypto     as HC
-import Control.Exception
+import           Control.Exception
+import           Data.Typeable          (Typeable)
+import qualified Network.Haskoin.Crypto as HC

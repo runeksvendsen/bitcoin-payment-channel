@@ -1,19 +1,20 @@
-{-# LANGUAGE ScopedTypeVariables, BangPatterns #-}
+{-# LANGUAGE BangPatterns        #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 module Bitcoin.Util where
 
 import           Bitcoin.Internal.Util
-import           Data.Word (Word32)
-import           Data.String (fromString)
+import           Data.String                 (fromString)
+import           Data.Word                   (Word32)
 
-import qualified Data.Serialize             as Bin
-import qualified Data.ByteString            as B
-import qualified Data.ByteString.Base16     as B16
+import qualified Data.ByteString             as B
+import qualified Data.ByteString.Base16      as B16
+import qualified Data.List.NonEmpty          as NE
+import qualified Data.Serialize              as Bin
+import qualified Network.Haskoin.Crypto      as HC
+import qualified Network.Haskoin.Node        as HN
+import qualified Network.Haskoin.Script      as HS
 import qualified Network.Haskoin.Transaction as HT
-import qualified Network.Haskoin.Util       as HU
-import qualified Network.Haskoin.Script     as HS
-import qualified Network.Haskoin.Crypto     as HC
-import qualified Network.Haskoin.Node       as HN
-import qualified Data.List.NonEmpty         as NE
+import qualified Network.Haskoin.Util        as HU
 
 
 

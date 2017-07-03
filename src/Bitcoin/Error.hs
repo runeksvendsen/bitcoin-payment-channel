@@ -1,9 +1,10 @@
-{-# LANGUAGE DeriveGeneric, DeriveAnyClass #-}
+{-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE DeriveGeneric  #-}
 module Bitcoin.Error where
 
-import Bitcoin.Amount
-import Bitcoin.Internal.Types
-import Bitcoin.Types.ExpectFail
+import           Bitcoin.Amount
+import           Bitcoin.Internal.Types
+import           Bitcoin.Types.ExpectFail
 --import Data.List                    (intercalate)
 
 
@@ -21,7 +22,7 @@ data SignKeyError
 
 isKeyError :: BtcError -> Bool
 isKeyError (WrongSigningKey _) = True
-isKeyError _ = False
+isKeyError _                   = False
 
 instance Show BtcError where
     show (InsufficientFunds amountMissing) = unwords

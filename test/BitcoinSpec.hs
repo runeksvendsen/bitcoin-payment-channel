@@ -2,7 +2,7 @@
 module BitcoinSpec where
 
 import Bitcoin.Signature
-import PaymentChannel.Test 
+import PaymentChannel.Test
 import Test.QuickCheck
 import Test.Hspec
 import Network.Haskoin.Test

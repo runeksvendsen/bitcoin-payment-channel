@@ -2,10 +2,10 @@
 module Bitcoin.Fee where
 
 -- import Bitcoin.Types
-import Bitcoin.Amount
-import PaymentChannel.Internal.Util
-import qualified Data.Serialize     as Bin
-import qualified Data.Aeson.Types   as JSON
+import           Bitcoin.Amount
+import qualified Data.Aeson.Types             as JSON
+import qualified Data.Serialize               as Bin
+import           PaymentChannel.Internal.Util
 
 -- |Objects from which a Bitcoin fee can be calculated,
 --   given a transaction

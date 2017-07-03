@@ -1,17 +1,18 @@
-{-# LANGUAGE DeriveGeneric, DeriveAnyClass #-}
+{-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE DeriveGeneric  #-}
 
 module PaymentChannel.Internal.Error.User where
 
-import PaymentChannel.RBPCP.Parse
-import PaymentChannel.Internal.Error.Status     (HTTPError)
-import PaymentChannel.Internal.Receiver.Open    (OpenError)
-import Bitcoin.Compare
-import Bitcoin.LockTime.Types                   (LockTimeParseError)
-import PaymentChannel.Internal.Types
-import PaymentChannel.Internal.Util
-import GHC.Generics
-import Control.Exception
-import qualified Network.Haskoin.Script     as HS
+import           Bitcoin.Compare
+import           Bitcoin.LockTime.Types                (LockTimeParseError)
+import           Control.Exception
+import           GHC.Generics
+import qualified Network.Haskoin.Script                as HS
+import           PaymentChannel.Internal.Error.Status  (HTTPError)
+import           PaymentChannel.Internal.Receiver.Open (OpenError)
+import           PaymentChannel.Internal.Types
+import           PaymentChannel.Internal.Util
+import           PaymentChannel.RBPCP.Parse
 
 
 data PayChanError =
@@ -38,11 +39,11 @@ instance IsPayChanError HTTPError where
 
 instance IsPayChanError ParseError where
     mkChanErr = RBPCPError
-    
+
 instance IsPayChanError OpenError where
     mkChanErr = OpenError
-    
-  
+
+
 instance Exception PayChanError
 
 

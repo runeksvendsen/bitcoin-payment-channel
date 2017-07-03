@@ -1,4 +1,5 @@
-{-# LANGUAGE GeneralizedNewtypeDeriving, DeriveGeneric #-}
+{-# LANGUAGE DeriveGeneric              #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 module PaymentChannel.Internal.Crypto.PubKey
 (   IsPubKey(..)
 ,   SendPubKey(..)
@@ -7,9 +8,9 @@ module PaymentChannel.Internal.Crypto.PubKey
 ,   HasRecvPubKey(..)
 ) where
 
+import           Data.Word                    (Word32)
+import qualified Network.Haskoin.Crypto       as HC
 import           PaymentChannel.Internal.Util
-import qualified Network.Haskoin.Crypto as HC
-import           Data.Word              (Word32)
 
 
 -- |Types which contain a pubkey

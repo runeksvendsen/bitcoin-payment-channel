@@ -7,9 +7,9 @@ module PaymentChannel.Internal.Metadata.Util
 )
 where
 
-import PaymentChannel.Internal.Types
-import PaymentChannel.Internal.Metadata.Types
-import PaymentChannel.Internal.Settlement.Util
+import           PaymentChannel.Internal.Metadata.Types
+import           PaymentChannel.Internal.Settlement.Util
+import           PaymentChannel.Internal.Types
 -- import qualified PaymentChannel.Internal.State as S
 
 

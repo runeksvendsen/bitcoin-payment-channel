@@ -1,14 +1,14 @@
 module PaymentChannel.Internal.Receiver.Settle where
 
-import PaymentChannel.Types
-import PaymentChannel.Internal.Receiver.Types
-import Bitcoin.Types
+import           Bitcoin.Types
+import qualified Network.Haskoin.Crypto                  as HC
+import qualified Network.Haskoin.Transaction             as HT
+import           PaymentChannel.Internal.Error
+import           PaymentChannel.Internal.Metadata.Util
+import           PaymentChannel.Internal.Payment
+import           PaymentChannel.Internal.Receiver.Types
 import qualified PaymentChannel.Internal.Settlement.Util as Settle
-import PaymentChannel.Internal.Error
-import PaymentChannel.Internal.Payment
-import PaymentChannel.Internal.Metadata.Util
-import qualified Network.Haskoin.Crypto as HC
-import qualified Network.Haskoin.Transaction as HT
+import           PaymentChannel.Types
 
 
 {-

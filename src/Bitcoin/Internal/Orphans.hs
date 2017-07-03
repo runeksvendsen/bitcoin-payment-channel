@@ -1,12 +1,12 @@
 module Bitcoin.Internal.Orphans where
 
-import qualified Network.Haskoin.Crypto       as HC
-import qualified Data.ByteString.Base16     as B16
-import qualified Data.ByteString            as BS
-import Data.Aeson
-import           Data.String.Conversions    (cs)
-import qualified Network.Haskoin.Script         as HS
-import qualified Data.Ord                       as Ord
+import           Data.Aeson
+import qualified Data.ByteString         as BS
+import qualified Data.ByteString.Base16  as B16
+import qualified Data.Ord                as Ord
+import           Data.String.Conversions (cs)
+import qualified Network.Haskoin.Crypto  as HC
+import qualified Network.Haskoin.Script  as HS
 
 
 

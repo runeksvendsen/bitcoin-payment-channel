@@ -131,10 +131,11 @@ module PaymentChannel
 )
 where
 
-import PaymentChannel.Types
-    hiding (ClosedServerChanX, ChangeOutFee, getClosedState)
-import PaymentChannel.Client
-import PaymentChannel.Server
-import PaymentChannel.RBPCP.Parse
-import PaymentChannel.Util
-import PaymentChannel.Internal.Receiver.Util
+import           PaymentChannel.Client
+import           PaymentChannel.Internal.Receiver.Util
+import           PaymentChannel.RBPCP.Parse
+import           PaymentChannel.Server
+import           PaymentChannel.Types                  hiding (ChangeOutFee,
+                                                        ClosedServerChanX,
+                                                        getClosedState)
+import           PaymentChannel.Util

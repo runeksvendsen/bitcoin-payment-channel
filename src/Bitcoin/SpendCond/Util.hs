@@ -7,12 +7,12 @@ module Bitcoin.SpendCond.Util
 )
 where
 
-import Bitcoin.Util
-import Bitcoin.Internal.Util
+import           Bitcoin.Internal.Util
+import           Bitcoin.SpendCond.Cond
+import           Bitcoin.Util
+import           Data.Word                   (Word32)
+import           Debug.Trace
 import qualified Network.Haskoin.Transaction as HT
-import Bitcoin.SpendCond.Cond
-import Data.Word (Word32)
-import Debug.Trace
 
 
 -- | Create inputs that redeem outputs paying to the given (P2SH) redeemScript

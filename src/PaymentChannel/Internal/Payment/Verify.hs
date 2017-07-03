@@ -5,13 +5,13 @@ module PaymentChannel.Internal.Payment.Verify
 )
 where
 
-import PaymentChannel.Internal.Payment.Types as Export
-import PaymentChannel.Internal.Error.User
-import PaymentChannel.Internal.Error.Internal         (ReceiverError(BadSignatureInState))
-import Bitcoin.Compare
+import           Bitcoin.Compare
+import           PaymentChannel.Internal.Error.Internal (ReceiverError (BadSignatureInState))
+import           PaymentChannel.Internal.Error.User
+import           PaymentChannel.Internal.Payment.Types  as Export
 
-import Control.Exception                              (throw)
-import Debug.Trace
+import           Control.Exception                      (throw)
+import           Debug.Trace
 
 
 -- | When we don't have a valid signature for the 'Payment' in the state
@@ -22,19 +22,19 @@ class StateSignature a where
     _btcSigPossiblyFake :: Payment a -> Payment BtcSig    -- ^ For backwards compatibilty with 'payValIncrease' (which doesn't look at signature data)
 
 instance StateSignature BtcSig where
-    checkStateSig = singlePairVerifySig 
+    checkStateSig = singlePairVerifySig
     _btcSigPossiblyFake = id
 
 instance StateSignature InvalidSig where
-    checkStateSig = const $ Right () 
+    checkStateSig = const $ Right ()
     _btcSigPossiblyFake = mapSigData _invalidBtcSig
-        
+
 -- | WARNING: Produces invalid 'BtcSig'
 _invalidBtcSig :: InvalidSig -> BtcSig
 _invalidBtcSig (MkInvalidSig sh) = BtcSig dummySig sh
 
 -- | Throws 'BadSignatureInState' on invalid in-state payment signature
-paymentValueIncrease :: 
+paymentValueIncrease ::
        ( MonadTime m
        , StateSignature stateSigData
        ) =>
@@ -44,8 +44,8 @@ paymentValueIncrease ::
 paymentValueIncrease state newPayment = do
     let settlePeriod = runConfM (pcsSettings state) confSettlePeriod
     fundingLocked <- fundingIsLocked (toSeconds settlePeriod) newPayment
-    return $ 
-        if fundingLocked 
+    return $
+        if fundingLocked
             then checkedPayVal (pcsPayment state) newPayment
             else Left ChannelExpired
   where

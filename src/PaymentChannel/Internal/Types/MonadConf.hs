@@ -2,10 +2,10 @@
 
 module PaymentChannel.Internal.Types.MonadConf where
 
-import Bitcoin.Types
-import Control.Monad.Trans.Reader           (Reader, runReader)
-import Control.Monad.Reader
-import PaymentChannel.Internal.Config
+import           Bitcoin.Types
+import           Control.Monad.Reader
+import           Control.Monad.Trans.Reader     (Reader, runReader)
+import           PaymentChannel.Internal.Config
 
 newtype MonadConf a = MonadConf (Reader ServerSettings a)
     deriving (Functor, Applicative, Monad, MonadReader ServerSettings)

@@ -1,4 +1,5 @@
-{-# LANGUAGE ScopedTypeVariables, GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE ScopedTypeVariables        #-}
 
 module PaymentChannel.Internal.Util
 ( module PaymentChannel.Internal.Util
@@ -7,13 +8,13 @@ module PaymentChannel.Internal.Util
 )
 where
 
-import Bitcoin.Internal.Util
-import PaymentChannel.Internal.Serialization.JSON as JSONUtil
+import           Bitcoin.Internal.Util
+import           PaymentChannel.Internal.Serialization.JSON as JSONUtil
 
 -- MonadPast
-import Data.Time.Clock.POSIX
-import Control.Monad.Time
-import Data.Functor.Identity
+import           Control.Monad.Time
+import           Data.Functor.Identity
+import           Data.Time.Clock.POSIX
 
 newtype MonadPast a = MonadPast (Identity a)
     deriving (Functor, Applicative, Monad)

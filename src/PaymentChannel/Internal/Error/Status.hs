@@ -1,9 +1,9 @@
 {-# LANGUAGE DeriveAnyClass #-}
 module PaymentChannel.Internal.Error.Status where
 
-import PaymentChannel.Internal.Types
-import PaymentChannel.Internal.Metadata.Types
-import Control.Exception
+import           Control.Exception
+import           PaymentChannel.Internal.Metadata.Types
+import           PaymentChannel.Internal.Types
 
 class HasHttpError a where
     getHttpError :: a -> HTTPError

@@ -1,8 +1,9 @@
-{-# LANGUAGE DeriveGeneric, DeriveAnyClass #-}
+{-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE DeriveGeneric  #-}
 
 module Bitcoin.Types.ExpectFail where
 
-import Bitcoin.Internal.Types
+import           Bitcoin.Internal.Types
 
 data ExpectFail a
   = a `FoundButExpected` a

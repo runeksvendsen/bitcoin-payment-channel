@@ -1,4 +1,5 @@
-{-# LANGUAGE DeriveGeneric, GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE DeriveGeneric              #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 module Bitcoin.Amount
 (
   BtcAmount
@@ -6,9 +7,9 @@ module Bitcoin.Amount
 
 where
 
-import           PaymentChannel.Internal.Util
-import           Data.Word
 import           Data.Ratio
+import           Data.Word
+import           PaymentChannel.Internal.Util
 
 
 -- |Represents a bitcoin amount as number of satoshis.

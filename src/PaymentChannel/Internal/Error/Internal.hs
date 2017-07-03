@@ -1,8 +1,8 @@
 module PaymentChannel.Internal.Error.Internal where
 
-import PaymentChannel.Internal.Error.User
-import Bitcoin.Types
-import Control.Exception
+import           Bitcoin.Types
+import           Control.Exception
+import           PaymentChannel.Internal.Error.User
 
 data ReceiverError =
     BadSignatureInState

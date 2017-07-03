@@ -1,12 +1,13 @@
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE TypeSynonymInstances, FlexibleInstances #-}
+{-# LANGUAGE FlexibleInstances    #-}
+{-# LANGUAGE OverloadedStrings    #-}
+{-# LANGUAGE TypeSynonymInstances #-}
 module PaymentChannel.Internal.Serialization.Orphans where
 
-import           PaymentChannel.Internal.Util
 import           PaymentChannel.Internal.Error
+import           PaymentChannel.Internal.Util
 
-import qualified Data.Time.Clock    as Clock
-import qualified Data.Time.Clock.POSIX as Clock
+import qualified Data.Time.Clock               as Clock
+import qualified Data.Time.Clock.POSIX         as Clock
 
 
 instance Serialize Clock.UTCTime where
