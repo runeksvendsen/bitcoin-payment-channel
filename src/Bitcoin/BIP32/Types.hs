@@ -20,9 +20,9 @@ module Bitcoin.BIP32.Types
   -- * Util
 , keyId
 , fromExternalPair
---, word32Index
---, word31Index
---, mkKeyIndex
+  -- * Re-exports
+, HC.SoftPath
+, HC.HardPath
 )
 where
 

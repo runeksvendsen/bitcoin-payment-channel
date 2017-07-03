@@ -1,12 +1,14 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 module Bitcoin.Signature
-( -- * Interface to fill out
-  TransformSigData(..)
+( -- * Interfaces to fill out
+  SpendCondition(..)
+, TransformSigData(..)
 , HasSigner(..)
   -- * Provided functions: sign tx, verify tx
 , signTx
 , signChangeTx
 , verifyTx
+, ChangeOut
   -- * Runners
 , runSimple
 , runExtDet
@@ -17,7 +19,9 @@ module Bitcoin.Signature
 , SignDummyM
 , HasSigningKey
   -- * Re-exports
-, module Bitcoin.Conversion
+, BtcSig, PubKeyC
+, BtcError, VerifyError
+--, module Bitcoin.Conversion
 , module X
 )
 where
@@ -143,13 +147,13 @@ runDummy =
 
 
 
-signTx :: forall m t r newSigData oldSd signKey.
+signTx :: forall t r newSigData oldSd signKey.
               ( TransformSigData newSigData oldSd r
-              , MonadSign m signKey
+              -- , MonadSign m signKey
               , HasSigningKey signKey t r oldSd
               ) =>
               BtcTx t r oldSd
-           -> m (Either BtcError (BtcTx t r newSigData))
+           -> SignM signKey (Either BtcError (BtcTx t r newSigData))
 signTx tx =
     if availableVal tx < 0
         then return . Left . InsufficientFunds . fromIntegral . abs . availableVal $ tx
@@ -159,34 +163,32 @@ signTx tx =
                 replacedIns = replaceTxIns <$> fmapL WrongSigningKey insE
             return replacedIns
 
-signChangeTx :: forall m t r newSd oldSd signKey.
+signChangeTx :: forall t r newSd oldSd signKey.
               ( SignatureScript r newSd t
               , TransformSigData newSd oldSd r
-              , MonadSign m signKey
               , HasSigningKey signKey t r oldSd
               ) =>
               BtcTx t r oldSd
            -> ChangeOut
-           -> m (Either BtcError (BtcTx t r newSd))
+           -> SignM signKey (Either BtcError (BtcTx t r newSd))
 signChangeTx tx@BtcTx{..} chgOut =
     mkRelFeeFunc mkTx
  where
-    mkTx :: BtcAmount -> m (Either BtcError (BtcTx t r newSd))
+    mkTx :: BtcAmount -> SignM signKey (Either BtcError (BtcTx t r newSd))
     mkTx fee = signTx (txWithChange fee)
     txWithChange :: BtcAmount -> BtcTx t r oldSd
     txWithChange fee = setTxRawFee fee $ setChangeOut chgOut tx
-    mkRelFeeFunc :: (BtcAmount -> m (Either BtcError (BtcTx t r newSd)))
-                -> m (Either BtcError (BtcTx t r newSd))
+    mkRelFeeFunc :: (BtcAmount -> SignM signKey (Either BtcError (BtcTx t r newSd)))
+                -> SignM signKey (Either BtcError (BtcTx t r newSd))
     mkRelFeeFunc = absOrRelFee mkRelativeFeeTxM mkRelativeFeeTxM (btcTxFee chgOut)
 
 
-signInputs :: forall m t r newSigData oldSd signKey.
+signInputs :: forall t r newSigData oldSd signKey.
               ( TransformSigData newSigData oldSd r
-              , MonadSign m signKey
               , HasSigningKey signKey t r oldSd
               )
            => BtcTx t r oldSd
-           -> m (Either [SignKeyError] (NE.NonEmpty (InputG t r newSigData)))
+           -> SignM signKey (Either [SignKeyError] (NE.NonEmpty (InputG t r newSigData)))
 signInputs tx@BtcTx{..}  = do
     resE <- zipWithM (signInput tx) [0..] (NE.toList btcIns)
     let errors = lefts (resE :: [Either SignKeyError (InputG t r newSigData)])
@@ -195,15 +197,14 @@ signInputs tx@BtcTx{..}  = do
         else Left    errors
 
 signInput
-    :: forall m t r signKey oldSigData newSigData.
+    :: forall t r signKey oldSigData newSigData.
        ( TransformSigData newSigData oldSigData r
-       , MonadSign m signKey
        , HasSigningKey signKey t r oldSigData
        )
     => BtcTx t r oldSigData
     -> Word32
     -> InputG t r oldSigData
-    -> m (Either SignKeyError (InputG t r newSigData))
+    -> SignM signKey (Either SignKeyError (InputG t r newSigData))
 signInput tx idx inp@MkInputG{..} = do
          SignConf{..} <- getSignConf
          signKey <- signGetKey
@@ -252,7 +253,6 @@ getHashForSig ::
     SpendCondition r => BtcTx t r a -> r -> Word32 -> HS.SigHash -> HC.Hash256
 getHashForSig tx rdmScr idx = HS.txSigHash
     (toUnsignedTx tx) (conditionScript rdmScr) (toInt idx)
-
 
 txSize :: SignatureScript r ss t => BtcTx t r ss -> TxByteSize
 txSize = calcTxSize . toHaskoinTx

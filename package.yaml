@@ -90,10 +90,7 @@ tests:
   test-all:
     main:        Spec.hs
     source-dirs: test
-    ghc-options:
-    - -Wall
-    - -dcore-lint
-    - -debug
+    ghc-options: -Wall
     dependencies:
     - bitcoin-payment-channel
     - hspec-discover

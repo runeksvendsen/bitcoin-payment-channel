@@ -72,7 +72,8 @@ import PaymentChannel.Internal.Serialization ()
 import PaymentChannel.Internal.Class.Value     (HasValue(..))
 import PaymentChannel.Internal.Receiver.Open   (OpenError(..))
 import Bitcoin.SpendCond.Util
-import Bitcoin.Types                  as X hiding (fromDate, KeyDeriveIndex, mkKeyIndex, word32Index)
+import Bitcoin.Types                  as X hiding (fromDate)
+import Bitcoin.Conversion (toHaskoinTx)
 
 import qualified PaymentChannel.Internal.Receiver.Util as S
 import qualified PaymentChannel.Internal.ChanScript as Script
