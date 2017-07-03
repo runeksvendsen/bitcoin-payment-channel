@@ -4,9 +4,11 @@ module PaymentChannel.Internal.Receiver.Types
 (
   module PaymentChannel.Internal.Receiver.Types
 , module X
+, SettleTx
 )
 where
 
+import PaymentChannel.Internal.Payment.Types            (SettleTx)
 import PaymentChannel.Internal.Types                    as X
 import PaymentChannel.Internal.Metadata.Types           as X
 import PaymentChannel.Internal.Types.MonadConf          as X
@@ -15,7 +17,7 @@ import PaymentChannel.Internal.Types.MonadConf          as X
 -- |ServerPayChan without receiver key metadata
 type ServerPayChan = ServerPayChanI ()
 -- |ServerPayChan with BIP32, "extended key" index as metadata
-type ServerPayChanX = ServerPayChanI KeyDeriveIndex
+type ServerPayChanX = ServerPayChanI ExtPub
 
 -- |State object for the value receiver. "kd" is used to store
 --   information about the receiver key(s) used for this state object.
@@ -41,7 +43,7 @@ data ClosedServerChanI kd = MkClosedServerChan
     } deriving (Eq, Show, Typeable, Generic, Serialize, NFData)
 
 type ClosedServerChan = ClosedServerChanI ()
-type ClosedServerChanX = ClosedServerChanI KeyDeriveIndex
+type ClosedServerChanX = ClosedServerChanI ExtPub
 
 getClosedState :: ClosedServerChanI kd -> ServerPayChanI kd
 getClosedState = cscState

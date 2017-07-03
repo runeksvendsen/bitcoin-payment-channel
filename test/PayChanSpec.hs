@@ -1,11 +1,12 @@
 {-# LANGUAGE OverloadedStrings, RecordWildCards, GeneralizedNewtypeDeriving, DeriveFunctor #-}
-module Main where
+module PayChanSpec where
 
 import           PaymentChannel.Test
 
 import qualified Network.Haskoin.Transaction    as HT
 import qualified Network.Haskoin.Crypto         as HC
 import qualified Network.Haskoin.Test           as HC
+import qualified Network.Haskoin.Constants      as HCC
 import qualified Data.Aeson                     as JSON
 import qualified Data.Serialize                 as Bin
 
@@ -29,19 +30,21 @@ runTestM :: forall c. TestM c -> c
 runTestM = getIt . runTestId
     where getIt (Identity a) = a
 
--- testAddrTestnet :: HC.Address
--- testAddrTestnet = "2N414xMNQaiaHCT5D7JamPz7hJEc9RG7469"
-testAddrLivenet :: HC.Address
-testAddrLivenet = "14wjVnwHwMAXDr6h5Fw38shCWUB6RSEa63"
+testAddr :: HC.Address
+testAddr = if HCC.getNetwork == HCC.prodnet
+    then "14wjVnwHwMAXDr6h5Fw38shCWUB6RSEa63"
+    else "n2eMqTT929pb1RDNuqEnxdaLau1rxy3efi"
 
 recvSettleAddr :: HC.Address
-recvSettleAddr = testAddrLivenet
+recvSettleAddr = testAddr
 
 main :: IO ()
-main = hspec $ do
+main = hspec spec
+
+spec :: Spec
+spec = do
     paymentSpec
     conversionSpec
-    keySpec
 
 paymentSpec :: Spec
 paymentSpec =
@@ -69,9 +72,8 @@ paymentSpec =
           closedStateE `shouldSatisfy` isRight
           let Right closedState = closedStateE
           HC.ArbitraryAddress arbServerAddr <- generate arbitrary
-          HC.ArbitraryPrvKeyC prvKey <- generate arbitrary
-          let Identity settleTxE = closedGetSettlementTx
-                closedState arbServerAddr (const $ return prvKey) DropDust
+--          HC.ArbitraryPrvKeyC prvKey <- generate arbitrary
+          let settleTxE = runDummy $ closedGetSettlementTx closedState arbServerAddr DropDust
           settleTxE `shouldSatisfy` isRight
 
 conversionSpec :: Spec
@@ -92,36 +94,6 @@ conversionSpec = do
         (binSerDeser  :: PayChanState BtcSig -> IO ())
       it "ChanParams" $ generate arbitrary >>=
         (binSerDeser  :: ChanParams -> IO ())
-
-keySpec :: Spec
-keySpec  = do
-  describe "External ChildPub/ChildPair" $
-    it "derive same pubkeys & created signatures verify" $ do
-      rootKey  <- generate arbitrary
-      keyIndex <- generate arbitrary
-      let pair :: External ChildPair
-          pair = mkChild rootKey
-          pub :: External ChildPub
-          pub  = mkChild rootKey
-      (subKey pair keyIndex :: HC.XPubKey) `shouldBe` (subKey pub keyIndex :: HC.XPubKey)
-      HC.ArbitraryHash256 h256 <- generate arbitrary
-      -- External pair/pub compare
-      HC.signMsg h256 (subKey pair keyIndex :: HC.PrvKeyC) `shouldSatisfy`
-          (\sig -> HC.verifySig h256 sig (subKey pub keyIndex :: HC.PubKeyC))
-      -- External pair/pair compare
-      HC.signMsg h256 (subKey pair keyIndex :: HC.PrvKeyC) `shouldSatisfy`
-          (\sig -> HC.verifySig h256 sig (subKey pair keyIndex :: HC.PubKeyC))
-  describe "Internal ChildPair" $
-    it "created signatures verify" $ do
-      rootKey  <- generate arbitrary
-      keyIndex <- generate arbitrary
-      let pair :: Internal ChildPair
-          pair = mkChild rootKey
-      HC.ArbitraryHash256 h256 <- generate arbitrary
-      -- Internal pair/pair compare
-      HC.signMsg h256 (subKey pair keyIndex :: HC.PrvKeyC) `shouldSatisfy`
-          (\sig -> HC.verifySig h256 sig (subKey pair keyIndex :: HC.PubKeyC))
-
 
 withArbChanResult :: (ChannelPairResult -> IO ()) -> IO ()
 withArbChanResult f = do
@@ -195,7 +167,8 @@ indexOf tx addr = listToMaybe $ catMaybes $ zipWith f [0..] (HT.txOut tx)
 mkSettleTx :: Monad m =>
             ChannelPairResult -> m Tx
 mkSettleTx ChannelPairResult{..} = do
-    settleTxE <- getSettlementBitcoinTx
+    let prvKey = testPrvKeyC $ recvPrvKey resInitPair
+    let settleTxE = runSimple prvKey $ getSettlementBitcoinTx
             resRecvChan recvSettleAddr
-            (const $ return $ testPrvKeyC $ recvPrvKey resInitPair) (SatoshisPerByte 0) KeepDust
-    return $ either (error . show) id settleTxE
+            (SatoshisPerByte 0) KeepDust
+    return $ either (error . show) toHaskoinTx settleTxE

@@ -1,14 +1,15 @@
 {-# LANGUAGE DeriveGeneric, DeriveAnyClass, KindSignatures #-}
 module Bitcoin.SpendCond.Cond
-(
-  module Bitcoin.SpendCond.Cond
+( module Bitcoin.SpendCond.Cond
 , module Bitcoin.Types
 )
 where
 
 import Bitcoin.Util
+import Bitcoin.Internal.Util
 import Bitcoin.Types
 import Network.Haskoin.Script
+import Data.Void
 
 import qualified Data.Serialize         as Bin
 import qualified Data.Aeson.Types       as JSON
@@ -34,127 +35,137 @@ class SpendFulfillment f c where
 -- ### Output interface
 -- ######################
 -- | Script we put in the output of a transaction
-class ScriptPubKey c where
-    scriptPubKey :: c -> TxOutputScript
+class ScriptPubKey c t where
+    scriptPubKey :: c -> TxOutputScript t
 
-class SignatureScript c f where
+class SignatureScript c f t where
     -- | The script we put inside a transaction input
-    inputScript     :: f -> c -> TxInputScript
+    inputScript     :: f -> c -> TxInputScript t
     -- | The script we put inside a transaction witness
-    witnessScript   :: f -> c -> WitnessScript
+    witnessScript   :: f -> c -> WitnessScript t
 
 
 -- | Pay to something
-data Pay2 a = Pay2 a
+newtype Pay2 a = Pay2 a
     deriving (Eq, Show, Typeable, Generic, JSON.ToJSON, JSON.FromJSON, Bin.Serialize, NFData)
 
 -- | Turns something into its SegWit counterpart
-data Witness a = Witness a
-    deriving (Eq, Show, Typeable, Generic, JSON.ToJSON, JSON.FromJSON, Bin.Serialize, NFData)
+--newtype Witness a = Witness a
+--    deriving (Eq, Show, Typeable, Generic, JSON.ToJSON, JSON.FromJSON, Bin.Serialize, NFData)
 
 -- | Hash a 'SpendCondition'
-data ScriptHash a = ScriptHash a
+newtype ScriptHash a = ScriptHash a
     deriving (Eq, Show, Typeable, Generic, JSON.ToJSON, JSON.FromJSON, Bin.Serialize, NFData)
 
--- | Wraps a 'SpendCondition'
-data Cond a = Cond a
+-- | Represents a 'SpendCondition'
+data Cond = Cond
     deriving (Eq, Show, Typeable, Generic, JSON.ToJSON, JSON.FromJSON, Bin.Serialize, NFData)
 
--- | Pay to script hash (P2SH)
-type P2SH c    = Pay2 (ScriptHash (Cond c))
--- | Pay to witness script hash (P2WSH)
-type P2WSH c   = Pay2 (Witness (Cond c))
--- | P2WSH inside P2SH (for compatibility with old wallet clients)
-type P2SHWit c = Pay2 (ScriptHash (Witness (Cond c)))
+type P2S = Pay2 Cond
+type P2SH = Pay2 (ScriptHash Cond)
 
-mkP2sh :: c -> P2SH c
-mkP2sh = Pay2 . ScriptHash . Cond
+---- | Pay to script (P2S)
+--newtype P2Script = P2Script (Pay2 Cond)
+---- | Pay to script hash (P2SH)
+--newtype P2SH     = P2SH (Pay2 (ScriptHash Cond))
+---- | Pay to witness script hash (P2WSH)
+--newtype P2WSH    = P2WSH (Pay2 (Witness Cond))
+---- | P2WSH inside P2SH (for compatibility with old wallet clients)
+--newtype P2SHWit  = P2SHWit (Pay2 (ScriptHash (Witness Cond)))
 
-class IsWrapper c (wrap :: * -> *) where
-    unwrap :: wrap c -> c
+--mkP2sh :: c -> P2SH c
+--mkP2sh = Pay2 . ScriptHash . Cond
 
-instance IsWrapper c Pay2       where unwrap (Pay2 c) = c
-instance IsWrapper c Cond       where unwrap (Cond c) = c
-instance IsWrapper c Witness    where unwrap (Witness c) = c
-instance IsWrapper c ScriptHash where unwrap (ScriptHash c) = c
+--class IsWrapper c (wrap :: * -> *) where
+--    unwrap :: wrap c -> c
+--
+--instance IsWrapper c Pay2       where unwrap (Pay2 c) = c
+--instance IsWrapper c Cond       where unwrap Cond = c
+--instance IsWrapper c Witness    where unwrap (Witness c) = c
+--instance IsWrapper c ScriptHash where unwrap (ScriptHash c) = c
 
-
-class HasSpendCond c ac | ac -> c where
-    getCond :: ac -> c
-    mkCond  :: c  -> ac
-
-instance HasSpendCond c (Pay2 (Cond c)) where
-    getCond = unwrap . unwrap
-    mkCond  = Pay2 . Cond
-instance HasSpendCond c (Pay2 (ScriptHash (Cond c))) where
-    getCond = unwrap . unwrap . unwrap
-    mkCond  = Pay2 . ScriptHash . Cond
-instance HasSpendCond c (Pay2 (Witness (Cond c))) where
-    getCond = unwrap . unwrap . unwrap
-    mkCond  = Pay2 . Witness . Cond
-instance HasSpendCond c (Pay2 (ScriptHash (Witness (Cond c)))) where
-    getCond = unwrap . unwrap . unwrap . unwrap
-    mkCond  = Pay2 . ScriptHash . Witness . Cond
-
-inputCondScript :: HasSpendCond r t => InputG t a -> r
-inputCondScript MkInputG{..} = getCond btcInType
+--class HasSpendCond c (ac :: * -> *) where
+--    getCond :: ac c -> c
+--    mkCond  :: c    -> ac c
+--
+--instance HasSpendCond c P2Script where
+--    getCond = unwrap . unwrap
+--    mkCond  = P2Script . Pay2 . Cond
+--instance HasSpendCond c P2SH where
+--    getCond = unwrap . unwrap . unwrap
+--    mkCond  = P2SH . Pay2 . ScriptHash . Cond
+--instance HasSpendCond c P2WSH where
+--    getCond = unwrap . unwrap . unwrap
+--    mkCond  = P2WSH . Pay2 . Witness . Cond
+--instance HasSpendCond c P2SHWit where
+--    getCond = unwrap . unwrap . unwrap . unwrap
+--    mkCond  = P2SHWit . Pay2 . ScriptHash . Witness . Cond
+--
+--inputCondScript :: HasSpendCond r t => InputG t r a -> r
+--inputCondScript MkInputG{..} = getCond btcInType
 
 
 -- ## ScriptPubKey
 -- #################
-instance SpendCondition c => ScriptPubKey (Pay2 (Cond c)) where
-    scriptPubKey (Pay2 (Cond c)) = mkScript $
+instance SpendCondition c => ScriptPubKey c P2S where
+    scriptPubKey c = mkScript $
         conditionScript c
 
-instance SpendCondition c => ScriptPubKey (Pay2 (ScriptHash (Cond c))) where
-    scriptPubKey (Pay2 (ScriptHash (Cond c))) =
+instance SpendCondition c => ScriptPubKey c P2SH where
+    scriptPubKey c =
         p2shScriptPubKey (mkScript $ conditionScript c)
 
-instance WitnessProgram wp => ScriptPubKey (Pay2 (Witness wp)) where
-    scriptPubKey (Pay2 (Witness wp)) = TxOutputScript
+{-
+instance -- WitnessProgram wp
+      SpendCondition c => ScriptPubKey c (Pay2 (Witness Cond)) where
+    scriptPubKey wp = TxOutputScript
         [ OP_0, opPushData $ witnessProgram wp ]
 
-instance WitnessProgram wp => ScriptPubKey (Pay2 (ScriptHash (Witness wp))) where
-    scriptPubKey (Pay2 (ScriptHash (Witness wp))) =
-        p2shScriptPubKey $ scriptPubKey (Pay2 (Witness wp))
+instance -- WitnessProgram wp
+      SpendCondition c => ScriptPubKey c (Pay2 (ScriptHash (Witness Cond))) where
+    scriptPubKey wp =
+        p2shScriptPubKey (scriptPubKey wp :: TxOutputScript (Pay2 (Witness Cond)))
 
-
+-}
 -- ## SignatureScript
 -- ####################
 
 -- Pay to script
-instance SpendFulfillment f c => SignatureScript (Pay2 (Cond c)) f where
-    inputScript ss (Pay2 (Cond c)) = mkScript $
+instance SpendFulfillment f c => SignatureScript c f P2S where
+    inputScript ss c = mkScript $
         signatureScript ss c
     witnessScript _ _ = WitnessScript []
 
 -- P2SH
 instance ( SpendCondition c, SpendFulfillment f c)
-        => SignatureScript (Pay2 (ScriptHash (Cond c))) f where
+        => SignatureScript c f P2SH where
     -- For P2SH inputScript, we add a push of the serialized conditionScript
-    inputScript ss (Pay2 (ScriptHash (Cond c))) = mkScript $
+    inputScript ss c = mkScript $
         signatureScript ss c <> Script [ opPush $ conditionScript c ]
     witnessScript _ _ = WitnessScript []
 
+{-
 -- P2WSH/P2WPKH
-instance ( WitnessSig f wp
-         , WitnessProgram wp
+instance ( SpendCondition c
+         , SpendFulfillment f c
          )
-        => SignatureScript (Pay2 (Witness wp)) f where
+        => SignatureScript c f (Pay2 (Witness Cond)) where
     inputScript _ _ = TxInputScript []
-    witnessScript ss (Pay2 (Witness wp)) = mkWitnessScript wp ss
+    witnessScript ss wp = mkWitnessScript wp ss
 
 -- P2WSH/P2WPKH inside P2SH
-instance ( WitnessSig f wp
-         , WitnessProgram wp
+instance ( SpendCondition c
+         , SpendFulfillment f c
+--         , WitnessSig f wp (Pay2 (ScriptHash (Witness Cond)))
+--         , WitnessProgram wp (Pay2 (ScriptHash (Witness Cond)))
          )
-        => SignatureScript (Pay2 (ScriptHash (Witness wp))) f where
-    inputScript   _  (Pay2 (ScriptHash (Witness wp))) = TxInputScript
-        [ opPush $ asScript $ scriptPubKey (Pay2 (Witness wp)) ]
+        => SignatureScript c f (Pay2 (ScriptHash (Witness Cond))) where
+    inputScript   _  wp = TxInputScript
+        [ opPush $ asScript $ (scriptPubKey wp :: TxInputScript (Pay2 (Witness wp))) ]
     witnessScript ss (Pay2 (ScriptHash (Witness wp))) = mkWitnessScript wp ss
-
+-}
 -- Util
-p2shScriptPubKey :: TxOutputScript -> TxOutputScript
+p2shScriptPubKey :: TxOutputScript a -> TxOutputScript b
 p2shScriptPubKey s = TxOutputScript
     [ OP_HASH160, opPush $ hash160 (asScript s), OP_EQUAL ]
 
@@ -175,43 +186,44 @@ instance SpendFulfillment SpendPKH PubkeyHash where
     signatureScript (SpendPKH sig) (PubkeyHash pk) = Script [ opPush sig, opPush pk ]
     rawSigs (SpendPKH sig) (PubkeyHash pk) = [(pk, sig)]
 
-instance SignatureScript PubkeyHash SpendPKH where
+instance SignatureScript PubkeyHash SpendPKH Void where
     inputScript s = mkScript . signatureScript s
     witnessScript _ _ = WitnessScript []
 
 
-
+{-
 
 -- | A witness program is (currently) either a SHA256 hash of a script
 --    or RIPEMD160 hash of a compressed public key.
-class WitnessProgram wp where
-    witnessProgram  :: wp -> B.ByteString
-    redeemScript    :: wp -> Script
+class WitnessProgram wp t where
+    witnessProgram  :: wp -> Tagged t B.ByteString
+    redeemScript    :: wp -> Tagged t Script
 
 -- P2WSH witness program
-instance SpendCondition c => WitnessProgram (Cond c) where
-    witnessProgram (Cond c) = Bin.encode $ hash256 (conditionScript c)
+instance SpendCondition c => WitnessProgram c Cond where
+    witnessProgram c = Tagged $ Bin.encode $ hash256 (conditionScript c)
     redeemScript wp =
-            Script [ opPush  $ Script [ OP_0, opPushData $ witnessProgram wp ] ]
+            Tagged $ Script [ opPush  $ Script [ OP_0, opPushData $ unTagged (witnessProgram wp) ] ]
 
 -- P2WPKH witness program
-instance WitnessProgram PubkeyHash where
-    witnessProgram (PubkeyHash pk) = Bin.encode $ hash160 pk
-    redeemScript _ = mempty
+instance WitnessProgram PubkeyHash Void where
+    witnessProgram (PubkeyHash pk) = Tagged $ Bin.encode $ hash160 pk
+    redeemScript _ = Tagged mempty
 
 
-class WitnessSig ws wp where
-    mkWitnessScript :: wp -> (ws -> WitnessScript)
+class WitnessSig ws wp t where
+    mkWitnessScript :: wp -> (ws -> WitnessScript t)
 
 -- P2SH witness program
-instance (SpendCondition c, SpendFulfillment f c) => WitnessSig f (Cond c) where
+instance (SpendCondition c, SpendFulfillment f c) => WitnessSig f c Cond where
     -- Same as P2SH inputScript
-    mkWitnessScript (Cond c) f = mkScript . asScript $
-        inputScript f (Pay2 (ScriptHash (Cond c)))
+    mkWitnessScript c f = mkScript . asScript $
+        (inputScript f c :: TxInputScript (Pay2 (ScriptHash Cond)))
 
 -- P2WPKH witness program
-instance WitnessSig SpendPKH PubkeyHash where
+instance WitnessSig SpendPKH PubkeyHash Void where
     -- Same as P2PKH inputScript
     mkWitnessScript pkh sig = mkScript . asScript $
-        inputScript sig (Pay2 (Cond pkh))
+        (inputScript sig pkh :: TxInputScript (Pay2 Cond))
 
+-}

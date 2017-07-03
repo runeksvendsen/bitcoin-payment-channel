@@ -9,7 +9,7 @@ module PaymentChannel.RBPCP.Parse
 )
 where
 
-import RBPCP.Types
+import RBPCP.Types (PaymentData(..), JsonHex(..))
 import qualified RBPCP.Types as RBPCP
 import PaymentChannel.Internal.Util
 import PaymentChannel.Internal.Types
@@ -21,10 +21,10 @@ data ParseError =
   | BtcError BtcError
         deriving (Eq, Generic, NFData, ToJSON, FromJSON, Serialize)
 
-toPaymentData :: SigSinglePair ScriptType BtcSig -> PaymentData
+toPaymentData :: Payment BtcSig -> PaymentData
 toPaymentData (SigSinglePair input output) =
     PaymentData
-        { paymentDataRedeemScript   = JsonHex . getRedeemScript . getCond . btcInType $ input
+        { paymentDataRedeemScript   = JsonHex . RBPCP.BtcScript . getRedeemScript . btcCondScr $ input
         , paymentDataFundingTxid    = RBPCP.BtcTxId . HT.outPointHash  . btcPrevOut $ input
         , paymentDataFundingVout    = HT.outPointIndex . btcPrevOut $ input
         , paymentDataSignatureData  = JsonHex .  bsSig . btcSigData $ input
@@ -37,7 +37,7 @@ fromPaymentData ::
     HasConfDustLimit m
     => BtcAmount
     -> PaymentData
-    -> m (Either ParseError (SigSinglePair ScriptType BtcSig))
+    -> m (Either ParseError (Payment BtcSig))
 fromPaymentData fundVal pd = do
     let inputE = paymentDataIn fundVal pd
     outputE <- paymentDataOut pd
@@ -46,19 +46,20 @@ fromPaymentData fundVal pd = do
         output <- outputE
         Right $ SigSinglePair input output
 
-paymentDataIn :: BtcAmount -> PaymentData -> Either ParseError (InputG ScriptType BtcSig)
+paymentDataIn :: BtcAmount -> PaymentData -> Either ParseError (InputG P2SH ChanParams BtcSig)
 paymentDataIn fundVal pd@PaymentData{..} =
     parseRedeemScript pd >>= Right . mapSigData (const paySig) . mkInput
   where
-    mkInput r = mkNoSigTxIn prevOut fundVal (Pay2 (ScriptHash (Cond r)))
+    mkInput r = mkNoSigTxIn prevOut fundVal r
     prevOut = HT.OutPoint (RBPCP.btcTxId paymentDataFundingTxid) paymentDataFundingVout
     -- TODO: strict DER/signature parsing
-    paySig = MkBtcSig (fromHex paymentDataSignatureData)
+    paySig = BtcSig (fromHex paymentDataSignatureData)
                       (fromHex paymentDataSighashFlag)
 
 parseRedeemScript :: PaymentData -> Either ParseError ChanParams
 parseRedeemScript PaymentData{..} =
-    fmapL BadRedeemScript $ fromRedeemScript (fromHex paymentDataRedeemScript)
+    fmapL BadRedeemScript $ fromRedeemScript (RBPCP.bsGetScript $ fromHex paymentDataRedeemScript)
+  where
 
 paymentDataOut :: HasConfDustLimit m => PaymentData -> m (Either ParseError BtcOut)
 paymentDataOut PaymentData{..} =

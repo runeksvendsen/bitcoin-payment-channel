@@ -8,11 +8,11 @@ import Control.Monad.Time
 
 allInputsLocked ::
     ( MonadTime m
-    , HasLockTimeDate inType
+    , HasLockTimeDate r
     )
     => Seconds          -- ^ Lock expires this many seconds before actual expiration date
-    -> BtcTx inType a
+    -> BtcTx inType r a
     -> m Bool
 allInputsLocked settlePeriodSeconds BtcTx{..} = do
-    isLockedLst <- mapM (isLocked settlePeriodSeconds . btcInType) (NE.toList btcIns)
+    isLockedLst <- mapM (isLocked settlePeriodSeconds . btcCondScr) (NE.toList btcIns)
     return $ all (== True) isLockedLst

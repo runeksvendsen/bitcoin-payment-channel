@@ -1,6 +1,5 @@
 module PaymentChannel.Internal.Payment.Create
-(
-  mkUnsignedPayment
+( mkUnsignedPayment
 , createPaymentOfValue
 , CreationError
 , module Export
@@ -40,24 +39,24 @@ mkUnsignedPayment cp (tx,idx) refundAddr = runEitherT $ do
 createPaymentOfValue ::
     ( HasConfDustLimit m
     , TransformSigData BtcSig () r
-    , SignatureScript t BtcSig
+--    , SignatureScript t r BtcSig
     , SpendFulfillment BtcSig r
-    , HasSpendCond r t
-    , Show t
+--    , HasSpendCond r t
+    , Show r
     ) =>
        HC.PrvKeyC
-    -> SigSinglePair t ()
+    -> SigSinglePair t r ()
     -> BtcAmount
-    -> m (Either BtcError (SigSinglePair t BtcSig))
+    -> m (Either BtcError (SigSinglePair t r BtcSig))
 createPaymentOfValue prvKey ssp payVal = do
     newSspE <- decrementClientValue ssp payVal
     either (return . Left) (signPair prvKey) newSspE
 
 decrementClientValue ::
     HasConfDustLimit m
-    => SigSinglePair r ()
+    => SigSinglePair t r ()
     -> BtcAmount
-    -> m (Either BtcError (SigSinglePair r ()))
+    -> m (Either BtcError (SigSinglePair t r ()))
 decrementClientValue sp@SigSinglePair{..} decVal = do
     newValE <- mkNonDusty (currentVal - decVal)
     return (newValE >>= \newVal -> Right $ sp { singleOutput = replaceValue singleOutput newVal })

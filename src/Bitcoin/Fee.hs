@@ -3,8 +3,7 @@ module Bitcoin.Fee where
 
 -- import Bitcoin.Types
 import Bitcoin.Amount
-import Bitcoin.Util
-import qualified Network.Haskoin.Transaction as HT
+import PaymentChannel.Internal.Util
 import qualified Data.Serialize     as Bin
 import qualified Data.Aeson.Types   as JSON
 
@@ -17,7 +16,8 @@ class HasFee a where
 instance HasFee BtcAmount where
     absoluteFee _ _ = id    -- Same as constant fee
 
-data Constant = Constant BtcAmount
+newtype Constant = Constant BtcAmount
+    deriving (Eq, Generic, NFData)
 instance HasFee Constant where
     absoluteFee _ _ (Constant amt) = amt
 

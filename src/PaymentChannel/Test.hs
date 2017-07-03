@@ -12,9 +12,10 @@ import qualified RBPCP.Types as RBPCP
 import qualified Network.Haskoin.Crypto as HC
 import qualified Network.Haskoin.Transaction as HT
 import qualified Network.Haskoin.Script as HS
-
+import qualified Data.ByteString.Char8        as C8
 import qualified Data.Serialize         as Bin
 import           Network.Haskoin.Test
+import            Data.Time.Clock.POSIX
 import           Data.Time.Clock                 (UTCTime(..))
 import           Data.Time.Calendar              (Day(..))
 import           Control.Monad                   (foldM)
@@ -54,11 +55,11 @@ data ArbChannelPair = ArbChannelPair
     , recvPrvKey        :: TestRecvKey
     } deriving (Generic, NFData)
 
-data TestRecvKey = TestRecvKey RootKey (External ChildPair) KeyDeriveIndex
+data TestRecvKey = TestRecvKey RootPrv (External ChildPair)
       deriving (Generic, NFData)
 
 testPrvKeyC :: TestRecvKey -> HC.PrvKeyC
-testPrvKeyC (TestRecvKey _ pair kdi) = subKey pair kdi
+testPrvKeyC (TestRecvKey _ pair) = getKey pair
 
 data ChannelPairResult = ChannelPairResult
     { resInitPair       :: ArbChannelPair
@@ -101,6 +102,21 @@ arbitraryNonDusty extraVal = do
   either (\e -> error $ "Dusty amount: " ++ show val) return $
       runConfM (mkTestServerConf 0) $ mkNonDusty (val :: BtcAmount)
 
+genLockTimeDate
+    :: ServerSettings
+    -> UTCTime          -- ^ Now-timestamp
+    -> Hour             -- ^ Maximum duration
+    -> Gen LockTimeDate
+genLockTimeDate ServerSettings{..} now maxDuration = do
+    let leeway = 6 :: Hour
+        maxTs = fromIntegral (maxBound :: Word32)
+        startTs = (round $ utcTimeToPOSIXSeconds now :: Integer) +
+                    toSeconds (serverConfSettlePeriod + serverConfMinDuration + leeway)
+    timestamp <- choose (startTs, min (startTs + toSeconds maxDuration) maxTs)
+    either (const $ error $ "genLockTimeDate: bad logic: " ++ show timestamp) return $
+        parseLockTime (fromIntegral timestamp)
+
+
 newtype NonZeroBitcoinAmount = NonZeroBitcoinAmount { getAmount :: BtcAmount }
 
 instance Arbitrary NonZeroBitcoinAmount where
@@ -110,13 +126,23 @@ instance Arbitrary NonZeroBitcoinAmount where
 instance Arbitrary (Payment BtcSig) where
     arbitrary = snd <$> mkChanPair
 
--- Soft child keys (keys derivable from an XPubKey) have an index of less than 0x80000000
-instance Arbitrary KeyDeriveIndex where
-    arbitrary =
-        fromMaybe (error "Bad key index") . mkKeyIndex <$> choose (0, 0x80000000 - 1)
+-- -- Soft child keys (keys derivable from an XPubKey) have an index of less than 0x80000000
+--instance Arbitrary KeyDeriveIndex where
+--    arbitrary =
+--        fromMaybe (error "Bad key index") . mkKeyIndex <$> choose (0, 0x80000000 - 1)
 
 instance MonadTime Gen where
     currentTime = return nowishTimestamp
+
+
+instance Arbitrary RootPrv where
+     arbitrary = createRootPrv <$> arbitrary
+
+instance Arbitrary ByteString where
+    arbitrary = do
+        len <- choose (0,32)
+        c8Lst <- vector len
+        return $ C8.pack c8Lst
 
 
 toInitResult :: ArbChannelPair -> ChannelPairResult
@@ -127,7 +153,7 @@ toInitResult initPair@(ArbChannelPair spc rpc payAmt rcvAmt pay _) =
 -- |Fold a payment of specified value into a 'ChannelPairResult'
 doPayment :: MonadTime m => ChannelPairResult -> BtcAmount -> m ChannelPairResult
 doPayment (ChannelPairResult initPair spc rpc sendList recvList payLst) amount = do
-    let (newSpc, pmn, amountSent) = createPayment spc (Capped amount)
+    let (newSpc, pmn, amountSent) = createPaymentCapped spc (Capped amount)
     eitherRpc <- ("doPayment send: " ++ show amountSent) `debugTrace` acceptPayment (toPaymentData pmn) rpc
     case eitherRpc of
         Left e -> error (show e)
@@ -145,20 +171,19 @@ runChanPair chanPair paymentAmountList =
 mkChanParams :: Gen (ChanParams, (HC.PrvKeyC, TestRecvKey))
 mkChanParams = arbitrary >>= fromRecvRootKey
 
-fromRecvRootKey :: RootKey -> Gen (ChanParams, (HC.PrvKeyC, TestRecvKey))
+fromRecvRootKey :: RootPrv -> Gen (ChanParams, (HC.PrvKeyC, TestRecvKey))
 fromRecvRootKey recvRoot = do
     -- sender key pair
     ArbitraryPubKeyC sendPriv sendPK <- arbitrary
     -- receiver key pair
-    keyDerivIdx <- arbitrary
-    let childPair = mkChild recvRoot :: External ChildPair
-        recvPK    = subKey childPair keyDerivIdx
+    ArbitrarySoftPath arbPath <- arbitrary
+    let childPair = mkChild recvRoot arbPath :: External ChildPair
+        recvPK    = getKey childPair
     -- TODO: Use a future expiration date for now
     lockTime <- either (error "Bad lockTime") id . parseLockTime <$> choose (1795556940, maxBound)
-    return (MkChanParams
+    return (ChanParams
                 (MkSendPubKey sendPK) (MkRecvPubKey $ HC.xPubKey recvPK) lockTime,
-           (sendPriv, TestRecvKey recvRoot childPair keyDerivIdx))
-
+           (sendPriv, TestRecvKey recvRoot childPair ))
 
 mkChanPair :: Gen (ArbChannelPair, SignedPayment)
 mkChanPair = arbitrary >>= mkChanPairInitAmount
@@ -166,58 +191,45 @@ mkChanPair = arbitrary >>= mkChanPairInitAmount
 mkChanPairInitAmount :: BtcAmount -> Gen (ArbChannelPair, SignedPayment)
 mkChanPairInitAmount initPayAmount = do
     let testServerConf = mkTestServerConf initPayAmount
-    (cp, (sendPriv, recvKey@(TestRecvKey _ childPair keyDerivIdx))) <- mkChanParams
-    let recvXPub = subKey childPair keyDerivIdx
+    (cp, (sendPriv, recvKey@(TestRecvKey _ childPair))) <- mkChanParams
     fundingVal <- arbitraryNonDusty $ max mIN_CHANNEL_SIZE (initPayAmount + testDustLimit)
     (vout,tx)  <- arbitraryFundingTx cp (nonDusty fundingVal)
-    let fundInfo = rbpcpFundingInfo testServerConf cp initPayAmount
+    let fundInfo = testRbpcpFundingInfo testServerConf cp initPayAmount
         sendChanE = channelWithInitialPayment sendPriv (cpLockTime cp) (tx,vout) fundInfo
     let (sendChan,initPayment) = either (error . show) id sendChanE
 
     recvChanE <- channelFromInitialPayment testServerConf tx (toPaymentData initPayment)
-    let mkExtRPC chan = fromMaybe (error "mkExtendedKeyRPC failed")
-                                  $ mkExtendedKeyRPC chan recvXPub
+    let mkExtRPC chan = fromMaybe (error $ "mkExtendedKeyRPC failed. " ++ show (chan,childPair))
+                                  $ mkExtendedKeyRPC chan (fromExternalPair childPair)
     case recvChanE of
         Left e -> error (show e)
-        Right recvChan -> return $
+        Right recvChan -> return
                  ( ArbChannelPair
                     sendChan (mkExtRPC recvChan) initPayAmount initPayAmount initPayment recvKey
                  , initPayment)
 
-rbpcpFundingInfo ::
+testRbpcpFundingInfo ::
        ServerSettings
     -> ChanParams
     -> BtcAmount          -- ^ Open price
     -> RBPCP.FundingInfo
-rbpcpFundingInfo ServerSettings{..} cp openPrice =
+testRbpcpFundingInfo ServerSettings{..} cp openPrice =
     RBPCP.FundingInfo
-        (RBPCP.Server . getPubKey . getRecvPubKey $ cp)
-        (fromIntegral testDustLimit)
-        (getFundingAddress cp)
-        (fromIntegral openPrice)
-        0
-        (fromIntegral serverConfSettlePeriod)
-        (fromIntegral serverConfMinDuration)
-
-{-
-FundingInfo
-    { fundingInfoServerPubkey               :: Server PubKey    -- ^ Server/value receiver public key. Hex-encoded, compressed Secp256k1 pubkey, 33 bytes.
-    , fundingInfoDustLimit                  :: Word64  -- ^ (Satoshis) The server will not accept payments where the client change amount is less than this amount. This \"dust limit\" is necessary in order to avoid producing a settlement transaction that will not circulate in the Bitcoin P2P network because it contains an output of minuscule value. Consequently, the maximum amount, that can be sent over the payment channel, is the amount sent to the funding address minus this \"dust limit\".
-    , fundingInfoFundingAddressCopy         :: Address    -- ^ Server derived channel funding address. The client will confirm that its own derived funding address matches this one, before paying to it.
-    , fundingInfoOpenPrice                  :: Word64 -- ^ Price (in satoshis) for opening a channel with the given {exp_time}. This amount is paid in the initial channel payment when creating a new channel. May be zero, in which case a payment of zero value is transferred, ensuring that the channel can be closed at any time.
-    , fundingInfoFunding_tx_min_conf        :: BtcConf -- ^ Minimum confirmation count that the funding transaction must have before proceeding with opening a new channel.
-    , fundingInfoSettlement_period_hours    :: Hours -- ^ The server reserves the right to close the payment channel this many hours before the specified expiration date. The server hasn't received any actual value until it publishes a payment transaction to the Bitcoin network, so it needs a window of time in which the client can no longer send payments over the channel, and yet the channel refund transaction hasn't become valid.
-    , fundingInfoMin_duration_hours         :: Hours -- ^ Minimum duration of newly opened channels
-    }
--}
-
+        { RBPCP.fundingInfoServerPubkey               = RBPCP.Server . getPubKey . getRecvPubKey $ cp
+        , RBPCP.fundingInfoDustLimit                  = fromIntegral testDustLimit
+        , RBPCP.fundingInfoFundingAddressCopy         = getFundingAddress cp
+        , RBPCP.fundingInfoOpenPrice                  = fromIntegral openPrice
+        , RBPCP.fundingInfoFundingTxMinConf        = 0
+        , RBPCP.fundingInfoSettlementPeriodHours    = fromIntegral serverConfSettlePeriod
+        , RBPCP.fundingInfoMinDurationHours         = fromIntegral serverConfMinDuration
+        }
 
 -- Arbitrary range
-instance Arbitrary (BtcAmount,BtcAmount) where
-    arbitrary = do
-        arbMin <- arbitrary
-        arbMax <- choose (fromIntegral arbMin, maxCoins)
-        return (arbMin, fromIntegral arbMax)
+--instance Arbitrary (BtcAmount,BtcAmount) where
+--    arbitrary = do
+--        arbMin <- arbitrary
+--        arbMax <- choose (fromIntegral arbMin, maxCoins)
+--        return (arbMin, fromIntegral arbMax)
 
 genRunChanPair :: Word -> (BtcAmount,BtcAmount) -> BtcAmount -> IO ChannelPairResult
 genRunChanPair numPayments (rangeMin,rangeMax) initAmount = do
@@ -232,7 +244,7 @@ genRunChanPair numPayments (rangeMin,rangeMax) initAmount = do
 -- | Funding transaction with a funding output at an arbitrary output index
 arbitraryFundingTx
     :: ChanParams
-    -> BtcAmount
+    -> BtcAmount        -- ^ Funding amount
     -> Gen (Word32, Tx) -- ^ Output index of funding output plus transaction
 arbitraryFundingTx cp val = do
     ArbitraryTx tx <- arbitrary
@@ -254,9 +266,6 @@ arbitraryInsert lst a = do
 nowishTimestamp :: UTCTime
 nowishTimestamp = UTCTime (ModifiedJulianDay 50000) 0
 
--- Key stuff
-instance Arbitrary RootKey where
-    arbitrary = (\(ArbitraryXPrvKey k) -> fromRootPrv k) <$> arbitrary
 
 createAcceptClosingPayment
     :: ChangeOutFee fee

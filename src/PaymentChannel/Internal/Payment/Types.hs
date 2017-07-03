@@ -24,17 +24,23 @@ import qualified Data.Ord                       as Ord
 data PaymentScriptSig = PaymentScriptSig
     { sssClientSig   :: BtcSig
     , sssServerSig   :: BtcSig
-    }
+    } deriving (Eq, Show)
 
+type SettleTx = BtcTx P2SH ChanParams PaymentScriptSig
+
+instance HasSigner BtcSig ChanParams where
+    signerPubKey = Tagged . getPubKey . cpSenderPubKey
 instance TransformSigData BtcSig () ChanParams where
-    mkSigData _ btcSig _ = btcSig
+    mkSigData _ = Tagged
 
+instance HasSigner PaymentScriptSig ChanParams where
+    signerPubKey = Tagged . getPubKey . cpReceiverPubKey
 instance TransformSigData PaymentScriptSig BtcSig ChanParams where
-    mkSigData clientSig serverSig _ = PaymentScriptSig clientSig serverSig
+    mkSigData oldSd = Tagged . PaymentScriptSig oldSd
 
 -- Two signatures
 instance SpendFulfillment PaymentScriptSig ChanParams where
-    rawSigs PaymentScriptSig{..} MkChanParams{..} =
+    rawSigs PaymentScriptSig{..} ChanParams{..} =
         [ (getPubKey cpReceiverPubKey, sssClientSig)
         , (getPubKey cpSenderPubKey  , sssServerSig) ]
     signatureScript PaymentScriptSig{..} _ = Script
@@ -44,7 +50,7 @@ instance SpendFulfillment PaymentScriptSig ChanParams where
 
 -- Single (client) signature
 instance SpendFulfillment BtcSig ChanParams where
-    rawSigs clientSig MkChanParams{..} =
+    rawSigs clientSig ChanParams{..} =
         [ (getPubKey cpSenderPubKey, clientSig) ]
     signatureScript _ _ = Script [] --TODO: separate rawSigs from signatureScript?
 

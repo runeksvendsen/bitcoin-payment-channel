@@ -5,6 +5,7 @@ module PaymentChannel.Server
 , acceptClosingPayment
 , getSettlementBitcoinTx
 , closedGetSettlementTx
+, SettleTx
 ) where
 
 import PaymentChannel.Internal.Payment
@@ -125,35 +126,30 @@ acceptClosingPaymentInternal paymentData oldState =
 -- The sender can only close the channel before expiration by requesting this transaction
 -- from the receiver and publishing it to the Bitcoin network.
 getSettlementBitcoinTx ::
-     ( Monad m
+     ( HasSigningKey prvKey P2SH ChanParams BtcSig
      , ChangeOutFee fee
-     , HasKeyDeriveIndex kd
      ) =>
-       ServerPayChanI kd                 -- ^ Receiver state object
-    -> HC.Address                       -- ^ Receiver destination address. Funds sent over the channel will be sent to this address, the rest back to the client change address.
-    -> (KeyDeriveIndex -> m HC.PrvKeyC) -- ^ Function which produces a signature which verifies against 'cpReceiverPubKey'
-    -> fee                              -- ^ Bitcoin transaction fee
-    -> DustPolicy                       -- ^ Whether to keep or drop receiver change output if below dust limit
-    -> m (Either ReceiverError HT.Tx)   -- ^ Settling Bitcoin transaction
-getSettlementBitcoinTx rpc recvAdr signFunc txFee dp =
-    fmap toHaskoinTx <$>
-        getSignedSettlementTx rpc signFunc (mkChangeOut recvAdr txFee dp)
+       ServerPayChanI kd                            -- ^ Receiver state object
+    -> HC.Address                                   -- ^ Receiver destination address. Funds sent over the channel will be sent to this address, the rest back to the client change address.
+    -> fee                                          -- ^ Bitcoin transaction fee
+    -> DustPolicy                                   -- ^ Whether to keep or drop receiver change output if below dust limit
+    -> SignM prvKey (Either ReceiverError SettleTx)    -- ^ Settling Bitcoin transaction
+getSettlementBitcoinTx rpc recvAdr txFee dp =
+    getSignedSettlementTx rpc (mkChangeOut recvAdr txFee dp)
 
 -- |Get the settlement tx for a 'ClosedServerChanI', where the closing payment
 --   pays the Bitcoin transaction fee
 closedGetSettlementTx ::
-       ( Monad m
-       , HasKeyDeriveIndex a
+       ( HasSigningKey prvKey P2SH ChanParams BtcSig
        )
     => ClosedServerChanI a              -- ^ Produced by 'acceptClosingPayment'
     -> HC.Address                       -- ^ Receiver destination address. Funds sent over the channel will be sent to this address, the rest back to the client change address (an argument to 'channelWithInitialPaymentOf').
-    -> (KeyDeriveIndex -> m HC.PrvKeyC) -- ^ Function which produces a signature which verifies against 'cpReceiverPubKey'
     -> DustPolicy                       -- ^ Whether to keep or drop receiver change output if below dust limit
-    -> m (Either ReceiverError HT.Tx)   -- ^ Settling Bitcoin transaction
-closedGetSettlementTx MkClosedServerChan{..} recvAdr signFunc dp = do
+    -> SignM prvKey (Either ReceiverError SettleTx)   -- ^ Settling Bitcoin transaction
+closedGetSettlementTx MkClosedServerChan{..} recvAdr dp = do
     let resE  = resultFromThePast $ acceptClosingPaymentInternal (toPaymentData cscClosingPayment) cscState
         (settleState,txFee) = either (throw . BadClosedServerChan) id resE
-    getSettlementBitcoinTx settleState recvAdr signFunc txFee dp
+    getSettlementBitcoinTx settleState recvAdr txFee dp
 
 {-# SPECIALIZE acceptPaymentInternal :: MonadTime m => PaymentData -> ServerPayChan -> m (Either PayChanError (ServerPayChan, BtcAmount)) #-}
 {-# SPECIALIZE acceptPaymentInternal :: MonadTime m => PaymentData -> ServerPayChanX -> m (Either PayChanError (ServerPayChanX, BtcAmount)) #-}

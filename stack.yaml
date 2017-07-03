@@ -1,7 +1,7 @@
-resolver: lts-7.1
+resolver: lts-8.19
 
-compiler: ghc-8.0.1
-compiler-check: match-exact
+#compiler: ghc-8.0.1
+#compiler-check: match-exact
 
 packages:
 - '.'
@@ -15,7 +15,7 @@ packages:
     - haskoin-wallet
 - location:
     git: https://github.com/runeksvendsen/rbpcp-api.git
-    commit: c4debaa3c4d9bd020b8608e05a04e66133bd474e 
+    commit: 3aec6072c0cb8139729df2867ae0454bd8b13627
   extra-dep: true
 - location:
     git: https://github.com/runeksvendsen/blockchain-restful-address-index-api.git

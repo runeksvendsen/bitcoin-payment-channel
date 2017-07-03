@@ -100,6 +100,7 @@ module PaymentChannel
 
 -- **Funding
 , getFundingAddress
+, validFundingInfo
 
 -- **State creation
 , channelWithInitialPayment
@@ -107,7 +108,7 @@ module PaymentChannel
 , setMetadata
 
 -- *Payment
-, createPayment, Capped(..)
+, createPayment, createPaymentCapped, Capped(..)
 , acceptPayment
 , ClosedServerChanX, getClosedState
 
@@ -119,6 +120,8 @@ module PaymentChannel
 , closedGetSettlementTx
 , DustPolicy(..)
 , ChangeOutFee
+, RefundTx
+, SettleTx
 
 -- *Types
 , module PaymentChannel.Types
@@ -128,9 +131,10 @@ module PaymentChannel
 )
 where
 
+import PaymentChannel.Types
+    hiding (ClosedServerChanX, ChangeOutFee, getClosedState)
 import PaymentChannel.Client
 import PaymentChannel.Server
-import PaymentChannel.Types
 import PaymentChannel.RBPCP.Parse
 import PaymentChannel.Util
 import PaymentChannel.Internal.Receiver.Util

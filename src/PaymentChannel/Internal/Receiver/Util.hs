@@ -1,6 +1,17 @@
 module PaymentChannel.Internal.Receiver.Util
-(
-  module PaymentChannel.Internal.Receiver.Util
+( updState
+, mkExtendedKeyRPC
+--, mkDummyExtendedRPC
+, metaKeyIndex
+, setMetadata
+, setChannelStatus
+, getChannelStatus
+, markAsBusy
+, isReadyForPayment
+, checkChannelStatus
+, getClosingPayment
+, calcNewData
+, updateMetadata
 , module PaymentChannel.Internal.Receiver.Types
 , module PaymentChannel.Internal.Class.Value
 )
@@ -21,27 +32,27 @@ updState :: ServerPayChanG kd sd -> SignedPayment -> ServerPayChanG kd BtcSig
 updState rpc p =
     rpc { rpcState = replacePayment (rpcState rpc) p }
   where
-    replacePayment state p = state { pcsPayment = p }
+    replacePayment state p' = state { pcsPayment = p' }
 
--- |Create a 'ServerPayChanX', which has an associated BIP32 key index, from a
+-- |Create a 'ServerPayChanX', which has an associated BIP32 extended pubkey, from a
 --  'ServerPayChan'
-mkExtendedKeyRPC :: ServerPayChanI kd -> HC.XPubKey -> Maybe ServerPayChanX
+mkExtendedKeyRPC :: ServerPayChanI kd -> ExtPub -> Maybe ServerPayChanX
 mkExtendedKeyRPC rpc@(MkServerPayChan pcs _) xpk =
     -- Check that it's the right pubkey first
-    if xPubKey xpk == getPubKey (getRecvPubKey pcs) then
-            Just $ mkExtendedKeyRPCUnsafe (fromIntegral $ HC.xPubIndex xpk) rpc
+    if getKey xpk == getPubKey (getRecvPubKey pcs) then
+            Just $ mkExtendedKeyRPCUnsafe xpk rpc
         else
             Nothing
 
-mkExtendedKeyRPCUnsafe :: Word32 -> ServerPayChanI kd -> ServerPayChanX
-mkExtendedKeyRPCUnsafe i rpc =
+mkExtendedKeyRPCUnsafe :: ExtPub -> ServerPayChanI kd -> ServerPayChanX
+mkExtendedKeyRPCUnsafe xPub rpc =
     rpc {
         rpcMetadata =
-            Metadata (fromIntegral i) 0 [] (valueOf $ rpcState rpc) ReadyForPayment
+            Metadata xPub 0 [] (valueOf $ rpcState rpc) ReadyForPayment
         }
 
-mkDummyExtendedRPC :: ServerPayChanI kd -> ServerPayChanX
-mkDummyExtendedRPC = mkExtendedKeyRPCUnsafe 0
+--mkDummyExtendedRPC :: ServerPayChanI kd -> ServerPayChanX
+--mkDummyExtendedRPC = mkExtendedKeyRPCUnsafe 0
 
 metaKeyIndex :: ServerPayChanI KeyDeriveIndex -> KeyDeriveIndex
 metaKeyIndex = mdKeyData . rpcMetadata
@@ -82,12 +93,6 @@ getClosingPayment spc =
     case getChannelStatus spc of
         ChannelClosed p -> Just p
         _               -> Nothing
-
-{-
-_setClientChangeAddress :: ServerPayChanI kd -> HC.Address -> ServerPayChanI kd
-_setClientChangeAddress rpc@MkServerPayChan{..} =
-    undefined
- -}
 
 -- Metadata
 calcNewData :: MetadataI a -> PayChanState BtcSig -> MetadataI a

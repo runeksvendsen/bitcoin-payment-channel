@@ -25,12 +25,8 @@ data RefundScriptSig = RefundScriptSig
    { rssClientSig   :: BtcSig
    }
 
-
-instance HasLockTimeDate ScriptType where
-    getLockTimeDate = cpLockTime . getCond
-
 instance SpendFulfillment RefundScriptSig ChanParams where
-    rawSigs RefundScriptSig{..} MkChanParams{..} =
+    rawSigs RefundScriptSig{..} ChanParams{..} =
         [ (getPubKey cpReceiverPubKey, rssClientSig) ]
     signatureScript RefundScriptSig{..} _ = Script
         [ opPush rssClientSig
@@ -38,7 +34,10 @@ instance SpendFulfillment RefundScriptSig ChanParams where
                  -- Signal that we want to provide only one pubkey/sig pair (sender's),
                  -- after it is checked that the lockTime has expired.
 
-
+instance HasSigner RefundScriptSig ChanParams where
+    signerPubKey = Tagged . getPubKey . cpSenderPubKey
+instance TransformSigData RefundScriptSig () ChanParams where
+    mkSigData _ = Tagged . RefundScriptSig
 
 -- |After a settlement transaction is published, we save
 --   certain properties from the old state object before
@@ -49,5 +48,5 @@ data SettleInfo = SettleInfo
     } deriving (Eq, Show, Generic, Serialize, FromJSON, ToJSON, NFData)
 
 
+type ClientSignedTx = BtcTx P2SH ChanParams BtcSig
 
-type ClientSignedTx = BtcTx ScriptType BtcSig

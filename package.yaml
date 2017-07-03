@@ -77,17 +77,26 @@ library:
   - PaymentChannel.Util
   - PaymentChannel.Test
   - PaymentChannel.RBPCP.Parse
-  - PaymentChannel.Internal.Receiver.Key
+  - Bitcoin.BIP32
+  - Bitcoin.BIP32.Types
+  - Bitcoin.BIP32.DetDerive
+  - Bitcoin.Util
+  - Bitcoin.Internal.Util
+  - Bitcoin.Signature
   - Bitcoin.SpendCond.Cond
   - Bitcoin.SpendCond.Util
 
 tests:
-  test-bitcoin-payment-channel:
-    main:        Main.hs
+  test-all:
+    main:        Spec.hs
     source-dirs: test
-    ghc-options: -Wall
+    ghc-options:
+    - -Wall
+    - -dcore-lint
+    - -debug
     dependencies:
     - bitcoin-payment-channel
+    - hspec-discover
     - base64-bytestring
     - test-framework
     - test-framework-quickcheck2

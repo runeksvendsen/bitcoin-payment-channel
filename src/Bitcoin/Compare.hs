@@ -2,7 +2,7 @@
 module Bitcoin.Compare where
 
 import Bitcoin.SpendCond.Cond
-import Bitcoin.Util
+import Bitcoin.Internal.Util
 
 import           Data.Word                      (Word32)
 import qualified Data.List.NonEmpty             as NE
@@ -13,7 +13,7 @@ import GHC.Generics       (Generic)
 import Debug.Trace
 
 
-data DiffInfo = DiffInfo [(HC.Address,ValDiff)]
+newtype DiffInfo = DiffInfo [(HC.Address,ValDiff)]
 
 data ValDiff =
     Increase BtcAmount
@@ -44,8 +44,8 @@ data OutMismatch =
 --    b) the difference in value for each output, between the two transactions.
 --   Eg. "valueDiff tx1 tx2", where tx1 pays 100000 satoshi to a single address "adr" and tx2
 --     is the same except the value paid is 90000 satoshi, will return "DiffInfo [adr, Decrease 10000]
-valueDiff :: forall r t a. (HasSpendCond r t, Eq t, Eq r) =>
-    BtcTx t a -> BtcTx t a -> Either (TxMismatch r) DiffInfo
+valueDiff :: forall r t a. (Eq r) =>
+    BtcTx t r a -> BtcTx t r a -> Either (TxMismatch r) DiffInfo
 valueDiff oldTx newTx =
        compareProp oldTx newTx btcVer TxVersionMismatch
     >> compareProp oldTx newTx btcLock TxLocktimeMismatch
@@ -58,11 +58,11 @@ valueDiff oldTx newTx =
     compareOuts = zipWith outputDiff (btcOuts oldTx) (btcOuts newTx)
 
 
-inputDiff :: (HasSpendCond r t, Eq t, Eq r) => InputG t a -> InputG t a -> Either (InMismatch r) ()
+inputDiff :: (Eq r) => InputG t r a -> InputG t r a -> Either (InMismatch r) ()
 inputDiff oldIn newIn =
-       compareProp oldIn newIn btcPrevOut       InPrevOutMismatch
-    >> compareProp oldIn newIn inputCondScript  InRdmScrMismatch
-    >> compareProp oldIn newIn btcSequence      InSequenceMismatch
+       compareProp oldIn newIn btcPrevOut   InPrevOutMismatch
+    >> compareProp oldIn newIn btcCondScr   InRdmScrMismatch
+    >> compareProp oldIn newIn btcSequence  InSequenceMismatch
     >> return ()
 
 outputDiff :: BtcOut -> BtcOut -> Either OutMismatch (HC.Address,ValDiff)
@@ -79,8 +79,8 @@ outputDiff oldOut newOut =
 
 -- Check everything is equal except: 1) signature data (sig hash flag IS checked)
 --  2) output amounts
-eqIgnoreOutVal :: Eq t =>
-    IgnoreSigData (BtcTx t BtcSig) -> IgnoreSigData (BtcTx t BtcSig) -> Bool
+eqIgnoreOutVal :: Eq r =>
+    IgnoreSigData (BtcTx t r BtcSig) -> IgnoreSigData (BtcTx t r BtcSig) -> Bool
 eqIgnoreOutVal tx1 tx2 = tx1 =~= tx2
   where
     a =~= b = fmap txClearOutVal a == fmap txClearOutVal b

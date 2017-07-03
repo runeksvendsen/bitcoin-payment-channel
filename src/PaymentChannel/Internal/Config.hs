@@ -34,6 +34,6 @@ fromFundingInfo :: RBPCP.FundingInfo -> ServerSettings
 fromFundingInfo RBPCP.FundingInfo{..} =
     ServerSettings
         (fromIntegral fundingInfoDustLimit)
-        (MkHour $ fromIntegral fundingInfoSettlement_period_hours)
-        (MkHour $ fromIntegral fundingInfoMin_duration_hours)
+        (MkHour $ fromIntegral fundingInfoSettlementPeriodHours)
+        (MkHour $ fromIntegral fundingInfoMinDurationHours)
         (fromIntegral fundingInfoOpenPrice)

@@ -1,8 +1,8 @@
 {-# LANGUAGE DeriveGeneric, DeriveAnyClass #-}
 
-module PaymentChannel.Internal.Types.ExpectFail where
+module Bitcoin.Types.ExpectFail where
 
-import PaymentChannel.Internal.Util
+import Bitcoin.Internal.Types
 
 data ExpectFail a
   = a `FoundButExpected` a
@@ -10,4 +10,4 @@ data ExpectFail a
 
 instance Show a => Show (ExpectFail a) where
     show (found `FoundButExpected` expec) = unwords
-        ["found:", show found, "but expected:", show expec]
+        ["found:", show found ++ ",", "but expected:", show expec]

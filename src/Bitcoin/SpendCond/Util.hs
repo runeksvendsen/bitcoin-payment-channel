@@ -8,6 +8,7 @@ module Bitcoin.SpendCond.Util
 where
 
 import Bitcoin.Util
+import Bitcoin.Internal.Util
 import qualified Network.Haskoin.Transaction as HT
 import Bitcoin.SpendCond.Cond
 import Data.Word (Word32)
@@ -18,17 +19,16 @@ import Debug.Trace
 getPrevIns :: SpendCondition r =>
        HT.Tx
     -> r
-    -> [InputG (P2SH r) ()]
+    -> [InputG P2SH r ()]
 getPrevIns tx rdmScr =
-    map (mapInputType mkCond . mkInput) $ catMaybes $
-        checkOuts libCheckOut
+    map mkInput . catMaybes . checkOuts $ libCheckOut
   where
     mkInput (idx,val) = mkNoSigTxIn (mkPrevOut idx) (fromIntegral val) rdmScr
     mkPrevOut = HT.OutPoint (HT.txHash tx)
     checkOuts f = zipWith f [0..] (HT.txOut tx)
     -- implementation: Bitcoin.SpendCond
     libCheckOut idx out =
-        if HT.scriptOutput out == encode (asScript $ scriptPubKey (mkP2sh rdmScr))
+        if HT.scriptOutput out == encode (asScript (scriptPubKey rdmScr :: TxOutputScript P2SH))
             then Just (idx, HT.outValue out)
             else Nothing
     -- implementation: Network.Haskoin
@@ -45,7 +45,7 @@ singlePrevIn ::
     => HT.Tx
     -> r
     -> Word32
-    -> Either (PickOutError r) (InputG (P2SH r) ())
+    -> Either (PickOutError r) (InputG P2SH r ())
 singlePrevIn tx scr i =
     let inputOfInterest = (== i) . HT.outPointIndex . btcPrevOut
         pickOut =

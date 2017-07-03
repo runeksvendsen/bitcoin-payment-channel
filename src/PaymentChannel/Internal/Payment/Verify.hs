@@ -31,7 +31,7 @@ instance StateSignature InvalidSig where
         
 -- | WARNING: Produces invalid 'BtcSig'
 _invalidBtcSig :: InvalidSig -> BtcSig
-_invalidBtcSig (MkInvalidSig sh) = MkBtcSig dummySig sh
+_invalidBtcSig (MkInvalidSig sh) = BtcSig dummySig sh
 
 -- | Throws 'BadSignatureInState' on invalid in-state payment signature
 paymentValueIncrease :: 

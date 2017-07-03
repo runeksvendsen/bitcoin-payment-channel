@@ -5,9 +5,6 @@ module PaymentChannel.Internal.Crypto.PubKey
 ,   RecvPubKey(..)
 ,   HasSendPubKey(..)
 ,   HasRecvPubKey(..)
-,   KeyDeriveIndex
-,   mkKeyIndex, word32Index, word31Index
-,   HasKeyIndex(..)
 ) where
 
 import           PaymentChannel.Internal.Util
@@ -46,28 +43,4 @@ class HasSendPubKey a where
 class HasRecvPubKey a where
     getRecvPubKey :: a -> RecvPubKey
 
--- |Key index for a BIP32 root key
-newtype KeyDeriveIndex = KeyDeriveIndex Word32
-    deriving (Eq, Show, Serialize, Ord, Num, Enum, Real, Integral, FromJSON, ToJSON, NFData)
-
-word32Index :: KeyDeriveIndex -> Word32
-word32Index (KeyDeriveIndex i) = i
-
--- | Ignore most significant bit
-word31Index :: KeyDeriveIndex -> Word32
-word31Index (KeyDeriveIndex i) = i `mod` round (2**31 :: Double)
-
-mkKeyIndex :: Word32 -> Maybe KeyDeriveIndex
-mkKeyIndex i
-    | i >= 0 && i < 0x80000000 = Just $ KeyDeriveIndex i
-    | otherwise = Nothing
-
-class HasKeyIndex a where
-    getKeyIndex :: a -> KeyDeriveIndex
-
-instance HasKeyIndex HC.XPubKey where
-    getKeyIndex = KeyDeriveIndex . HC.xPubIndex
-
--- instance HasKeyIndex RecvPubKey where
---     getKeyIndex = getKeyIndex . getReceiverPK
 

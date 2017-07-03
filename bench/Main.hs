@@ -15,7 +15,7 @@ main :: IO ()
 main = do
   (arbPair,_)   <- fmap head $ sample' $ Pay.mkChanPairInitAmount 0
   let mkCappedPayment :: Pay.BtcAmount -> (Pay.ClientPayChan, Pay.SignedPayment, Pay.BtcAmount)
-      mkCappedPayment  = Pay.createPayment (Pay.sendChan arbPair) . Pay.Capped
+      mkCappedPayment  = Pay.createPaymentCapped (Pay.sendChan arbPair) . Pay.Capped
       (_,!payment,_) = mkCappedPayment 1
   let multiMkVerify = Pay.runChanPair arbPair (fromIntegral <$> [1..payCount])
   defaultMain

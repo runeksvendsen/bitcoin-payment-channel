@@ -21,7 +21,6 @@ import Bitcoin.SinglePair                       as X
 import Bitcoin.SpendCond.Cond                   as X
 import Bitcoin.LockTime.Util                    as X
 import PaymentChannel.Internal.Types.MonadConf  as X
-import PaymentChannel.Internal.Types.ExpectFail as X
 import Control.DeepSeq        (NFData)
 
 
@@ -44,8 +43,8 @@ import Control.Monad.Time
 
 
 -- | The Bitcoin transaction script type we're using
-type ScriptType = P2SH ChanParams
-type Payment = SigSinglePair ScriptType
+--type ScriptType =  ChanParams
+type Payment = SigSinglePair P2SH ChanParams
 type SignedPayment   = Payment BtcSig
 type UnsignedPayment = Payment ()
 
@@ -74,7 +73,7 @@ instance HasLockTimeDate (PayChanState a) where
 newtype SharedSecret = MkSharedSecret { ssHash :: HC.Hash256 }
     deriving (Eq, Show, Typeable, Generic, Serialize, ToJSON, FromJSON, NFData)
 
-fromInitialPayment :: SigSinglePair t BtcSig -> SharedSecret
+fromInitialPayment :: SigSinglePair t r BtcSig -> SharedSecret
 fromInitialPayment  =
     MkSharedSecret . HC.hash256 . Bin.encode . getSigData
 

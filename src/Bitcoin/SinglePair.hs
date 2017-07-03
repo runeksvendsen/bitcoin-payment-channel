@@ -17,7 +17,7 @@ import Control.Monad.Time
 {-# ANN module ("HLint: ignore Use isNothing"::String) #-}
 
 
-instance (Show r, Show sd) => IsTxLike SigSinglePair r sd where
+instance (Show r, Show sd) => IsTxLike SigSinglePair t r sd where
     toBtcTx SigSinglePair{..} =
         BtcTx 1 inputL [singleOutput] Nothing Nothing
             where inputL  = singleInput NE.:| []
@@ -27,7 +27,7 @@ instance (Show r, Show sd) => IsTxLike SigSinglePair r sd where
             where input  = head . NE.toList $ btcIns
                   output = head btcOuts
 
-mkSigSinglePair :: InputG r () -> BtcOut -> SigSinglePair r ()
+mkSigSinglePair :: InputG t r () -> BtcOut -> SigSinglePair t r ()
 mkSigSinglePair pin out =
     SigSinglePair (adjustSignFlag pin) out
   where
@@ -36,25 +36,25 @@ mkSigSinglePair pin out =
             then HS.SigSingle True
             else HS.SigNone   True
 
-signPair :: ( Monad m, Show t
-            , TransformSigData BtcSig () r, SignatureScript t BtcSig
-            , SpendFulfillment BtcSig r, HasSpendCond r t ) =>
+signPair :: ( Monad m, Show r
+            , TransformSigData BtcSig () r --, SignatureScript t r BtcSig
+            , SpendFulfillment BtcSig r
+            ) =>
        HC.PrvKeyC
-    -> SigSinglePair t ()
-    -> m (Either BtcError (SigSinglePair t BtcSig))
+    -> SigSinglePair t r ()
+    -> m (Either BtcError (SigSinglePair t r BtcSig))
 signPair prvKey sp@SigSinglePair{..} =
-    fmap fromBtcTx <$> signTx (const $ return prvKey) (toBtcTx sp)
+    return $ fromBtcTx <$> runSimple prvKey (signTx $ toBtcTx sp)
 
 singlePairVerifySig ::
    ( Show ss, Show t
    , SpendFulfillment ss r
    , SpendCondition r
-   , HasSpendCond r t
    ) =>
-   SigSinglePair t ss -> Either VerifyError ()
+   SigSinglePair t r ss -> Either VerifyError ()
 singlePairVerifySig sp = verifyTx (toBtcTx sp)
 
-toClientSignedTx :: Show t => NE.NonEmpty (SigSinglePair t BtcSig) -> BtcTx t BtcSig
+toClientSignedTx :: Show r => NE.NonEmpty (SigSinglePair t r BtcSig) -> BtcTx t r BtcSig
 toClientSignedTx spL = foldr addInOut (toBtcTx $ NE.last spL) (NE.init spL)
     where addInOut SigSinglePair{..} tx@BtcTx{..} =
              tx { btcIns  = singleInput NE.<| btcIns
@@ -62,22 +62,22 @@ toClientSignedTx spL = foldr addInOut (toBtcTx $ NE.last spL) (NE.init spL)
                 }
 
 
-getSigData :: SigSinglePair t sd -> sd
+getSigData :: SigSinglePair t r sd -> sd
 getSigData = btcSigData . singleInput
 
-pairRedeemScript :: HasSpendCond r t => SigSinglePair t a -> r
-pairRedeemScript SigSinglePair{..} = inputCondScript singleInput
+pairRedeemScript :: SigSinglePair t r a -> r
+pairRedeemScript SigSinglePair{..} = btcCondScr singleInput
 
-fundingValue :: SigSinglePair t a -> BtcAmount
+fundingValue :: SigSinglePair t r a -> BtcAmount
 fundingValue SigSinglePair{..} = btcInValue singleInput
 
-clientChangeVal :: SigSinglePair t a -> BtcAmount
+clientChangeVal :: SigSinglePair t r a -> BtcAmount
 clientChangeVal SigSinglePair{..} = nonDusty (btcAmount singleOutput)
 
 resetClientChangeVal ::
        HasConfDustLimit m
-    => SigSinglePair t BtcSig
-    -> m (Either BtcError (SigSinglePair t InvalidSig))
+    => SigSinglePair t r BtcSig
+    -> m (Either BtcError (SigSinglePair t r InvalidSig))
 resetClientChangeVal ssp@SigSinglePair{..} =
     fmap (mapSigData fromBtcSig . mkNew) <$> mkNonDusty (fundingValue ssp)
   where
@@ -87,19 +87,19 @@ resetClientChangeVal ssp@SigSinglePair{..} =
             }
 
 
-clientChangeAddr :: SigSinglePair t a -> HC.Address
+clientChangeAddr :: SigSinglePair t r a -> HC.Address
 clientChangeAddr SigSinglePair{..} = btcAddress singleOutput
 
 class SetClientChangeAddr (s :: * -> *) where
     _setClientChangeAddr :: s BtcSig -> HC.Address -> s InvalidSig
 
-instance SetClientChangeAddr (SigSinglePair t) where
+instance SetClientChangeAddr (SigSinglePair t r) where
     _setClientChangeAddr ssp@SigSinglePair{..} addr =
         mapSigData fromBtcSig $ ssp { singleOutput =
                  singleOutput { btcAddress = addr }
             }
 
-clearSig :: SigSinglePair t a -> SigSinglePair t ()
+clearSig :: SigSinglePair t r a -> SigSinglePair t r ()
 clearSig = mapSigData $ const ()
 
 
@@ -107,13 +107,13 @@ clearSig = mapSigData $ const ()
 --    has passed, the client/sender can redeem all sent funds. So we make sure
 --    this isn't possible before accepting a payment.
 fundingIsLocked ::
-    ( Show t
+    ( Show r
     , Show sd
     , MonadTime m
-    , HasLockTimeDate t
+    , HasLockTimeDate r
     )
     => Seconds
-    -> SigSinglePair t sd
+    -> SigSinglePair t r sd
     -> m Bool
 fundingIsLocked settlePeriodSeconds =
     allInputsLocked settlePeriodSeconds . toBtcTx

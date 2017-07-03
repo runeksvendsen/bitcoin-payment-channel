@@ -1,7 +1,6 @@
 {-# LANGUAGE DeriveAnyClass, DeriveGeneric #-}
 module Bitcoin.Dust
-(
-  NonDustyAmount
+( NonDustyAmount
 , mkNonDusty
 , nonDusty
 , nullAmount
@@ -11,7 +10,7 @@ module Bitcoin.Dust
 where
 
 import Bitcoin.Amount
-import Bitcoin.Util
+import Bitcoin.Internal.Util
 import Bitcoin.Error
 
 

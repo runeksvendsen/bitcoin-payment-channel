@@ -8,6 +8,7 @@ where
 
 
 import PaymentChannel.Internal.Crypto.PubKey
+import PaymentChannel.Internal.Util
 import Bitcoin.LockTime.Util
 import Bitcoin.Util
 import Network.Haskoin.Script
@@ -18,12 +19,16 @@ import qualified Data.ByteString as B
 
 
 -- |Defines channel: sender, receiver, and expiration date
-data ChanParams = MkChanParams {
-    cpSenderPubKey      ::  SendPubKey,
-    cpReceiverPubKey    ::  RecvPubKey,
+data ChanParams = ChanParams
+  { cpSenderPubKey      ::  SendPubKey
+  , cpReceiverPubKey    ::  RecvPubKey
     -- |Channel expiration date/time
-    cpLockTime          ::  LockTimeDate
-} deriving (Eq, Show, Typeable, Generic, NFData)
+  , cpLockTime          ::  LockTimeDate
+  } deriving (Eq, Show, Typeable, Generic, NFData)
+
+--data ClientParams = ClientParams
+--  {
+--  }
 
 instance HasSendPubKey ChanParams where
     getSendPubKey = cpSenderPubKey
@@ -39,18 +44,18 @@ instance FromJSON ChanParams where
         deserHex >=> either fail return . fromRedeemScript
 
 instance Serialize ChanParams where
-    put (MkChanParams pks pkr lt) =
+    put (ChanParams pks pkr lt) =
         put pks >> put pkr >> put lt
-    get = MkChanParams <$> get <*> get <*> get
+    get = ChanParams <$> get <*> get <*> get
 
 instance HasLockTimeDate ChanParams where
-    getLockTimeDate MkChanParams{..} = cpLockTime
+    getLockTimeDate = cpLockTime
 
 -- |Generate OP_CHECKLOCKTIMEVERIFY redeemScript, which can be redeemed in two ways:
 --  1) by providing a signature from both server and client
 --  2) after the date specified by lockTime: by providing only a client signature
 getRedeemScript :: ChanParams -> Script
-getRedeemScript MkChanParams{..} =
+getRedeemScript ChanParams{..} =
     let
         serverPubKey    = getPubKey cpReceiverPubKey
         clientPubKey    = getPubKey cpSenderPubKey
@@ -71,7 +76,7 @@ fromRedeemScript (Script
                 lockTimeData, OP_NOP2, OP_DROP,    -- OP_NOP2 is OP_CHECKLOCKTIMEVERIFY
             OP_ENDIF,
             OP_PUSHDATA clientPubKeyData OPCODE, OP_CHECKSIG])
-    = MkChanParams
+    = ChanParams
         <$> deserEither clientPubKeyData
         <*> deserEither serverPubKeyData
         <*> decodeScriptLocktime lockTimeData

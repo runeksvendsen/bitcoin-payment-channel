@@ -10,11 +10,9 @@ import qualified Network.Haskoin.Crypto as HC
 
 
 
-type RefundTx = BtcTx ScriptType RefundScriptSig
-type UnsignedRefundTx = UnsignedBtcTx ScriptType
+type RefundTx = BtcTx P2SH ChanParams RefundScriptSig
+type UnsignedRefundTx = UnsignedBtcTx P2SH ChanParams
 
-instance TransformSigData RefundScriptSig () ChanParams where
-    mkSigData _ sig _ = RefundScriptSig sig
 
 -- | Returns Nothing if there's not enough value available to cover paying the specified fee
 --    without producing a dust output.
@@ -24,7 +22,7 @@ mkBaseRefundTx cp CFundingTxInfo{..} =
         baseIn = setSignFlag (HS.SigAll False) $ mkNoSigTxIn
                              (HT.OutPoint ftiHash ftiOutIndex)
                              (nonDusty ftiOutValue)
-                             (Pay2 $ ScriptHash $ Cond cp)
+                             cp
         -- If the sequence field equals maxBound (0xffffffff),
         --  lockTime features are disabled. so we subtract one
         refundIn  = setSequence (maxBound-1) baseIn
@@ -40,12 +38,12 @@ mkRefundTx
     -> HC.Address                       -- ^Refund address
     -> SatoshisPerByte                  -- ^Refund transaction fee
     -> m (Either BtcError RefundTx)     -- ^Refund Bitcoin transaction
-mkRefundTx prvKey cp fti refundAddr txFee =
-    signSettleTx signFunc changeOut refundTx
+mkRefundTx prvKey cp fti refundAddr txFee = return $
+    runSimple prvKey $ signChangeTx refundTx changeOut
         where
             refundTx  = mkBaseRefundTx cp fti
             changeOut = mkChangeOut refundAddr txFee KeepDust
-            signFunc _ = return prvKey
+--            signFunc _ = return prvKey
 
 
 

@@ -1,11 +1,12 @@
-module Bitcoin.SpendCond.Spec
-(
-  spendCondSpec
+module SpendCondSpec
+( main
+, spec
 )
 where
 
 import Bitcoin.SpendCond.Cond
 import Bitcoin.Util
+import Bitcoin.Internal.Util
 
 import Test.Hspec
 import Network.Haskoin.Script
@@ -25,7 +26,7 @@ instance SpendFulfillment TestFulfill TestCond where
 
 testPubKey = mkDummyPubkey "0323dcd0a7481cb90e3583923701b14d0b6757ebd76bf5b49e696c61f193d7a489"
 testSig    = mkDummySig    "304402204202cdb61cb702aa62de312a8e5eada817d90c4e26c8b696780b14d1576f204f02203c134d0acb057d917508ca9baab241a4f66ebea32f7acceeaf621a334927e17701"
-testBtcSig = MkBtcSig testSig (HS.SigAll False)
+testBtcSig = BtcSig testSig (HS.SigAll False)
 
 fulfill    = TestFulfill
 testPKHSig = SpendPKH testBtcSig
@@ -33,46 +34,50 @@ testPKHSig = SpendPKH testBtcSig
 -- | For regular P2PKH we're using an actual condition/script,
 --    but for P2WPKH it's just a template that's
 --    handled as a special case by the script interpreter.
-p2pkh        = Pay2 $                 Cond $ PubkeyHash testPubKey
-p2wpkh       = Pay2 $              Witness $ PubkeyHash testPubKey
-p2wpkhINp2sh = Pay2 $ ScriptHash $ Witness $ PubkeyHash testPubKey
+--p2pkh        = Pay2 $                 Cond $ PubkeyHash testPubKey
+pkh = PubkeyHash testPubKey
+--p2wpkh       = Pay2 $              Witness $ PubkeyHash testPubKey
+--p2wpkhINp2sh = Pay2 $ ScriptHash $ Witness $ PubkeyHash testPubKey
 
-p2sh         = Pay2 $           ScriptHash $ Cond TestCond
-p2wsh        = Pay2 $              Witness $ Cond TestCond
-p2wshINp2sh  = Pay2 $ ScriptHash $ Witness $ Cond TestCond
+--p2sh         = Pay2 $           ScriptHash $ Cond TestCond
 
+--p2wsh        = Pay2 $              Witness $ Cond TestCond
+--p2wshINp2sh  = Pay2 $ ScriptHash $ Witness $ Cond TestCond
 
+main :: IO ()
+main = hspec spec
 
-spendCondSpec :: IO ()
-spendCondSpec = hspec $
+spec = spendCondSpec
+
+spendCondSpec :: Spec
+spendCondSpec =
   describe "Transaction script & witness" $ do
     describe "P2PKH has correct" $ do
-        it "scriptPubKey" $ scriptPubKey p2pkh `shouldBe`
+        it "scriptPubKey" $ (scriptPubKey pkh :: TxOutputScript P2S) `shouldBe`
             TxOutputScript [ OP_DUP
                            , OP_HASH160
                            , opPush (hash160 testPubKey)
                            , OP_EQUALVERIFY
                            , OP_CHECKSIG
                            ]
-        it "scriptSig" $ inputScript testPKHSig p2pkh `shouldBe`
+        it "scriptSig" $ (inputScript testPKHSig pkh :: TxInputScript P2S ) `shouldBe`
             TxInputScript  [ opPush testBtcSig, opPush testPubKey ]
-        it "witness" $ witnessScript testPKHSig p2pkh `shouldBe`
+        it "witness" $ (witnessScript testPKHSig pkh :: WitnessScript P2S) `shouldBe`
             WitnessScript mempty
 
-
     describe "P2SH has correct" $ do
-        it "scriptPubKey" $ scriptPubKey p2sh `shouldBe`
+        it "scriptPubKey" $ (scriptPubKey TestCond :: TxOutputScript P2SH) `shouldBe`
             TxOutputScript [ OP_HASH160
                            , opPush $ hash160 (conditionScript TestCond)
                            , OP_EQUAL
                            ]
-        it "scriptSig" $ inputScript fulfill p2sh `shouldBe`
+        it "scriptSig" $ (inputScript fulfill TestCond :: TxInputScript P2SH) `shouldBe`
             TxInputScript  [ OP_PUSHDATA "TEST_SIG" OPCODE
                            , OP_PUSHDATA "\vTEST_SCRIPT" OPCODE
                            ]
-        it "witness" $ witnessScript fulfill p2sh `shouldBe`
+        it "witness" $ (witnessScript fulfill TestCond :: WitnessScript P2SH) `shouldBe`
             WitnessScript mempty
-
+{-
     describe "P2WPKH has correct" $ do
         it "scriptPubKey" $ scriptPubKey p2wpkh `shouldBe`
             TxOutputScript [ OP_0
@@ -118,4 +123,5 @@ spendCondSpec = hspec $
             WitnessScript [ OP_PUSHDATA "TEST_SIG" OPCODE
                           , OP_PUSHDATA "\vTEST_SCRIPT" OPCODE
                           ]
+-}
 

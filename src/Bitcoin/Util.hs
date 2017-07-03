@@ -1,12 +1,7 @@
-{-# LANGUAGE ScopedTypeVariables #-}
-module Bitcoin.Util
-(
-  module Bitcoin.Util
-, module PaymentChannel.Internal.Util
-)
-where
+{-# LANGUAGE ScopedTypeVariables, BangPatterns #-}
+module Bitcoin.Util where
 
-import           PaymentChannel.Internal.Util
+import           Bitcoin.Internal.Util
 import           Data.Word (Word32)
 import           Data.String (fromString)
 
@@ -28,21 +23,21 @@ instance Monoid HS.Script where
         HS.Script $ scr1 `mappend` scr2
 
 
-
 -- | Serialize NonEmpty list of "script witnesses".
 --   A transaction with no witnesses should use the old tx serialization format, hence the non-empty list.
 --    (https://github.com/bitcoin/bips/blob/master/bip-0144.mediawiki#Serialization)
 serTxWitness :: NE.NonEmpty HS.Script -> B.ByteString
 serTxWitness = NE.head . NE.scanr foldScript B.empty
     where
-        foldScript scr bsAccum = serScript scr <> bsAccum
+        foldScript scr !bsAccum = serScript scr <> bsAccum
         serScript scr = Bin.encode (HN.VarInt $ scrLen scr) <> Bin.encode scr
         scrLen (HS.Script ops) = fromIntegral $ length ops
 
 calcTxSize :: HT.Tx -> Word
 calcTxSize = fromIntegral . B.length . Bin.encode
 
-dummyHash256 = fromString "3d96c573baf8f782e5f5f33dc8ce3c5bae654cbc888e9a3bbb8185a75febfd76" :: HC.Hash256
+dummyHash256 :: HC.Hash256
+dummyHash256 = fromString "0000000000000000000000000000000000000000000000000000000000000000"
 
 hash256 :: Bin.Serialize a => a -> HC.Hash256
 hash256 = HC.hash256 . serialize

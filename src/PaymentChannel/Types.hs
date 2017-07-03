@@ -32,16 +32,17 @@ module PaymentChannel.Types
   
     -- *Receiver state (with pubkey metadata)
   , ServerPayChanX
-  , S.mkExtendedKeyRPC, S.metaKeyIndex
-  , KeyDeriveIndex
-  , mkKeyIndex, word32Index
+  , S.mkExtendedKeyRPC --, S.metaKeyIndex
+--  , KeyDeriveIndex
+--  , mkKeyIndex, word32Index
 
     -- *Payment
   , SignedPayment
 
     -- *Receiver settlement
   , ClosedServerChanI, ClosedServerChan, ClosedServerChanX
-  , getClosedState, cscClosingPayment 
+  , getClosedState, cscClosingPayment
+  , SettleTx
 
     -- **Error
   , PayChanError(..), IsPayChanError(..)
@@ -54,13 +55,13 @@ module PaymentChannel.Types
 
     -- *Crypto
   , SendPubKey(..),RecvPubKey(..),IsPubKey(..),HasSendPubKey(..),HasRecvPubKey(..)
-  , module PaymentChannel.Internal.Receiver.Key
 
     -- *Util
   , module Bitcoin.SpendCond.Util
   , fromDate
   , getChanState
   , clientChangeVal
+  , toHaskoinTx
 )
 where
 
@@ -71,8 +72,7 @@ import PaymentChannel.Internal.Serialization ()
 import PaymentChannel.Internal.Class.Value     (HasValue(..))
 import PaymentChannel.Internal.Receiver.Open   (OpenError(..))
 import Bitcoin.SpendCond.Util
-import Bitcoin.Types as X
-import PaymentChannel.Internal.Receiver.Key
+import Bitcoin.Types                  as X hiding (fromDate, KeyDeriveIndex, mkKeyIndex, word32Index)
 
 import qualified PaymentChannel.Internal.Receiver.Util as S
 import qualified PaymentChannel.Internal.ChanScript as Script
@@ -157,29 +157,26 @@ instance HasFee fee => HasFee (Capped fee) where
       where
         desiredFee = absoluteFee availVal size fee
 
--- | Capped/non-capped amount-specifications
-class PaymentValueSpec val ret sd | val -> ret where
-    paymentValue :: BtcAmount           -- ^ Dust limit
-                 -> ClientPayChanI sd
+-- | Capped/non-capped amount-specifications (get value)
+class PaymentValueSpec val where
+    paymentValue :: BtcAmount           -- ^ Available value
+                 -> ServerSettings
                  -> val                 -- ^ Payment value spec
                  -> BtcAmount           -- ^ Actual payment amount
 
-    mkReturnVal  :: Tagged (val,sd) BtcAmount  -- ^ Actual payment amount
-                 -> Either BtcError (ClientPayChan, SignedPayment)
-                 -> ret
+---- | Capped/non-capped amount-specifications (make return type)
+--class PaymentValueSpec val => PaymentValueRet val ret | ret -> val where
+--    mkReturnVal  :: Tagged val BtcAmount            -- ^ Actual payment amount
+--                 -> Either BtcError SignedPayment   -- ^ createPayment return value
+--                 -> ret                             -- ^ 'val'-specific return type
 
-data Capped val = Capped val
+newtype Capped val = Capped val
 
-instance PaymentValueSpec BtcAmount (Either BtcError (ClientPayChan, SignedPayment)) a where
+instance PaymentValueSpec BtcAmount where
     paymentValue _ = const id
-    mkReturnVal  = const id
 
-instance PaymentValueSpec (Capped BtcAmount) (ClientPayChan, SignedPayment, BtcAmount) a where
-    paymentValue configDustLimit cpc (Capped amt) =
+instance PaymentValueSpec (Capped BtcAmount) where
+    paymentValue valueAvailable ServerSettings{..} (Capped amt) =
         if amt >= valueAvailable
             then valueAvailable
-            else min amt (valueAvailable - configDustLimit)
-      where
-        valueAvailable = clientChangeVal (pcsPayment $ getPayChanState cpc)
-    mkReturnVal amtT (Right (payChan, payment)) = (payChan, payment, unTagged amtT)
-    mkReturnVal _ (Left _) = error "BUG: mkReturnVal (Capped BtcAmount): capped amount math fail"
+            else min amt (valueAvailable - serverConfDustLimit)
