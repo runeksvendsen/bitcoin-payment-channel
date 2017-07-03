@@ -1,22 +1,26 @@
-{-# LANGUAGE OverloadedStrings, RecordWildCards, GeneralizedNewtypeDeriving, DeriveFunctor #-}
+{-# LANGUAGE DeriveFunctor              #-}
+{-# LANGUAGE ExplicitForAll             #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE OverloadedStrings          #-}
+{-# LANGUAGE RecordWildCards            #-}
 module PayChanSpec where
 
 import           PaymentChannel.Test
 
-import qualified Network.Haskoin.Transaction    as HT
-import qualified Network.Haskoin.Crypto         as HC
-import qualified Network.Haskoin.Test           as HC
-import qualified Network.Haskoin.Constants      as HCC
-import qualified Data.Aeson                     as JSON
-import qualified Data.Serialize                 as Bin
+import qualified Data.Aeson                  as JSON
+import qualified Data.Serialize              as Bin
+import qualified Network.Haskoin.Constants   as HCC
+import qualified Network.Haskoin.Crypto      as HC
+import qualified Network.Haskoin.Test        as HC
+import qualified Network.Haskoin.Transaction as HT
 
-import Test.QuickCheck
-import Test.QuickCheck.Monadic              (monadic, run , assert)
-import Test.QuickCheck.Property             (Property)
-import Control.Monad.Identity (Identity(Identity))
-import Test.Hspec
+import           Control.Monad.Identity      (Identity (Identity))
+import           Test.Hspec
+import           Test.QuickCheck
+import           Test.QuickCheck.Monadic     (assert, monadic, run)
+import           Test.QuickCheck.Property    (Property)
 
-import Debug.Trace
+import           Debug.Trace
 {-# ANN module ("HLint: ignore Redundant if"::String) #-}
 
 

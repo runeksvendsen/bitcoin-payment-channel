@@ -4,13 +4,13 @@ module SpendCondSpec
 )
 where
 
-import Bitcoin.SpendCond.Cond
-import Bitcoin.Util
-import Bitcoin.Internal.Util
+import           Bitcoin.Internal.Util
+import           Bitcoin.SpendCond.Cond
+import           Bitcoin.Util
 
-import Test.Hspec
-import Network.Haskoin.Script
+import           Network.Haskoin.Script
 import qualified Network.Haskoin.Script as HS
+import           Test.Hspec
 
 
 

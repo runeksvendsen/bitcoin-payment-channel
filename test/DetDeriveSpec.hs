@@ -1,14 +1,14 @@
 module DetDeriveSpec where
 
 --import Bitcoin.Internal.Types
-import Bitcoin.BIP32.DetDerive
-import Test.Hspec
-import Test.QuickCheck
-import Test.QuickCheck.Arbitrary
-import qualified Network.Haskoin.Crypto as HC
-import qualified Network.Haskoin.Test as HT
-import qualified Data.ByteString.Char8        as C8
-import qualified Data.ByteString            as BS
+import           Bitcoin.BIP32.DetDerive
+import qualified Data.ByteString           as BS
+import qualified Data.ByteString.Char8     as C8
+import qualified Network.Haskoin.Crypto    as HC
+import qualified Network.Haskoin.Test      as HT
+import           Test.Hspec
+import           Test.QuickCheck
+import           Test.QuickCheck.Arbitrary
 
 newtype ArbRootPrv = ArbRootPrv RootPrv
 instance Arbitrary ArbRootPrv where

@@ -1,15 +1,15 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 module BitcoinSpec where
 
-import Bitcoin.Signature
-import PaymentChannel.Test
-import Test.QuickCheck
-import Test.Hspec
-import Network.Haskoin.Test
-import Data.Monoid ((<>))
+import           Bitcoin.Signature
+import           Data.Monoid            ((<>))
+import           Network.Haskoin.Test
+import           PaymentChannel.Test
+import           Test.Hspec
+import           Test.QuickCheck
 -- HELLO
-import qualified Network.Haskoin.Crypto         as HC
-import qualified Network.Haskoin.Test           as HC
+import qualified Network.Haskoin.Crypto as HC
+import qualified Network.Haskoin.Test   as HC
 
 
 newtype ArbitrarySpendCond = ArbitrarySpendCond ArbitraryScript
