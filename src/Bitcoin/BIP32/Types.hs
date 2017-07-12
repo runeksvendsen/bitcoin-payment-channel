@@ -63,7 +63,7 @@ fromRootPrv (RootPrv xPrv) =
     RootPub . HC.deriveXPubKey $ xPrv
 
 -- | A child key derived from a 'RootPrv' or 'RootPub'
-data ChildKey a = ChildKey a RootKeyId
+data ChildKey a = ChildKey { ckKey :: a, ckKeyId :: RootKeyId }
     deriving (Eq, Show, Functor, Generic)
 
 -- | A key pair where the public part can be derived without knowledge of the private part
@@ -121,40 +121,46 @@ fromExternalPair :: External ChildPair -> External ChildPub
 fromExternalPair = fmap fromPair
 
 
+-- | Get a key of type 'key' from an 'Internal'/'External' 'ChildPub'/'ChildPair'
 class HasKey t k key derivPath | t -> derivPath where
     getKey  :: t k -> key
 
+-- (HC.PrvKeyC, HC.XPubKey)
 instance HasKey Internal ChildPair (HC.PrvKeyC, HC.XPubKey) HC.HardPath where
     getKey (Internal (ChildKey (ChildPair k _) _) _) =
         (HC.xPrvKey k,  HC.deriveXPubKey k)
-
-instance HasKey Internal ChildPair HC.PrvKeyC HC.HardPath where
-    getKey pair = fst (getKey pair :: (HC.PrvKeyC, HC.XPubKey))
-
-instance HasKey Internal ChildPair HC.XPubKey HC.HardPath where
-    getKey pair = snd (getKey pair :: (HC.PrvKeyC, HC.XPubKey))
-
-instance HasKey Internal ChildPair HC.PubKeyC HC.HardPath where
-    getKey pair = HC.xPubKey $ getKey pair
-
 instance HasKey External ChildPair (HC.PrvKeyC, HC.XPubKey) HC.SoftPath where
     getKey (External (ChildKey (ChildPair k _) _) _) =
         (HC.xPrvKey k,  HC.deriveXPubKey k)
-
+-- PrvKeyC
+instance HasKey Internal ChildPair HC.PrvKeyC HC.HardPath where
+    getKey pair = fst (getKey pair :: (HC.PrvKeyC, HC.XPubKey))
 instance HasKey External ChildPair HC.PrvKeyC HC.SoftPath where
     getKey pair = fst (getKey pair :: (HC.PrvKeyC, HC.XPubKey))
-
+-- XPubKey
+instance HasKey Internal ChildPair HC.XPubKey HC.HardPath where
+    getKey pair = snd (getKey pair :: (HC.PrvKeyC, HC.XPubKey))
 instance HasKey External ChildPair HC.XPubKey HC.SoftPath where
     getKey pair = snd (getKey pair :: (HC.PrvKeyC, HC.XPubKey))
-
-instance HasKey External ChildPair HC.PubKeyC HC.SoftPath where
-    getKey pair = HC.xPubKey $ getKey pair
-
 instance HasKey External ChildPub HC.XPubKey HC.SoftPath where
     getKey (External (ChildKey (ChildPub pk) _) _) = pk
-
+-- PubKeyC
+instance HasKey Internal ChildPair HC.PubKeyC HC.HardPath where
+    getKey = HC.xPubKey . getKey
+instance HasKey External ChildPair HC.PubKeyC HC.SoftPath where
+    getKey = HC.xPubKey . getKey
 instance HasKey External ChildPub HC.PubKeyC HC.SoftPath where
     getKey = HC.xPubKey . getKey
+-- Address
+instance HasKey Internal ChildPair HC.Address HC.HardPath where
+    getKey pair = HC.pubKeyAddr (getKey pair :: HC.PubKeyC)
+instance HasKey External ChildPair HC.Address HC.SoftPath where
+    getKey pair = HC.pubKeyAddr (getKey pair :: HC.PubKeyC)
+instance HasKey External ChildPub HC.Address HC.SoftPath where
+    getKey pair = HC.pubKeyAddr (getKey pair :: HC.PubKeyC)
+
+
+
 
 
 -- ##########

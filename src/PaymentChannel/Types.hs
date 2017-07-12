@@ -15,7 +15,7 @@ module PaymentChannel.Types
   , ChanParams(..)
   , PaymentChannel(..), PayChan
   , PaymentChannelRecv(..)
-  , SharedSecret, HasSharedSecret(..), fromHash, toHash
+  , SharedSecret, HasSharedSecret(..) --, fromHash, toHash
   , fundingAddress
   , clientChangeAddress
   , getFundingAmount
@@ -32,9 +32,9 @@ module PaymentChannel.Types
   
     -- *Receiver state (with pubkey metadata)
   , ServerPayChanX
-  , S.mkExtendedKeyRPC --, S.metaKeyIndex
---  , KeyDeriveIndex
---  , mkKeyIndex, word32Index
+  , S.mkExtendedDerivRpc
+  , Script.UserParams(..)
+  , Script.deriveRecvPub
 
     -- *Payment
   , SignedPayment

@@ -1,8 +1,6 @@
 {-# LANGUAGE DeriveGeneric, DeriveAnyClass #-}
 module PaymentChannel.Internal.ChanScript
-(
-  module PaymentChannel.Internal.ChanScript
-, module Network.Haskoin.Script
+( module PaymentChannel.Internal.ChanScript
 )
 where
 
@@ -11,11 +9,15 @@ import PaymentChannel.Internal.Crypto.PubKey
 import PaymentChannel.Internal.Util
 import Bitcoin.LockTime.Util
 import Bitcoin.Util
+import Bitcoin.BIP32
+import Bitcoin.Signature
 import Network.Haskoin.Script
 
 import qualified Network.Haskoin.Internals as HI
 import qualified Network.Haskoin.Crypto as HC
 import qualified Data.ByteString as B
+import Data.Serialize                 as Bin
+import Data.Serialize.Put                 as BinPut
 
 
 -- |Defines channel: sender, receiver, and expiration date
@@ -26,9 +28,42 @@ data ChanParams = ChanParams
   , cpLockTime          ::  LockTimeDate
   } deriving (Eq, Show, Typeable, Generic, NFData)
 
---data ClientParams = ClientParams
---  {
---  }
+data UserParams = UserParams
+  { upPubKey    :: SendPubKey
+  , upLockTime  :: LockTimeDate
+  }
+
+instance DerivationSeed UserParams where
+    toDerivSeed (UserParams pk lt) =
+        BinPut.runPut $ do
+            Bin.putWord32be (toWord32 lt)
+            Bin.put pk
+
+instance DerivationSeed ChanParams where
+    toDerivSeed ChanParams{..} = toDerivSeed $
+        UserParams cpSenderPubKey cpLockTime
+
+class HasUserParams a where
+    getUserParams :: a -> UserParams
+
+instance HasUserParams UserParams where getUserParams = id
+instance HasUserParams ChanParams where
+    getUserParams (ChanParams sendPk _ lockTime) =
+          UserParams sendPk lockTime
+
+-- | Deterministically derive a server public key from client pubkey+expiration date
+deriveRecvPub
+    :: HasUserParams up
+    => RootPub
+    -> up
+    -> (ChanParams, External ChildPub)
+deriveRecvPub rootPub hup =
+    (chanParams, extPub)
+  where
+    up@UserParams{..} = getUserParams hup
+    chanParams = ChanParams upPubKey recvPub upLockTime
+    recvPub    = MkRecvPubKey $ getKey extPub
+    extPub     = detDerive rootPub up
 
 instance HasSendPubKey ChanParams where
     getSendPubKey = cpSenderPubKey

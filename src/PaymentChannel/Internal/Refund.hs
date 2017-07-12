@@ -7,43 +7,43 @@ import Bitcoin.Signature
 import qualified Network.Haskoin.Transaction as HT
 import qualified Network.Haskoin.Script as HS
 import qualified Network.Haskoin.Crypto as HC
-
+import qualified Data.List.NonEmpty             as NE
 
 
 type RefundTx = BtcTx P2SH ChanParams RefundScriptSig
 type UnsignedRefundTx = UnsignedBtcTx P2SH ChanParams
 
 
--- | Returns Nothing if there's not enough value available to cover paying the specified fee
---    without producing a dust output.
-mkBaseRefundTx :: ChanParams -> FundingTxInfo -> UnsignedRefundTx
-mkBaseRefundTx cp CFundingTxInfo{..} =
+mkBaseRefundTx :: ClientPayChan -> UnsignedRefundTx
+mkBaseRefundTx cpc@MkClientPayChan{..} =
     let
-        baseIn = setSignFlag (HS.SigAll False) $ mkNoSigTxIn
-                             (HT.OutPoint ftiHash ftiOutIndex)
-                             (nonDusty ftiOutValue)
-                             cp
+        unsigPay = clearSig $ pcsPayment spcState
+        cp = pairRedeemScript unsigPay
+        unsigTx = toBtcTx unsigPay
+        unsigTxIn = NE.head $ btcIns unsigTx
         -- If the sequence field equals maxBound (0xffffffff),
-        --  lockTime features are disabled. so we subtract one
-        refundIn  = setSequence (maxBound-1) baseIn
+        --  lockTime features are disabled. so we subtract one from this
+        refundIn  = setSequence (maxBound-1) unsigTxIn
         baseTx    = mkBtcTx (refundIn :| []) []
     in
+        -- Setting the transaction lockTime allows it to redeem
+        --  an output protected by OP_CHECKLOCKTIMEVERIFY. The
+        --  transaction's lockTime must be greater than or equal to the lockTime
+        --  passed to OP_CHECKLOCKTIMEVERIFY ('cpLockTime') in
+        --  the script ('ChanParams').
         setLockTime (cpLockTime cp) baseTx
 
 mkRefundTx
-    :: Monad m
-    => HC.PrvKeyC
-    -> ChanParams
-    -> FundingTxInfo
+    :: ( Monad m, ToChangeOutFee fee )
+    => ClientPayChan
     -> HC.Address                       -- ^Refund address
-    -> SatoshisPerByte                  -- ^Refund transaction fee
+    -> fee                              -- ^Refund transaction fee
     -> m (Either BtcError RefundTx)     -- ^Refund Bitcoin transaction
-mkRefundTx prvKey cp fti refundAddr txFee = return $
-    runSimple prvKey $ signChangeTx refundTx changeOut
+mkRefundTx cpc@MkClientPayChan{..} refundAddr txFee = return $
+    runSimple spcPrvKey $ signChangeTx refundTx changeOut
         where
-            refundTx  = mkBaseRefundTx cp fti
-            changeOut = mkChangeOut refundAddr txFee KeepDust
---            signFunc _ = return prvKey
+            refundTx  = mkBaseRefundTx cpc
+            changeOut = ChangeOut refundAddr (mkChangeFee txFee) KeepDust
 
 
 

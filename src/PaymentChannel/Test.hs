@@ -55,7 +55,7 @@ data ArbChannelPair = ArbChannelPair
     , recvPrvKey        :: TestRecvKey
     } deriving (Generic, NFData)
 
-data TestRecvKey = TestRecvKey RootPrv (External ChildPair)
+data TestRecvKey = TestRecvKey { testKeyRoot :: RootPrv, testKeyPair :: External ChildPair }
       deriving (Generic, NFData)
 
 testPrvKeyC :: TestRecvKey -> HC.PrvKeyC
@@ -126,11 +126,6 @@ instance Arbitrary NonZeroBitcoinAmount where
 instance Arbitrary (Payment BtcSig) where
     arbitrary = snd <$> mkChanPair
 
--- -- Soft child keys (keys derivable from an XPubKey) have an index of less than 0x80000000
---instance Arbitrary KeyDeriveIndex where
---    arbitrary =
---        fromMaybe (error "Bad key index") . mkKeyIndex <$> choose (0, 0x80000000 - 1)
-
 instance MonadTime Gen where
     currentTime = return nowishTimestamp
 
@@ -173,17 +168,14 @@ mkChanParams = arbitrary >>= fromRecvRootKey
 
 fromRecvRootKey :: RootPrv -> Gen (ChanParams, (HC.PrvKeyC, TestRecvKey))
 fromRecvRootKey recvRoot = do
-    -- sender key pair
+    -- sender key pair + lockTime
     ArbitraryPubKeyC sendPriv sendPK <- arbitrary
-    -- receiver key pair
-    ArbitrarySoftPath arbPath <- arbitrary
-    let childPair = mkChild recvRoot arbPath :: External ChildPair
-        recvPK    = getKey childPair
-    -- TODO: Use a future expiration date for now
     lockTime <- either (error "Bad lockTime") id . parseLockTime <$> choose (1795556940, maxBound)
-    return (ChanParams
-                (MkSendPubKey sendPK) (MkRecvPubKey $ HC.xPubKey recvPK) lockTime,
-           (sendPriv, TestRecvKey recvRoot childPair ))
+    -- server-derived pubkeys
+    let userParams = UserParams (MkSendPubKey sendPK) lockTime
+        (cp, _) = deriveRecvPub (fromRootPrv recvRoot) userParams
+        childPair = detDerive recvRoot cp :: External ChildPair
+    return (cp, (sendPriv, TestRecvKey recvRoot childPair))
 
 mkChanPair :: Gen (ArbChannelPair, SignedPayment)
 mkChanPair = arbitrary >>= mkChanPairInitAmount
@@ -191,7 +183,7 @@ mkChanPair = arbitrary >>= mkChanPairInitAmount
 mkChanPairInitAmount :: BtcAmount -> Gen (ArbChannelPair, SignedPayment)
 mkChanPairInitAmount initPayAmount = do
     let testServerConf = mkTestServerConf initPayAmount
-    (cp, (sendPriv, recvKey@(TestRecvKey _ childPair))) <- mkChanParams
+    (cp, (sendPriv, recvKey@(TestRecvKey rootPrv childPair))) <- mkChanParams
     fundingVal <- arbitraryNonDusty $ max mIN_CHANNEL_SIZE (initPayAmount + testDustLimit)
     (vout,tx)  <- arbitraryFundingTx cp (nonDusty fundingVal)
     let fundInfo = testRbpcpFundingInfo testServerConf cp initPayAmount
@@ -199,8 +191,8 @@ mkChanPairInitAmount initPayAmount = do
     let (sendChan,initPayment) = either (error . show) id sendChanE
 
     recvChanE <- channelFromInitialPayment testServerConf tx (toPaymentData initPayment)
-    let mkExtRPC chan = fromMaybe (error $ "mkExtendedKeyRPC failed. " ++ show (chan,childPair))
-                                  $ mkExtendedKeyRPC chan (fromExternalPair childPair)
+    let mkExtRPC chan = fromMaybe (error $ "mkExtendedDerivRpc failed. " ++ show (chan,childPair))
+                                  $ mkExtendedDerivRpc (fromRootPrv rootPrv) chan
     case recvChanE of
         Left e -> error (show e)
         Right recvChan -> return
@@ -268,7 +260,7 @@ nowishTimestamp = UTCTime (ModifiedJulianDay 50000) 0
 
 
 createAcceptClosingPayment
-    :: ChangeOutFee fee
+    :: ToChangeOutFee fee
     => HC.Address
     -> fee
     -> ChannelPairResult

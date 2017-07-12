@@ -35,10 +35,18 @@ toSigTxIn btcIn@MkInputG{..} =
 
 -- | Derive dummy private key from an input's prev_out txid
 dummyPrvKey :: InputG t r sd -> HC.PrvKeyC
-dummyPrvKey MkInputG{..} =
+dummyPrvKey =
     fromMaybe (error "Failed to decode PrvKeyC from 32 bytes")
-        . HC.decodePrvKey HC.makePrvKeyC . Bin.encode . HT.outPointHash $ btcPrevOut
+        . HC.decodePrvKey HC.makePrvKeyC . Bin.encode . HT.outPointHash . btcPrevOut
 
+dummyAddress :: InputG t r sd -> HC.Address
+dummyAddress =
+    HC.PubKeyAddress
+      . either (const $ error "dummyAddress fail") id
+      . Bin.decode
+      . Bin.encode
+      . HT.outPointHash
+      . btcPrevOut
 
 toTxOut' :: BtcOut -> HT.TxOut
 toTxOut' (BtcOut adr val) =

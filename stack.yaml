@@ -15,7 +15,7 @@ packages:
     - haskoin-wallet
 - location:
     git: https://github.com/runeksvendsen/rbpcp-api.git
-    commit: 3aec6072c0cb8139729df2867ae0454bd8b13627
+    commit: c7bfc722c0fe9a42e03994e271a72be64fcd5f5b
   extra-dep: true
 - location:
     git: https://github.com/runeksvendsen/blockchain-restful-address-index-api.git

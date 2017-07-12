@@ -1,9 +1,9 @@
 module PaymentChannel.Internal.Receiver.Util
 ( updState
-, mkExtendedKeyRPC
---, mkDummyExtendedRPC
+--, mkExtendedKeyRPC
+, mkExtendedDerivRpc
 , metaKeyIndex
-, setMetadata
+--, setMetadata
 , setChannelStatus
 , getChannelStatus
 , markAsBusy
@@ -44,6 +44,18 @@ mkExtendedKeyRPC rpc@(MkServerPayChan pcs _) xpk =
         else
             Nothing
 
+-- | Add an 'ExtPub' to a 'ServerPayChan' that has been created with a server
+--    pubkey derived using 'PaymentChannel.Internal.ChanScript.deriveRecvPub'
+mkExtendedDerivRpc :: RootPub -> ServerPayChanI kd -> Maybe ServerPayChanX
+mkExtendedDerivRpc rootPub spc =
+    if derivedChanParams == chanParams
+        then Just $ setKeyMetadata_ spc xPub
+        else Nothing
+  where
+    (derivedChanParams,xPub) = deriveRecvPub rootPub chanParams
+    chanParams = pairRedeemScript . pcsPayment . rpcState $ spc
+
+
 mkExtendedKeyRPCUnsafe :: ExtPub -> ServerPayChanI kd -> ServerPayChanX
 mkExtendedKeyRPCUnsafe xPub rpc =
     rpc {
@@ -57,9 +69,9 @@ mkExtendedKeyRPCUnsafe xPub rpc =
 metaKeyIndex :: ServerPayChanI KeyDeriveIndex -> KeyDeriveIndex
 metaKeyIndex = mdKeyData . rpcMetadata
 
--- | Server/receiver: set pubkey metadata
-setMetadata :: ServerPayChanG a sd -> b -> ServerPayChanG b sd
-setMetadata sp@MkServerPayChan{..} kd =
+-- | INTERNAL: Server/receiver: set pubkey metadata
+setKeyMetadata_ :: ServerPayChanG a sd -> b -> ServerPayChanG b sd
+setKeyMetadata_ sp@MkServerPayChan{..} kd =
     sp { rpcMetadata =
             rpcMetadata { mdKeyData = kd }
        }

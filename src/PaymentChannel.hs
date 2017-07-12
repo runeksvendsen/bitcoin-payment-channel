@@ -7,6 +7,10 @@ Maintainer  : runesvend@gmail.com
 Stability   : experimental
 Portability : POSIX
 
+
+
+TODO: Outdated
+
 In order to set up a payment channel between a sender and a receiver, the two parties must
  first agree on three [1] parameters for the channel:
 
@@ -56,14 +60,14 @@ Now the payment channel is open and ready for transmitting value. A new 'Payment
  'ServerPayChan' state object.
 
 Payments can flow from the sender to receiver until either the channel is exhausted, or getting
- close to expiration (see important note below). In either case the receiver will use 'getSettlementBitcoinTx' to create the settlement
+ close to expiration (see important note below). In either case the receiver will use 'getSignedSettlementTx' to create the settlement
  Bitcoin transaction, and publish this transaction to the Bitcoin network. The settlement Bitcoin
  transaction pays the total value transmitted over the channel to the receiver and the rest back
  to the sender.
 
-A settlement transaction can be produced by the value receiver using 'getSettlementBitcoinTx'.
+A settlement transaction can be produced by the value receiver using 'getSignedSettlementTx'.
  The receiver will want to use @flip 'Network.Haskoin.Crypto.signMsg' receiverPrivKey@ as the
- signing function passed to 'getSettlementBitcoinTx',
+ signing function passed to 'getSignedSettlementTx',
 where @receiverPrivKey@ is the private key from which 'cpReceiverPubKey' is derived.
 
 [1] In addition to this, two configuration options must also be agreed upon: a "dust limit",
@@ -105,7 +109,7 @@ module PaymentChannel
 -- **State creation
 , channelWithInitialPayment
 , channelFromInitialPayment
-, setMetadata
+--, setMetadata
 
 -- *Payment
 , createPayment, createPaymentCapped, Capped(..)
@@ -116,10 +120,11 @@ module PaymentChannel
 , getRefundBitcoinTx
 , createClosingPayment
 , acceptClosingPayment
-, getSettlementBitcoinTx
-, closedGetSettlementTx
+, getSignedSettlementTx
+, closedGetSettlementTxSimple
+, closedGetSettlementTxDerive
 , DustPolicy(..)
-, ChangeOutFee
+, ToChangeOutFee
 , RefundTx
 , SettleTx
 
@@ -135,7 +140,7 @@ import           PaymentChannel.Client
 import           PaymentChannel.Internal.Receiver.Util
 import           PaymentChannel.RBPCP.Parse
 import           PaymentChannel.Server
-import           PaymentChannel.Types                  hiding (ChangeOutFee,
+import           PaymentChannel.Types                  hiding (ToChangeOutFee,
                                                         ClosedServerChanX,
                                                         getClosedState)
 import           PaymentChannel.Util

@@ -10,7 +10,11 @@ import           PaymentChannel.Internal.Util
 -- |Objects from which a Bitcoin fee can be calculated,
 --   given a transaction
 class HasFee a where
-    absoluteFee :: BtcAmount -> TxByteSize -> a -> BtcAmount
+    absoluteFee
+        :: BtcAmount    -- ^ Available value (max fee)
+        -> TxByteSize   -- ^ Transaction size in bytes
+        -> a            -- ^ Fee-like type
+        -> BtcAmount    -- ^ Absolute fee
 
 -- |Constant fee
 instance HasFee BtcAmount where
@@ -28,6 +32,18 @@ newtype SatoshisPerByte = SatoshisPerByte BtcAmount -- ^Fee in satoshis per byte
 instance HasFee SatoshisPerByte where
     absoluteFee _ txByteSize (SatoshisPerByte satoshisPerByte) =
         fromIntegral txByteSize * satoshisPerByte
+
+-- | A maximum fee of two fees. Whichever fee results in the largest absolute fee is chosen.
+newtype MaxFee a b = MaxFee (a,b)
+    deriving (Eq, Show, Ord, Bin.Serialize, JSON.ToJSON, JSON.FromJSON, NFData)
+instance (HasFee a, HasFee b) => HasFee (MaxFee a b) where
+    absoluteFee availVal txByteSize (MaxFee (f1,f2)) =
+        max (getAbsFee f1) (getAbsFee f2)
+      where
+        getAbsFee :: HasFee fee => fee -> BtcAmount
+        getAbsFee = absoluteFee availVal txByteSize
+
+
 
 {-
 mkRelativeFeeTx

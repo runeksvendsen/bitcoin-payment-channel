@@ -19,7 +19,7 @@ class DerivationSeed a where
 detDerive
     :: forall a sourceKey t k derivPath.
     ( DerivationSeed a
-    , DerivPathElem Word32 derivPath
+    , DerivPathElem derivPath
     , IsChildKey sourceKey t k derivPath
     )
     => sourceKey
@@ -29,7 +29,8 @@ detDerive sourceKey seed =
     mkChild sourceKey path
   where
     path :: derivPath
-    path = toDerivPath (to128bitSeed seed)
+    path = toPath (to128bitSeed seed)
+    toPath (w1,w2,w3,w4) = derivBegin w1 /:| w2 /:| w3 /:| w4
 
 to128bitSeed
     :: DerivationSeed a
@@ -51,25 +52,25 @@ to128bitSeed a = either (\e -> error $ "to128bitSeed bug: " ++ e) id $
 --newtype KeyIndex = KeyIndex Word32
 
 
-class DerivPathElem i derivPath where
-    derivBegin :: i -> derivPath
-    (/:|)  :: derivPath -> i -> derivPath
+class DerivPathElem derivPath where
+    derivBegin :: Word32 -> derivPath
+    (/:|)  :: derivPath -> Word32 -> derivPath
 
-instance DerivPathElem Word32 HC.SoftPath where
+instance DerivPathElem HC.SoftPath where
     derivBegin i = Deriv :/ cap31Bit i
     (/:|) p i = p :/ cap31Bit i
 
-instance DerivPathElem Word32 HC.HardPath where
+instance DerivPathElem HC.HardPath where
     derivBegin i = Deriv :| cap31Bit i
     (/:|) p i = p :| cap31Bit i
 
 cap31Bit :: Word32 -> Word32
 cap31Bit = (`mod` (0x80000000 :: Word32))
 
-class AsDerivePath t derivPath where
-    toDerivPath :: t -> derivPath
+--class AsDerivePath t derivPath where
+--    toDerivPath :: t -> derivPath
 
-instance DerivPathElem i derivPath => AsDerivePath (i, i, i, i) derivPath where
-    toDerivPath (w1,w2,w3,w4) = derivBegin w1 /:| w2 /:| w3 /:| w4
+--instance DerivPathElem i derivPath => AsDerivePath (i, i, i, i) derivPath where
+--    toDerivPath (w1,w2,w3,w4) = derivBegin w1 /:| w2 /:| w3 /:| w4
 
 

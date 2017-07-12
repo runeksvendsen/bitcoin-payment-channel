@@ -17,16 +17,6 @@ import Control.Monad.Time
 {-# ANN module ("HLint: ignore Use isNothing"::String) #-}
 
 
-instance (Show r, Show sd) => IsTxLike SigSinglePair t r sd where
-    toBtcTx SigSinglePair{..} =
-        BtcTx 1 inputL [singleOutput] Nothing Nothing
-            where inputL  = singleInput NE.:| []
-    fromBtcTx tx@BtcTx{..}
-        | btcVer == 1 && btcLock == Nothing = SigSinglePair input output
-        | otherwise = error $ "Modified transaction data: " ++ show tx
-            where input  = head . NE.toList $ btcIns
-                  output = head btcOuts
-
 mkSigSinglePair :: InputG t r () -> BtcOut -> SigSinglePair t r ()
 mkSigSinglePair pin out =
     SigSinglePair (adjustSignFlag pin) out
@@ -54,8 +44,9 @@ singlePairVerifySig ::
    SigSinglePair t r ss -> Either VerifyError ()
 singlePairVerifySig sp = verifyTx (toBtcTx sp)
 
-toClientSignedTx :: Show r => NE.NonEmpty (SigSinglePair t r BtcSig) -> BtcTx t r BtcSig
-toClientSignedTx spL = foldr addInOut (toBtcTx $ NE.last spL) (NE.init spL)
+-- | Won't work until SegWit
+toClientSignedTxSegWit :: Show r => NE.NonEmpty (SigSinglePair t r BtcSig) -> BtcTx t r BtcSig
+toClientSignedTxSegWit spL = foldr addInOut (toBtcTx $ NE.last spL) (NE.init spL)
     where addInOut SigSinglePair{..} tx@BtcTx{..} =
              tx { btcIns  = singleInput NE.<| btcIns
                 , btcOuts = singleOutput : btcOuts

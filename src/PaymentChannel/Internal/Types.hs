@@ -7,6 +7,9 @@
 {-# LANGUAGE TypeSynonymInstances #-}
 module PaymentChannel.Internal.Types
 ( module PaymentChannel.Internal.Types
+, RBPCP.SharedSecret
+, fromInitialPayment
+--, fromHash, toHash
 , module X
 , module Network.Haskoin.Transaction
 , module Network.Haskoin.Crypto
@@ -26,7 +29,7 @@ import           PaymentChannel.Internal.Config          as X
 import           PaymentChannel.Internal.Crypto.PubKey   as X
 import           PaymentChannel.Internal.Types.MonadConf as X
 import           PaymentChannel.Internal.Util            as X
-
+import qualified RBPCP.Types as RBPCP                    (SharedSecret(..))
 
 import           Network.Haskoin.Transaction             hiding (signTx)
 
@@ -69,7 +72,7 @@ data PayChanState sigData = MkPayChanState
     --    accesible. Using this secret as part of the resource identifier for
     --    the channel makes it very hard for outsiders to guess valid resource
     --    identifiers from looking at in-blockchain data.
-    , pcsSecret   :: SharedSecret
+    , pcsSecret   :: RBPCP.SharedSecret
     -- |Various server-defined config options
     , pcsSettings :: ServerSettings
     } deriving (Eq, Show, Typeable, Generic, Serialize, ToJSON, FromJSON, NFData)
@@ -77,18 +80,17 @@ data PayChanState sigData = MkPayChanState
 instance HasLockTimeDate (PayChanState a) where
     getLockTimeDate = getLockTimeDate . pcsPayment
 
-newtype SharedSecret = MkSharedSecret { ssHash :: HC.Hash256 }
-    deriving (Eq, Show, Typeable, Generic, Serialize, ToJSON, FromJSON, NFData)
+--fromHash :: HC.Hash256 -> RBPCP.SharedSecret
+--fromHash = SharedSecret
 
-fromInitialPayment :: SigSinglePair t r BtcSig -> SharedSecret
+--toHash :: RBPCP.SharedSecret -> HC.Hash256
+--toHash = ssHash
+
+-- | Client/server shared secret is SHA256 hash of signature data (including SIGHASH flag)
+--    of opening channel payment.
+fromInitialPayment :: SigSinglePair t r BtcSig -> RBPCP.SharedSecret
 fromInitialPayment  =
-    MkSharedSecret . HC.hash256 . Bin.encode . getSigData
-
-fromHash :: HC.Hash256 -> SharedSecret
-fromHash = MkSharedSecret
-
-toHash :: SharedSecret -> HC.Hash256
-toHash = ssHash
+    RBPCP.SharedSecret . HC.hash256 . Bin.encode . getSigData
 
 instance HasSendPubKey (PayChanState a) where getSendPubKey = getSendPubKey . pcsPayment
 instance HasRecvPubKey (PayChanState a) where getRecvPubKey = getRecvPubKey . pcsPayment

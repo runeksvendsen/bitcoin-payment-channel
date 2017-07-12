@@ -1,3 +1,4 @@
+{-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE KindSignatures, DeriveAnyClass, DeriveFunctor #-}
 module Bitcoin.Types.Tx
@@ -108,11 +109,15 @@ data ChangeOut = ChangeOut
 data TxFee
   = AbsoluteFee BtcAmount
   | RelativeFee SatoshisPerByte
+  | MaximumFee (MaxFee BtcAmount SatoshisPerByte)
       deriving (Eq, Show, Typeable, Generic, Bin.Serialize, JSON.ToJSON, JSON.FromJSON, NFData)
 
-absOrRelFee :: (BtcAmount -> a) -> (SatoshisPerByte -> a) -> TxFee -> a
-absOrRelFee fAbs _ (AbsoluteFee val) = fAbs val
-absOrRelFee _ fRel (RelativeFee spb) = fRel spb
+toMaxFee
+    :: TxFee
+    -> MaxFee BtcAmount SatoshisPerByte
+toMaxFee (AbsoluteFee val) = MaxFee (val, 0  )
+toMaxFee (RelativeFee spb) = MaxFee (0  , spb)
+toMaxFee (MaximumFee maxFee) = maxFee
 
 data DustPolicy = KeepDust | DropDust
     deriving (Eq, Show, Typeable, Generic, Bin.Serialize, JSON.ToJSON, JSON.FromJSON, NFData)
@@ -175,8 +180,18 @@ instance IsTxLike BtcTx t r ss where
     toBtcTx   = id
     fromBtcTx = id
 
+instance (Show r, Show sd) => IsTxLike SigSinglePair t r sd where
+    toBtcTx SigSinglePair{..} =
+        BtcTx 1 inputL [singleOutput] Nothing Nothing
+            where inputL  = singleInput NE.:| []
+    fromBtcTx tx@BtcTx{..}
+        | btcVer == 1 && isNothing btcLock = SigSinglePair input output
+        | otherwise = error $ "SigSinglePair: Modified transaction data: " ++ show tx
+            where input  = head . NE.toList $ btcIns
+                  output = head btcOuts
+
 newtype VerifyError =
-    SigVerifyFail [(Word32,HC.PubKeyC,HC.Hash256,HC.Signature)]
+    SigVerifyFail [(PubKey, HC.Hash256, HC.Signature)]
         deriving (Eq, Show, Typeable, Generic) -- , Bin.Serialize, JSON.ToJSON, JSON.FromJSON, NFData)
 
 -- Defaults
@@ -197,14 +212,14 @@ mkNoSigTxIn op val t = MkInputG op val () t maxBound defaultSigHashFlag
 mkBtcOut :: HC.Address -> NonDustyAmount -> BtcOut
 mkBtcOut = BtcOut
 
-class HasFee fee => ChangeOutFee fee where
-    mkChangeOut :: HC.Address -> fee -> DustPolicy -> ChangeOut
+class HasFee fee => ToChangeOutFee fee where
+    mkChangeFee :: fee -> TxFee
 
-instance ChangeOutFee SatoshisPerByte where
-    mkChangeOut chgAdr sbp = ChangeOut chgAdr (RelativeFee sbp)
+instance ToChangeOutFee SatoshisPerByte where
+    mkChangeFee = RelativeFee
 
-instance ChangeOutFee BtcAmount where
-    mkChangeOut chgAdr val = ChangeOut chgAdr (AbsoluteFee val)
+instance ToChangeOutFee BtcAmount where
+    mkChangeFee = AbsoluteFee
 
 txAddOuts :: [BtcOut] -> BtcTx t r sd -> BtcTx t r sd
 txAddOuts outs tx = tx { btcOuts = btcOuts tx ++ outs }

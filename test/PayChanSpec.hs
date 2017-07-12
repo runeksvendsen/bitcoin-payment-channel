@@ -39,8 +39,8 @@ testAddr = if HCC.getNetwork == HCC.prodnet
     then "14wjVnwHwMAXDr6h5Fw38shCWUB6RSEa63"
     else "n2eMqTT929pb1RDNuqEnxdaLau1rxy3efi"
 
-recvSettleAddr :: HC.Address
-recvSettleAddr = testAddr
+--recvSettleAddr :: HC.Address
+--recvSettleAddr = testAddr
 
 main :: IO ()
 main = hspec spec
@@ -55,10 +55,12 @@ paymentSpec =
   describe "Payment" $
     around withArbChanResult $ do
       describe "Settlement tx" $ do
-        it "client change output amount equals funding value minus sum of payment values" $ \res -> do
+--        it "signatures verify" $ \res ->
+--            verifyTx (mkSettleBtcTx res) `shouldBe` Right ()
+        it "client change amount == funding value minus sum of payment values" $ \res -> do
           let (changeAmount, fundValMinusPaySum, _) = runTestM $ checkSenderValue res
           changeAmount `shouldBe` fundValMinusPaySum
-        it "receiver output amount equals sum of payment values" $ \res -> do
+        it "receiver output amount == sum of payment values" $ \res -> do
           let (recvOutVal, paySumVal, _) = runTestM $ checkReceiverValue res
           recvOutVal `shouldBe` paySumVal
         it "always has at least one output" $ \res ->
@@ -75,9 +77,7 @@ paymentSpec =
           let closedStateE = createAcceptClosingPayment arbAddr (txFee :: SatoshisPerByte) res
           closedStateE `shouldSatisfy` isRight
           let Right closedState = closedStateE
-          HC.ArbitraryAddress arbServerAddr <- generate arbitrary
---          HC.ArbitraryPrvKeyC prvKey <- generate arbitrary
-          let settleTxE = runDummy $ closedGetSettlementTx closedState arbServerAddr DropDust
+          let settleTxE = runDummy $ closedGetSettlementTxDerive closedState 0 DropDust
           settleTxE `shouldSatisfy` isRight
 
 conversionSpec :: Spec
@@ -111,8 +111,8 @@ redeemScriptConversion cp =
 
 checkSenderValue :: ChannelPairResult -> TestM (BtcAmount, BtcAmount, HT.Tx)
 checkSenderValue cpr@ChannelPairResult{..} = do
-    settleTx <- mkSettleTx cpr
-    let clientChangeOutIndex = indexOf settleTx (fundingAddress resSendChan)
+    let settleTx = mkSettleTx cpr
+        clientChangeOutIndex = indexOf settleTx (fundingAddress resSendChan)
         clientChangeAmount = maybe 0 (HT.outValue . (HT.txOut settleTx !!)) clientChangeOutIndex
     -- Check that the client change amount in the settlement transaction equals the
     --  channel funding amount minus the sum of all payment amounts.
@@ -122,15 +122,17 @@ checkSenderValue cpr@ChannelPairResult{..} = do
 
 checkReceiverValue :: ChannelPairResult -> TestM (BtcAmount, BtcAmount, HT.Tx)
 checkReceiverValue cpr@ChannelPairResult{..} = do
-    settleTx <- mkSettleTx cpr
-    let recvOutIndex = indexOf settleTx recvSettleAddr
+    let settleTx = mkSettleTx cpr
+        cp = pairRedeemScript $ initPayment resInitPair
+        changeAddr = getKey (detDerive (testKeyRoot $ recvPrvKey resInitPair) cp :: Internal ChildPair)
+        recvOutIndex = indexOf settleTx changeAddr
         recvAmount = maybe 0 (HT.outValue . (HT.txOut settleTx !!)) recvOutIndex
     -- Check receiver amount in settlement transaction with zero fee equals sum
     -- of all payments.
     return (fromIntegral recvAmount :: BtcAmount, fromIntegral (sum resRecvdAmounts), settleTx)
 
 minOneOutput :: ChannelPairResult -> TestM Bool
-minOneOutput cpr = not . null . HT.txOut <$> mkSettleTx cpr
+minOneOutput cpr = return . not . null . HT.txOut $ mkSettleTx cpr
 
 checkSendRecvStateMatch :: ChannelPairResult -> IO ()
 checkSendRecvStateMatch ChannelPairResult{..} =
@@ -139,7 +141,6 @@ checkSendRecvStateMatch ChannelPairResult{..} =
 recvSendAmountsMatch :: ChannelPairResult -> IO ()
 recvSendAmountsMatch ChannelPairResult{..} =
     resSentAmounts `shouldBe` resRecvdAmounts
-
 
 
 jsonSerDeser :: (Show a, Eq a, JSON.FromJSON a, JSON.ToJSON a) => a -> IO ()
@@ -168,11 +169,13 @@ indexOf tx addr = listToMaybe $ catMaybes $ zipWith f [0..] (HT.txOut tx)
                 then Just idx
                 else Nothing
 
-mkSettleTx :: Monad m =>
-            ChannelPairResult -> m Tx
-mkSettleTx ChannelPairResult{..} = do
-    let prvKey = testPrvKeyC $ recvPrvKey resInitPair
-    let settleTxE = runSimple prvKey $ getSettlementBitcoinTx
-            resRecvChan recvSettleAddr
-            (SatoshisPerByte 0) KeepDust
-    return $ either (error . show) toHaskoinTx settleTxE
+mkSettleBtcTx :: ChannelPairResult -> SettleTx
+mkSettleBtcTx ChannelPairResult{..} =
+    let prvKey = testKeyRoot $ recvPrvKey resInitPair in
+    either (error . show) id $ runExtDet prvKey $ getSignedSettlementTx
+            resRecvChan
+            (mkChangeFee $ SatoshisPerByte 0, KeepDust)
+
+mkSettleTx :: ChannelPairResult -> Tx
+mkSettleTx =
+     toHaskoinTx . mkSettleBtcTx

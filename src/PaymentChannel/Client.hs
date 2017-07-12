@@ -9,7 +9,7 @@ module PaymentChannel.Client
 )
 where
 
-import PaymentChannel.Server                            (getSettlementBitcoinTx)
+import PaymentChannel.Server                            (getSignedSettlementTx)
 import PaymentChannel.Internal.Payment
 import PaymentChannel.Internal.Receiver.Util
 import Bitcoin.Util                                     (calcTxSize)
@@ -154,7 +154,7 @@ createPaymentInternal oldPayment servSettings prvKey payVal =
 
 -- TODO: cleanup
 createClosingPayment
-    :: (ChangeOutFee fee, HasFee fee )
+    :: (ToChangeOutFee fee, HasFee fee )
     => ClientPayChanI BtcSig    -- ^ Client state
     -> HC.Address               -- ^ Client change address
     -> fee                      -- ^ Settlement transaction fee (which equals value of closing payment)
@@ -170,12 +170,10 @@ createClosingPayment clientState changeAddress fee =
     newChangeAddrState = _setClientChangeAddr clientState changeAddress
     -- ### Dummy
     fakeSigNewAddrState = mapSigData _invalidBtcSig newChangeAddrState
-    handleSettleRet (Right dummySettleTx) = dummySettleTx
-    handleSettleRet (Left e) = error $ "createClosingPayment. woops: " ++ show e
-    dummyAddress = HC.PubKeyAddress "0000000000000000000000000000000000000000"
-    dummyClientSettleTx :: ChangeOutFee txFee => ClientPayChan -> txFee -> HT.Tx
-    dummyClientSettleTx  cpc txFee = toHaskoinTx . handleSettleRet . runDummy $ getSettlementBitcoinTx
-                          (dummyFromClientState cpc) dummyAddress txFee DropDust
+    handleSettleRet = either (error . ("createClosingPayment. woops: " ++) . show) id
+    dummyClientSettleTx :: ToChangeOutFee txFee => ClientPayChan -> txFee -> HT.Tx
+    dummyClientSettleTx  cpc txFee = toHaskoinTx . handleSettleRet . runDummy $ getSignedSettlementTx
+                          (dummyFromClientState cpc) (mkChangeFee txFee, DropDust)
 
 
 -- |Produces a Bitcoin transaction which sends all channel funds back to the sender.
@@ -183,16 +181,16 @@ createClosingPayment clientState changeAddress fee =
 -- 'ChanParams'. Receiver should be aware of Bitcoin network time drift and the
 -- unpreditable nature of finding new blocks.
 getRefundBitcoinTx
-    :: Monad m
-    => HC.PrvKeyC
-    -> ChanParams
-    -> FundingTxInfo
-    -> HC.Address           -- ^ Refund address
-    -> SatoshisPerByte      -- ^ Refund transaction fee
-    -- ^ Refund Bitcoin transaction.
-    -- Error only in case of insufficient value to cover fee
-    --  (dust outputs are accepted).
+    :: ( Monad m, ToChangeOutFee fee )
+    => ClientPayChan
+    -> HC.Address
+      -- ^Refund address
+    -> fee
+      -- ^Refund transaction fee
     -> m (Either BtcError RefundTx)
+      -- ^ Refund Bitcoin transaction.
+      -- Error only in case of insufficient value to cover fee
+      --  (dust outputs are accepted).
 getRefundBitcoinTx =
     mkRefundTx
 
