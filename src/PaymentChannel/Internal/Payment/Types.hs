@@ -41,8 +41,8 @@ instance TransformSigData PaymentScriptSig BtcSig ChanParams where
 -- Two signatures
 instance SpendFulfillment PaymentScriptSig ChanParams where
     rawSigs PaymentScriptSig{..} ChanParams{..} =
-        [ (getPubKey cpReceiverPubKey, sssClientSig)
-        , (getPubKey cpSenderPubKey  , sssServerSig) ]
+        [ (getPubKey cpSenderPubKey, sssClientSig)
+        , (getPubKey cpReceiverPubKey, sssServerSig) ]
     signatureScript PaymentScriptSig{..} _ = Script
         [ opPush sssClientSig
         , opPush sssServerSig

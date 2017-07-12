@@ -77,8 +77,13 @@ comparePayments sp1 sp2 =
     fmapL PaymentError (valueDiff tx1 tx2) >>= eqIgnoreVal
   where
     (tx1,tx2) = (toBtcTx sp1, toBtcTx sp2)
-    eqIgnoreVal di =
-        if not $ eqIgnoreOutVal (IgnoreSigData tx1) (IgnoreSigData tx2)
-            -- Means sig hash flags differ
-            then Left $ show (tx1,tx2) `trace` BadSigHashFlag (bsSigFlag $ getSigData sp2) (bsSigFlag $ getSigData sp1)
-            else Right di
+    isLastPayment = (== nullAmount) . btcAmount . singleOutput
+    eqIgnoreVal di
+        | eqIgnoreOutVal (IgnoreSigData tx1) (IgnoreSigData tx2) = Right di
+        | otherwise =
+              if isLastPayment sp2
+                  then Right di
+                  else Left $ BadSigHashFlag (bsSigFlag $ getSigData sp2) (bsSigFlag $ getSigData sp1)
+                      -- The last payment assigns zero value to the client, by
+                      -- changing the sigHash flag to 'SigNone True'
+                      -- (thus signing a transaction without its change output in it).

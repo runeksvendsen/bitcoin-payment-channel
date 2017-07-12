@@ -16,6 +16,7 @@ import qualified Data.ByteString            as B
 import qualified Data.Serialize             as Bin
 import qualified Network.Haskoin.Transaction as HT
 import qualified Network.Haskoin.Crypto     as HC
+import Debug.Trace
 
 
 toTxOut :: forall r outType. ScriptPubKey r outType => OutputG outType r -> HT.TxOut
@@ -64,16 +65,15 @@ toChangeTxOut val ChangeOut{..} =
 getAllOuts :: BtcTx t r sd -> [HT.TxOut]
 getAllOuts BtcTx{..} =
     map toTxOut' finalOuts ++ maybe [] mkChgOut btcChgOut
-    where
-        btcAbsFee_ = getAbsFee . btcTxFee
-        getAbsFee (AbsoluteFee val) = val
-        getAbsFee (RelativeFee _) = error "BUG. getAllOuts: relative fee"
-        -- | Remove zero-value outputs
-        finalOuts = filter ((/= nullAmount) . btcAmount) btcOuts
-        inVal = sum . NE.toList $ NE.map btcInValue btcIns
-        outVal = sum $ map (nonDusty . btcAmount) btcOuts
-        mkChgOut co = [ toChangeTxOut (inVal - outVal - btcAbsFee_ co) co ]
-
+  where
+    btcAbsFee_ = getAbsFee . btcTxFee
+    getAbsFee (AbsoluteFee val) = val
+    getAbsFee x = error $ "BUG. getAllOuts: non-absolute fee" ++ show x
+    -- | Remove zero-value outputs
+    finalOuts = filter ((/= nullAmount) . btcAmount) btcOuts
+    inVal = sum . NE.toList $ NE.map btcInValue btcIns
+    outVal = sum $ map (nonDusty . btcAmount) btcOuts
+    mkChgOut co = [ toChangeTxOut (inVal - outVal - btcAbsFee_ co) co ]
 
 toUnsignedTx :: BtcTx t r sd -> HT.Tx
 toUnsignedTx tx@BtcTx{..} = toTxWithIns

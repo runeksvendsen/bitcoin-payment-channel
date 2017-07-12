@@ -55,8 +55,8 @@ paymentSpec =
   describe "Payment" $
     around withArbChanResult $ do
       describe "Settlement tx" $ do
---        it "signatures verify" $ \res ->
---            verifyTx (mkSettleBtcTx res) `shouldBe` Right ()
+        it "signatures verify" $ \res ->
+            verifyTx (mkSettleBtcTx res) `shouldBe` Right ()
         it "client change amount == funding value minus sum of payment values" $ \res -> do
           let (changeAmount, fundValMinusPaySum, _) = runTestM $ checkSenderValue res
           changeAmount `shouldBe` fundValMinusPaySum

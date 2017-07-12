@@ -18,13 +18,7 @@ import Control.Monad.Time
 
 
 mkSigSinglePair :: InputG t r () -> BtcOut -> SigSinglePair t r ()
-mkSigSinglePair pin out =
-    SigSinglePair (adjustSignFlag pin) out
-  where
-    adjustSignFlag = setSignFlag $
-        if btcAmount out /= nullAmount
-            then HS.SigSingle True
-            else HS.SigNone   True
+mkSigSinglePair = SigSinglePair
 
 signPair :: ( Monad m, Show r
             , TransformSigData BtcSig () r --, SignatureScript t r BtcSig

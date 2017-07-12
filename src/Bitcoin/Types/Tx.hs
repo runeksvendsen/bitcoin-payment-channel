@@ -190,10 +190,6 @@ instance (Show r, Show sd) => IsTxLike SigSinglePair t r sd where
             where input  = head . NE.toList $ btcIns
                   output = head btcOuts
 
-newtype VerifyError =
-    SigVerifyFail [(PubKey, HC.Hash256, HC.Signature)]
-        deriving (Eq, Show, Typeable, Generic) -- , Bin.Serialize, JSON.ToJSON, JSON.FromJSON, NFData)
-
 -- Defaults
 defaultTxVersion :: Word32
 defaultTxVersion = 1

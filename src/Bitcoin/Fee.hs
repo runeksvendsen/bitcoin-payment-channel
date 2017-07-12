@@ -1,7 +1,6 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 module Bitcoin.Fee where
 
--- import Bitcoin.Types
 import           Bitcoin.Amount
 import qualified Data.Aeson.Types             as JSON
 import qualified Data.Serialize               as Bin
@@ -11,7 +10,7 @@ import           PaymentChannel.Internal.Util
 --   given a transaction
 class HasFee a where
     absoluteFee
-        :: BtcAmount    -- ^ Available value (max fee)
+        :: BtcAmount    -- ^ Available value (max fee) (use 'maxBound' if you don't know)
         -> TxByteSize   -- ^ Transaction size in bytes
         -> a            -- ^ Fee-like type
         -> BtcAmount    -- ^ Absolute fee
@@ -42,6 +41,14 @@ instance (HasFee a, HasFee b) => HasFee (MaxFee a b) where
       where
         getAbsFee :: HasFee fee => fee -> BtcAmount
         getAbsFee = absoluteFee availVal txByteSize
+
+-- | At most the specified fee. Will not fail if the specified amount is more than is available.
+newtype Capped val = Capped val
+instance HasFee fee => HasFee (Capped fee) where
+    absoluteFee availVal size (Capped fee) =
+        min availVal desiredFee
+      where
+        desiredFee = absoluteFee availVal size fee
 
 
 

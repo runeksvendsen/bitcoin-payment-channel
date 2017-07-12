@@ -40,6 +40,7 @@ import qualified Data.List.NonEmpty     as NE
 import qualified Network.Haskoin.Script as HS
 import qualified Network.Haskoin.Crypto as HC
 import qualified Control.Monad.Reader   as R
+import qualified Network.Haskoin.Transaction             as HT
 import Debug.Trace
 
 
@@ -238,9 +239,10 @@ signInput tx idx inp@MkInputG{..} = do
          SignConf{..} <- getSignConf
          signKey <- signGetKey
          let prv = getSignKey inp (signKey :: signKey)
-         let rawSig = signMsg prv tx (SignatureHash btcCondScr idx btcSignFlag)
+             sigHash = mkSigHash tx btcCondScr idx btcSignFlag realPK
+             btcSig  = signMsg prv sigHash
              newSigData :: Tagged r newSigData
-             newSigData = mkSigData btcSigData (BtcSig rawSig btcSignFlag)
+             newSigData = mkSigData btcSigData btcSig
              signPK  = unTagged (signerPubKey btcCondScr :: Tagged newSigData PubKeyC)
              realPK  = HC.derivePubKey prv
              retVal  = Right $ mapSigData (const $ unTagged newSigData) inp
@@ -262,66 +264,60 @@ verifyTx tx@BtcTx{..} =
     verifyRes = concatMap getErrors $ zipWith (verifyInput tx) [0..] (NE.toList btcIns)
     getErrors = filter ((== False) . fst)
 
+newtype VerifyError =
+    SigVerifyFail [(SignatureHash, BtcSig)]
+        deriving (Eq, Show, Typeable, Generic) -- , Bin.Serialize, JSON.ToJSON, JSON.FromJSON, NFData)
+
+
 -- TODO: fix SIG_SINGLE/SIG_NONE verify bug
 verifyInput :: forall r t ss.
                (SpendFulfillment ss r, SpendCondition r) =>
                   BtcTx t r ss
                -> Word32
                -> InputG t r ss
-               -> [(Bool, (PubKey, HC.Hash256, HC.Signature))]
+               -> [(Bool, (SignatureHash, BtcSig))]
 verifyInput tx idx MkInputG{..} = do
-         let mkSigHash = SignatureHash btcCondScr idx
+         let fromFlagPk = mkSigHash tx btcCondScr idx
              keySigL = rawSigs btcSigData btcCondScr
-             sigVerify (pk, BtcSig sig flag) =
-                ( verifySig tx (mkSigHash flag) sig pk
-                , (pk, getHash tx $ mkSigHash flag, sig)
+             sigVerify (pk, btcSig@(BtcSig sig flag)) =
+                ( verifySig (fromFlagPk flag pk) sig
+                , (fromFlagPk flag pk, btcSig)
                 )
          map sigVerify keySigL
 
-data SignatureHash r
-  = SignatureHash r Word32 HS.SigHash
-      deriving (Eq, Show)
+-- | Represents a signed input in a transaction
+data SignatureHash
+  = SignatureHash HT.Tx HS.Script Word32 HS.SigHash HC.PubKeyC
+      deriving (Eq, Show, Typeable, Generic)
 
-getHash :: SpendCondition r
-        => BtcTx t r sd
-        -> SignatureHash r
-        -> HC.Hash256
-getHash tx (SignatureHash r i sh) =
-    getHashForSig tx r i sh
-
-verifySig
-    :: SpendCondition r
-    => BtcTx t r sd
-    -> SignatureHash r
-    -> HC.Signature
-    -> HC.PubKeyC
-    -> Bool
-verifySig tx sh sig pk = -- traceIt $
-    HC.verifySig (getHash tx sh) sig pk
-  where
-    traceIt = trace (show $ unwords
-          ["Verifying message" , show sh, "with key", show pk])
-
-signMsg :: SpendCondition r
-        => HC.PrvKeyC
-        -> BtcTx t r sd
-        -> SignatureHash r
-        -> HC.Signature
-signMsg prv tx sh = -- traceIt $
-    getHash tx sh `HC.signMsg` prv
-  where
-    traceIt = trace (show $ unwords
-          ["Signing message" , show sh, "with key", show $ HC.derivePubKey prv])
-
-getHashForSig
+mkSigHash
     :: SpendCondition r
     => BtcTx t r a
     -> r
     -> Word32
     -> HS.SigHash
-    -> HC.Hash256
-getHashForSig tx rdmScr idx = HS.txSigHash
+    -> HC.PubKeyC
+    -> SignatureHash
+mkSigHash tx rdmScr idx = SignatureHash
     (toUnsignedTx tx) (conditionScript rdmScr) (toInt idx)
+
+getHash :: SignatureHash
+        -> HC.Hash256
+getHash (SignatureHash tx scr idx sh _) =
+    HS.txSigHash tx scr (toInt idx) sh
+
+verifySig
+    :: SignatureHash
+    -> HC.Signature
+    -> Bool
+verifySig sh@(SignatureHash _ _ _ _ pk) sig =
+    HC.verifySig (getHash sh) sig pk
+
+signMsg :: HC.PrvKeyC
+        -> SignatureHash
+        -> BtcSig
+signMsg prv sh@(SignatureHash _ _ _ hf _) =
+    BtcSig (getHash sh `HC.signMsg` prv) hf
 
 txSize :: SignatureScript r ss t => BtcTx t r ss -> TxByteSize
 txSize = calcTxSize . toHaskoinTx

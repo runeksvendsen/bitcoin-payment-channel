@@ -152,11 +152,6 @@ instance HasSharedSecret ClientPayChan          where getSecret = getSecret . sp
 -- |Short-hand
 class PaymentChannel a => PayChan a
 
-instance HasFee fee => HasFee (Capped fee) where
-    absoluteFee availVal size (Capped fee) =
-        min availVal desiredFee
-      where
-        desiredFee = absoluteFee availVal size fee
 
 -- | Capped/non-capped amount-specifications (get value)
 class PaymentValueSpec val where
@@ -170,8 +165,6 @@ class PaymentValueSpec val where
 --    mkReturnVal  :: Tagged val BtcAmount            -- ^ Actual payment amount
 --                 -> Either BtcError SignedPayment   -- ^ createPayment return value
 --                 -> ret                             -- ^ 'val'-specific return type
-
-newtype Capped val = Capped val
 
 instance PaymentValueSpec BtcAmount where
     paymentValue _ = const id

@@ -11,6 +11,7 @@ import PaymentChannel.Internal.Payment.Types    as Export
 
 import qualified Network.Haskoin.Transaction    as HT
 import qualified Network.Haskoin.Crypto         as HC
+import qualified Network.Haskoin.Script                   as HS
 import Bitcoin.SpendCond.Util                   (singlePrevIn, PickOutError)
 -- import Bitcoin.Dust                             (getDustLimit)
 import Control.Monad.Trans.Either
@@ -59,18 +60,12 @@ decrementClientValue ::
     -> m (Either BtcError (SigSinglePair t r ()))
 decrementClientValue sp@SigSinglePair{..} decVal = do
     newValE <- mkNonDusty (currentVal - decVal)
-    return (newValE >>= \newVal -> Right $ sp { singleOutput = replaceValue singleOutput newVal })
+    let newSignFlag newVal = if newVal /= nullAmount then HS.SigSingle True else HS.SigNone True
+        newIn newVal = setSignFlag (newSignFlag newVal) singleInput
+        mkNewPair newVal = sp { singleOutput = replaceValue singleOutput newVal
+                              , singleInput  = newIn newVal
+                              }
+    return $ mkNewPair <$> newValE
   where
     currentVal = nonDusty $ btcAmount singleOutput
     replaceValue out val = out { btcAmount = val }
-
-
-
-
-
-
-
-
-
-
-
